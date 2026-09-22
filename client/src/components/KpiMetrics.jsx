@@ -58,40 +58,42 @@ export const KpiMetrics = ({ metrics, onSelectTab }) => {
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 my-6">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 my-4 sm:my-6">
       {cards.map((card, idx) => {
         const IconComponent = card.icon;
         return (
           <div
             key={idx}
             onClick={() => onSelectTab(card.tabKey)}
-            className={`relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 p-4 sm:p-5 border ${card.borderStyle} transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md active:scale-[0.98] group`}
+            className={`relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 p-3 sm:p-5 border ${card.borderStyle} transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md active:scale-[0.98] group flex flex-col justify-between`}
           >
-            {card.badgeText && (
-              <span
-                className={`absolute top-3 right-3 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-md ${card.badgeColor}`}
-              >
-                {card.badgeText}
-              </span>
-            )}
-
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
               <div
-                className={`w-10 h-10 rounded-xl ${card.iconBg} flex items-center justify-center transition-colors`}
+                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl ${card.iconBg} flex items-center justify-center transition-colors shrink-0`}
               >
-                <IconComponent className="w-5 h-5" />
+                <IconComponent className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition-colors" />
+
+              <div className="flex items-center gap-1.5 ml-auto">
+                {card.badgeText && (
+                  <span
+                    className={`px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider rounded-md shrink-0 ${card.badgeColor}`}
+                  >
+                    {card.badgeText}
+                  </span>
+                )}
+                <ArrowUpRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition-colors" />
+              </div>
             </div>
 
             <div>
-              <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight font-sans">
+              <div className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight font-sans">
                 {card.value}
               </div>
-              <div className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 mt-0.5">
+              <div className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 mt-0.5 truncate">
                 {card.title}
               </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+              <div className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                 {card.subtext}
               </div>
             </div>

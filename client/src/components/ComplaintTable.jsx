@@ -40,17 +40,17 @@ export const ComplaintTable = ({
   };
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-      <table className="w-full text-left text-xs border-collapse">
-        <thead className="bg-slate-50/90 dark:bg-slate-950/80 text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono text-[11px] border-b border-slate-200 dark:border-slate-800">
+    <div className="overflow-x-auto no-scrollbar sm:overflow-x-auto rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+      <table className="w-full min-w-[680px] text-left text-xs border-collapse">
+        <thead className="bg-slate-50/90 dark:bg-slate-950/80 text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono text-[10px] sm:text-[11px] border-b border-slate-200 dark:border-slate-800">
           <tr>
-            <th className="py-3.5 px-4 font-semibold">CMP ID</th>
-            <th className="py-3.5 px-4 font-semibold">Priority</th>
-            <th className="py-3.5 px-4 font-semibold">Defect & Location</th>
-            <th className="py-3.5 px-4 font-semibold">Line In-Charge</th>
-            <th className="py-3.5 px-4 font-semibold">Live SLA Countdown</th>
-            <th className="py-3.5 px-4 font-semibold">Status</th>
-            <th className="py-3.5 px-4 font-semibold text-right">Actions</th>
+            <th className="py-3 px-3.5 sm:py-3.5 sm:px-4 font-semibold">CMP ID</th>
+            <th className="py-3 px-3.5 sm:py-3.5 sm:px-4 font-semibold">Priority</th>
+            <th className="py-3 px-3.5 sm:py-3.5 sm:px-4 font-semibold">Defect & Location</th>
+            <th className="py-3 px-3.5 sm:py-3.5 sm:px-4 font-semibold">Line In-Charge</th>
+            <th className="py-3 px-3.5 sm:py-3.5 sm:px-4 font-semibold">Live SLA Countdown</th>
+            <th className="py-3 px-3.5 sm:py-3.5 sm:px-4 font-semibold">Status</th>
+            <th className="py-3 px-3.5 sm:py-3.5 sm:px-4 font-semibold text-right">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-sans">

@@ -174,93 +174,94 @@ export const App = () => {
       <Header onOpenNewComplaint={() => setIsNewModalOpen(true)} />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
         {/* Active Persona Banner */}
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs mb-4 shadow-xs transition-colors">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-2.5 w-2.5 relative">
+        <div className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 text-xs mb-3.5 sm:mb-4 shadow-xs transition-colors">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+            <span className="flex h-2.5 w-2.5 relative shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
             </span>
-            <span className="text-slate-600 dark:text-slate-300">
+            <span className="text-slate-600 dark:text-slate-300 truncate">
               Active Persona:{' '}
-              <strong className="text-slate-900 dark:text-white font-bold">{user?.name}</strong> (
-              <span className="text-indigo-600 dark:text-cyan-400 font-mono font-semibold">{user?.employeeId}</span> •{' '}
-              {user?.department})
+              <strong className="text-slate-900 dark:text-white font-bold">{user?.name}</strong>{' '}
+              <span className="text-indigo-600 dark:text-cyan-400 font-mono font-semibold">({user?.employeeId}</span> •{' '}
+              <span className="text-slate-500 dark:text-slate-400">{user?.department})</span>
             </span>
           </div>
 
-          <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+          <div className="flex items-center gap-2 text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 font-mono shrink-0">
             <span>
               Scope:{' '}
               <strong className="text-slate-700 dark:text-slate-200 font-semibold">
                 {isAdmin
-                  ? 'Executive Oversight (All Lines & Cross-Role Operations)'
+                  ? 'Executive Oversight'
                   : isAuditor
-                  ? 'All 4 Plant Production Lines'
-                  : `Filtered to ${user?.department}`}
+                  ? 'All 4 Plant Lines'
+                  : user?.department}
               </strong>
             </span>
             <span>•</span>
-            <span>SLA Standard: 12–24h Closed-Loop</span>
+            <span>12–24h SLA</span>
           </div>
         </div>
 
         {/* Executive Admin Mode Navigation Toggle */}
         {isAdmin && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 mb-6 backdrop-blur-xs">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 sm:p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 mb-5 sm:mb-6 backdrop-blur-xs">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
+              <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs shrink-0">
                 <Crown className="w-4 h-4" />
               </div>
               <div>
                 <h2 className="text-xs font-bold text-amber-950 dark:text-amber-300 flex items-center gap-1.5">
                   <span>Executive Admin Operations Suite</span>
-                  <span className="text-[10px] uppercase font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                  <span className="text-[9px] uppercase font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
                     Live
                   </span>
                 </h2>
-                <p className="text-[11px] text-amber-900/80 dark:text-amber-400/80">
+                <p className="text-[10px] sm:text-[11px] text-amber-900/80 dark:text-amber-400/80 hidden sm:block">
                   Real-time accountability tracking for Auditors & Supervisors, SLA breaches, and audit trails
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 p-1 rounded-xl border border-amber-500/20 shadow-xs self-start sm:self-auto flex-wrap">
+            {/* Horizontally scrollable on mobile */}
+            <div className="flex items-center gap-1 bg-white dark:bg-slate-900 p-1 rounded-xl border border-amber-500/20 shadow-xs overflow-x-auto no-scrollbar w-full md:w-auto">
               <button
                 onClick={() => setAdminActiveTab('oversight')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                   adminActiveTab === 'oversight'
                     ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 <Crown className="w-3.5 h-3.5" />
-                <span>Operations Oversight</span>
+                <span>Oversight</span>
               </button>
 
               <button
                 onClick={() => setAdminActiveTab('users')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                   adminActiveTab === 'users'
                     ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 <Users className="w-3.5 h-3.5" />
-                <span>Personnel & Credentials</span>
+                <span>Personnel</span>
               </button>
 
               <button
                 onClick={() => setAdminActiveTab('register')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                   adminActiveTab === 'register'
                     ? 'bg-gradient-to-r from-indigo-600 to-cyan-600 text-white shadow-xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 <BarChart3 className="w-3.5 h-3.5" />
-                <span>Plant Defect Register ({complaints.length})</span>
+                <span>Defect Register ({complaints.length})</span>
               </button>
             </div>
           </div>

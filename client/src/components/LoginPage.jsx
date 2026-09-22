@@ -218,42 +218,42 @@ export const LoginPage = () => {
       </nav>
 
       {/* Main Login Card Area */}
-      <main className="flex-1 flex items-center justify-center px-4 py-8 z-10">
+      <main className="flex-1 flex items-center justify-center px-3 sm:px-4 py-4 sm:py-8 z-10">
         <div className="w-full max-w-xl">
           {/* Card Header & Portal Tabs */}
-          <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/90 dark:border-slate-800/90 rounded-3xl shadow-xl p-6 sm:p-8 transition-all">
+          <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/90 dark:border-slate-800/90 rounded-3xl shadow-xl p-4 sm:p-8 transition-all">
             
             {/* Header Badge */}
-            <div className="text-center mb-6">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 mb-3 border border-slate-200 dark:border-slate-700">
+            <div className="text-center mb-5 sm:mb-6">
+              <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 mb-2 sm:mb-3 border border-slate-200 dark:border-slate-700">
                 <Building2 className="w-3 h-3 text-indigo-600 dark:text-cyan-400" />
                 Apparel Factory Access Control
               </span>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+              <h1 className="text-xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                 Sign In to Your Workspace
               </h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 max-w-sm mx-auto">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
                 Select your designated authority portal below to sign in.
               </p>
             </div>
 
             {/* SEPARATE 3-TIER USER PORTAL TABS */}
-            <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-slate-100 dark:bg-slate-950 rounded-2xl mb-6 border border-slate-200 dark:border-slate-800/80 shadow-inner">
+            <div className="grid grid-cols-3 gap-1 sm:gap-1.5 p-1 sm:p-1.5 bg-slate-100 dark:bg-slate-950 rounded-2xl mb-5 sm:mb-6 border border-slate-200 dark:border-slate-800/80 shadow-inner">
               {/* Admin Tab */}
               <button
                 type="button"
                 id="tab-admin-portal"
                 onClick={() => handlePortalSwitch('ADMIN')}
-                className={`flex flex-col items-center justify-center py-2.5 px-2 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+                className={`flex flex-col items-center justify-center py-2 sm:py-2.5 px-1 sm:px-2 rounded-xl font-bold transition-all cursor-pointer ${
                   activePortal === 'ADMIN'
                     ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white shadow-md shadow-orange-500/25'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-900/50'
                 }`}
               >
-                <div className={`p-1.5 rounded-lg mb-1 ${activePortal === 'ADMIN' ? 'bg-white/20' : 'bg-slate-200 dark:bg-slate-800'}`}>
-                  <Crown className="w-4 h-4" />
+                <div className={`p-1 sm:p-1.5 rounded-lg mb-0.5 sm:mb-1 ${activePortal === 'ADMIN' ? 'bg-white/20' : 'bg-slate-200 dark:bg-slate-800'}`}>
+                  <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
-                <div className="font-extrabold text-[11px] sm:text-xs">Admin Portal</div>
+                <div className="font-extrabold text-[10px] sm:text-xs">Admin Portal</div>
                 <div className={`text-[9px] font-normal hidden sm:block ${activePortal === 'ADMIN' ? 'text-amber-100' : 'text-slate-400'}`}>
                   Plant Oversight
                 </div>
@@ -264,16 +264,16 @@ export const LoginPage = () => {
                 type="button"
                 id="tab-auditor-portal"
                 onClick={() => handlePortalSwitch('AUDITOR')}
-                className={`flex flex-col items-center justify-center py-2.5 px-2 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+                className={`flex flex-col items-center justify-center py-2 sm:py-2.5 px-1 sm:px-2 rounded-xl font-bold transition-all cursor-pointer ${
                   activePortal === 'AUDITOR'
                     ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/25'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-900/50'
                 }`}
               >
-                <div className={`p-1.5 rounded-lg mb-1 ${activePortal === 'AUDITOR' ? 'bg-white/20' : 'bg-slate-200 dark:bg-slate-800'}`}>
-                  <ShieldCheck className="w-4 h-4" />
+                <div className={`p-1 sm:p-1.5 rounded-lg mb-0.5 sm:mb-1 ${activePortal === 'AUDITOR' ? 'bg-white/20' : 'bg-slate-200 dark:bg-slate-800'}`}>
+                  <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
-                <div className="font-extrabold text-[11px] sm:text-xs">Auditor Portal</div>
+                <div className="font-extrabold text-[10px] sm:text-xs">Auditor Portal</div>
                 <div className={`text-[9px] font-normal hidden sm:block ${activePortal === 'AUDITOR' ? 'text-indigo-100' : 'text-slate-400'}`}>
                   QA & Audit
                 </div>
@@ -284,16 +284,16 @@ export const LoginPage = () => {
                 type="button"
                 id="tab-supervisor-portal"
                 onClick={() => handlePortalSwitch('SUPERVISOR')}
-                className={`flex flex-col items-center justify-center py-2.5 px-2 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+                className={`flex flex-col items-center justify-center py-2 sm:py-2.5 px-1 sm:px-2 rounded-xl font-bold transition-all cursor-pointer ${
                   activePortal === 'SUPERVISOR'
                     ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/25'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-900/50'
                 }`}
               >
-                <div className={`p-1.5 rounded-lg mb-1 ${activePortal === 'SUPERVISOR' ? 'bg-white/20' : 'bg-slate-200 dark:bg-slate-800'}`}>
-                  <Wrench className="w-4 h-4" />
+                <div className={`p-1 sm:p-1.5 rounded-lg mb-0.5 sm:mb-1 ${activePortal === 'SUPERVISOR' ? 'bg-white/20' : 'bg-slate-200 dark:bg-slate-800'}`}>
+                  <Wrench className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
-                <div className="font-extrabold text-[11px] sm:text-xs">Supervisor</div>
+                <div className="font-extrabold text-[10px] sm:text-xs">Supervisor</div>
                 <div className={`text-[9px] font-normal hidden sm:block ${activePortal === 'SUPERVISOR' ? 'text-emerald-100' : 'text-slate-400'}`}>
                   Line In-Charges
                 </div>
@@ -587,9 +587,9 @@ export const LoginPage = () => {
 
       {/* Registration Modal for Creating New Custom Admin, Auditor or Supervisor */}
       {isRegisterOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 sm:p-6 max-w-lg w-full shadow-2xl relative my-auto max-h-[92vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-cyan-400">
                   <UserPlus className="w-5 h-5" />
@@ -613,123 +613,219 @@ export const LoginPage = () => {
             </div>
 
             {regError && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 dark:bg-rose-950/50 dark:border-rose-900 dark:text-rose-200 text-xs flex items-center gap-2">
+              <div className="mb-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 dark:bg-rose-950/50 dark:border-rose-900 dark:text-rose-200 text-xs flex items-center gap-2 shrink-0">
                 <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
                 <span>{regError}</span>
               </div>
             )}
 
-            <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
-              {/* Role Picker */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  User Role
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setRegData((prev) => ({
-                        ...prev,
-                        role: 'ADMIN',
-                        department: 'Plant Operations & Executive Oversight',
-                        designation: 'Operations Director',
-                        employeeId: prev.employeeId || 'ADM-002',
-                      }))
-                    }
-                    className={`py-2 px-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                      regData.role === 'ADMIN'
-                        ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
-                        : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
-                    }`}
-                  >
-                    <Crown className="w-3.5 h-3.5" />
-                    <span>Admin</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setRegData((prev) => ({
-                        ...prev,
-                        role: 'AUDITOR',
-                        department: 'Central Quality Audit',
-                        designation: 'QA Auditor',
-                        employeeId: prev.employeeId || 'AUD-002',
-                      }))
-                    }
-                    className={`py-2 px-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                      regData.role === 'AUDITOR'
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                        : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
-                    }`}
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    <span>Auditor</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setRegData((prev) => ({
-                        ...prev,
-                        role: 'ACTION_PERSON',
-                        department: 'Sewing Line 3',
-                        designation: 'Line 3 Supervisor',
-                        employeeId: prev.employeeId || 'SUP-105',
-                      }))
-                    }
-                    className={`py-2 px-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                      regData.role === 'ACTION_PERSON'
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                        : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
-                    }`}
-                  >
-                    <Wrench className="w-3.5 h-3.5" />
-                    <span>Supervisor</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Employee ID */}
+            <form onSubmit={handleRegisterSubmit} className="flex flex-col flex-1 min-h-0">
+              <div className="space-y-3.5 overflow-y-auto pr-1 no-scrollbar flex-1">
+                {/* Role Picker */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Employee ID
+                    User Role
                   </label>
-                  <div className="relative">
-                    <Hash className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
-                    <input
-                      type="text"
-                      value={regData.employeeId}
-                      onChange={(e) =>
-                        setRegData({ ...regData, employeeId: e.target.value.toUpperCase() })
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setRegData((prev) => ({
+                          ...prev,
+                          role: 'ADMIN',
+                          department: 'Plant Operations & Executive Oversight',
+                          designation: 'Operations Director',
+                          employeeId: prev.employeeId || 'ADM-002',
+                        }))
                       }
-                      placeholder={
+                      className={`py-2 px-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
                         regData.role === 'ADMIN'
-                          ? 'ADM-002'
-                          : regData.role === 'AUDITOR'
-                          ? 'AUD-002'
-                          : 'SUP-105'
+                          ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
+                          : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                      }`}
+                    >
+                      <Crown className="w-3.5 h-3.5" />
+                      <span>Admin</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setRegData((prev) => ({
+                          ...prev,
+                          role: 'AUDITOR',
+                          department: 'Central Quality Audit',
+                          designation: 'QA Auditor',
+                          employeeId: prev.employeeId || 'AUD-002',
+                        }))
                       }
-                      className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono font-bold uppercase focus:ring-2 focus:ring-indigo-500"
-                      required
-                    />
+                      className={`py-2 px-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                        regData.role === 'AUDITOR'
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                          : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                      }`}
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span>Auditor</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setRegData((prev) => ({
+                          ...prev,
+                          role: 'ACTION_PERSON',
+                          department: 'Sewing Line 3',
+                          designation: 'Line 3 Supervisor',
+                          employeeId: prev.employeeId || 'SUP-105',
+                        }))
+                      }
+                      className={`py-2 px-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                        regData.role === 'ACTION_PERSON'
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                          : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                      }`}
+                    >
+                      <Wrench className="w-3.5 h-3.5" />
+                      <span>Supervisor</span>
+                    </button>
                   </div>
                 </div>
 
-                {/* Full Name */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Employee ID */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Employee ID
+                    </label>
+                    <div className="relative">
+                      <Hash className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                      <input
+                        type="text"
+                        value={regData.employeeId}
+                        onChange={(e) =>
+                          setRegData({ ...regData, employeeId: e.target.value.toUpperCase() })
+                        }
+                        placeholder={
+                          regData.role === 'ADMIN'
+                            ? 'ADM-002'
+                            : regData.role === 'AUDITOR'
+                            ? 'AUD-002'
+                            : 'SUP-105'
+                        }
+                        className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono font-bold uppercase focus:ring-2 focus:ring-indigo-500"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Full Name */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Full Name
+                    </label>
+                    <div className="relative">
+                      <UserIcon className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                      <input
+                        type="text"
+                        value={regData.name}
+                        onChange={(e) => setRegData({ ...regData, name: e.target.value })}
+                        placeholder="e.g. Ananya Sen"
+                        className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:ring-2 focus:ring-indigo-500"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Email */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Work Email
+                    </label>
+                    <div className="relative">
+                      <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                      <input
+                        type="email"
+                        value={regData.email}
+                        onChange={(e) => setRegData({ ...regData, email: e.target.value })}
+                        placeholder="user@factory.com"
+                        className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:ring-2 focus:ring-indigo-500"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Mobile Number */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Mobile Number
+                    </label>
+                    <div className="relative">
+                      <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                      <input
+                        type="text"
+                        value={regData.mobileNumber}
+                        onChange={(e) => setRegData({ ...regData, mobileNumber: e.target.value })}
+                        placeholder="+91 98765 00000"
+                        className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:ring-2 focus:ring-indigo-500"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Department */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Department / Line
+                    </label>
+                    <div className="relative">
+                      <Building2 className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                      <input
+                        type="text"
+                        value={regData.department}
+                        onChange={(e) => setRegData({ ...regData, department: e.target.value })}
+                        placeholder="e.g. Sewing Line 3"
+                        className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:ring-2 focus:ring-indigo-500"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Designation */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Designation
+                    </label>
+                    <div className="relative">
+                      <Briefcase className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                      <input
+                        type="text"
+                        value={regData.designation}
+                        onChange={(e) => setRegData({ ...regData, designation: e.target.value })}
+                        placeholder="e.g. Line 3 Supervisor"
+                        className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:ring-2 focus:ring-indigo-500"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Password */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Full Name
+                    Password (min 6 characters)
                   </label>
                   <div className="relative">
-                    <UserIcon className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                    <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
                     <input
-                      type="text"
-                      value={regData.name}
-                      onChange={(e) => setRegData({ ...regData, name: e.target.value })}
-                      placeholder="e.g. Ananya Sen"
+                      type="password"
+                      value={regData.password}
+                      onChange={(e) => setRegData({ ...regData, password: e.target.value })}
+                      placeholder="Enter password"
                       className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:ring-2 focus:ring-indigo-500"
                       required
                     />
@@ -737,101 +833,7 @@ export const LoginPage = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Email */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Work Email
-                  </label>
-                  <div className="relative">
-                    <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
-                    <input
-                      type="email"
-                      value={regData.email}
-                      onChange={(e) => setRegData({ ...regData, email: e.target.value })}
-                      placeholder="user@factory.com"
-                      className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:ring-2 focus:ring-indigo-500"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Mobile Number */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Mobile Number
-                  </label>
-                  <div className="relative">
-                    <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
-                    <input
-                      type="text"
-                      value={regData.mobileNumber}
-                      onChange={(e) => setRegData({ ...regData, mobileNumber: e.target.value })}
-                      placeholder="+91 98765 00000"
-                      className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:ring-2 focus:ring-indigo-500"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Department */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Department / Line
-                  </label>
-                  <div className="relative">
-                    <Building2 className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
-                    <input
-                      type="text"
-                      value={regData.department}
-                      onChange={(e) => setRegData({ ...regData, department: e.target.value })}
-                      placeholder="e.g. Sewing Line 3"
-                      className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:ring-2 focus:ring-indigo-500"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Designation */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Designation
-                  </label>
-                  <div className="relative">
-                    <Briefcase className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
-                    <input
-                      type="text"
-                      value={regData.designation}
-                      onChange={(e) => setRegData({ ...regData, designation: e.target.value })}
-                      placeholder="e.g. Line 3 Supervisor"
-                      className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:ring-2 focus:ring-indigo-500"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Password */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Password (min 6 characters)
-                </label>
-                <div className="relative">
-                  <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
-                  <input
-                    type="password"
-                    value={regData.password}
-                    onChange={(e) => setRegData({ ...regData, password: e.target.value })}
-                    placeholder="Enter password"
-                    className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:ring-2 focus:ring-indigo-500"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="pt-3 flex items-center justify-end gap-2">
+              <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsRegisterOpen(false)}

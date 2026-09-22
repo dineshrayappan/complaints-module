@@ -60,10 +60,10 @@ export const ComplaintCard = ({
       complaint.department === user?.department);
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-2xl p-4 sm:p-5 transition-all duration-200 shadow-xs hover:shadow-md flex flex-col justify-between group">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-2xl p-3.5 sm:p-5 transition-all duration-200 shadow-xs hover:shadow-md flex flex-col justify-between group">
       <div>
         {/* Card Top Row: CMP ID, Priority & Countdown */}
-        <div className="flex items-start justify-between gap-2 flex-wrap mb-3">
+        <div className="flex items-start justify-between gap-2 flex-wrap mb-2.5 sm:mb-3">
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-cyan-400 border border-slate-200 dark:border-slate-800">
               {complaint.complaintId}
@@ -85,11 +85,11 @@ export const ComplaintCard = ({
 
         {/* Defect Category & Status */}
         <div className="flex items-center justify-between mb-1.5">
-          <h3 className="text-base font-bold text-slate-900 dark:text-white font-sans group-hover:text-indigo-600 dark:group-hover:text-blue-400 transition-colors">
+          <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white font-sans group-hover:text-indigo-600 dark:group-hover:text-blue-400 transition-colors truncate pr-2">
             {complaint.category}
           </h3>
           <span
-            className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${getStatusBadge(
+            className={`text-[11px] sm:text-xs font-semibold px-2 sm:px-2.5 py-0.5 rounded-full border shrink-0 ${getStatusBadge(
               complaint.status
             )}`}
           >
@@ -98,29 +98,29 @@ export const ComplaintCard = ({
         </div>
 
         {/* Machine Location & Department */}
-        <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium mb-3">
+        <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium mb-2.5 sm:mb-3 truncate">
           <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-          <span className="text-slate-800 dark:text-slate-200 font-semibold">{complaint.location}</span>
+          <span className="text-slate-800 dark:text-slate-200 font-semibold truncate">{complaint.location}</span>
           <span>•</span>
-          <span>{complaint.department}</span>
+          <span className="truncate">{complaint.department}</span>
         </div>
 
         {/* Description Snippet */}
-        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 line-clamp-2 mb-4 leading-relaxed bg-slate-50/80 dark:bg-slate-950/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/80">
+        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 line-clamp-2 mb-3 sm:mb-4 leading-relaxed bg-slate-50/80 dark:bg-slate-950/60 p-2 sm:p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/80">
           {complaint.description}
         </p>
 
         {/* Proof Images preview row */}
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
           {/* Before Photo */}
           <div
             onClick={() => onViewDetails(complaint)}
-            className="relative cursor-pointer group/img"
+            className="relative cursor-pointer group/img shrink-0"
           >
             <img
               src={complaint.beforePhoto}
               alt="Before Defect Proof"
-              className="w-16 h-16 sm:w-18 sm:h-18 object-cover rounded-xl border border-slate-200 dark:border-slate-700 group-hover/img:border-indigo-500 transition-all shadow-xs"
+              className="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-xl border border-slate-200 dark:border-slate-700 group-hover/img:border-indigo-500 transition-all shadow-xs"
             />
             <span className="absolute bottom-1 left-1 px-1 py-0.2 bg-slate-900/90 text-[8px] font-bold text-rose-300 rounded">
               BEFORE
@@ -131,35 +131,35 @@ export const ComplaintCard = ({
           {complaint.afterPhoto ? (
             <div
               onClick={() => onViewDetails(complaint)}
-              className="relative cursor-pointer group/img"
+              className="relative cursor-pointer group/img shrink-0"
             >
               <img
                 src={complaint.afterPhoto}
                 alt="After Resolution Proof"
-                className="w-16 h-16 sm:w-18 sm:h-18 object-cover rounded-xl border border-emerald-300 dark:border-emerald-600 group-hover/img:border-emerald-500 transition-all shadow-xs"
+                className="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-xl border border-emerald-300 dark:border-emerald-600 group-hover/img:border-emerald-500 transition-all shadow-xs"
               />
               <span className="absolute bottom-1 left-1 px-1 py-0.2 bg-slate-900/90 text-[8px] font-bold text-emerald-300 rounded">
                 AFTER
               </span>
             </div>
           ) : (
-            <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 flex flex-col items-center justify-center text-slate-400 dark:text-slate-600 text-[10px] text-center p-1">
-              <Camera className="w-4 h-4 mb-0.5" />
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 flex flex-col items-center justify-center text-slate-400 dark:text-slate-600 text-[9px] sm:text-[10px] text-center p-1 shrink-0">
+              <Camera className="w-3.5 h-3.5 mb-0.5" />
               <span>Pending</span>
             </div>
           )}
 
           {/* Line Supervisor Avatar & Info */}
-          <div className="ml-auto text-right text-xs">
-            <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+          <div className="ml-auto text-right text-xs min-w-0">
+            <div className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 tracking-wider truncate">
               Line In-Charge
             </div>
-            <div className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[140px]">
+            <div className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[100px] sm:max-w-[140px]">
               {complaint.assignedTo?.name}
             </div>
-            <div className="text-slate-500 dark:text-slate-400 text-[11px] font-mono flex items-center justify-end gap-1 mt-0.5">
-              <Phone className="w-3 h-3 text-slate-400" />
-              {complaint.assignedTo?.mobileNumber}
+            <div className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-[11px] font-mono flex items-center justify-end gap-1 mt-0.5 truncate">
+              <Phone className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+              <span className="truncate">{complaint.assignedTo?.mobileNumber}</span>
             </div>
           </div>
         </div>

@@ -337,25 +337,25 @@ export const AdminUserManagement = () => {
       )}
 
       {/* Top Banner & Title */}
-      <div className="p-6 rounded-3xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 border border-amber-500/20 backdrop-blur-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-4 sm:p-6 rounded-3xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 border border-amber-500/20 backdrop-blur-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5 mb-1.5">
-            <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
+            <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs shrink-0">
               <Users className="w-5 h-5" />
             </div>
-            <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
-              Plant Personnel & Credential Governance
+            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
+              Personnel & Credentials
             </h1>
           </div>
           <p className="text-xs text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
-            Onboard new <strong>Internal Auditors</strong> and <strong>Line Supervisors</strong>, configure login email IDs and passwords, manage credential resets, and control line assignments across the factory.
+            Onboard new <strong>Internal Auditors</strong> and <strong>Line Supervisors</strong>, manage credentials, reset passwords, and control department assignments.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           <button
             onClick={() => handleOpenCreateModal('AUDITOR')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-purple-600/20 transition-all hover:scale-102 cursor-pointer"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-purple-600/20 transition-all hover:scale-102 cursor-pointer whitespace-nowrap"
           >
             <ShieldCheck className="w-4 h-4" />
             <span>+ Add Auditor</span>
@@ -363,7 +363,7 @@ export const AdminUserManagement = () => {
 
           <button
             onClick={() => handleOpenCreateModal('SUPERVISOR')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition-all hover:scale-102 cursor-pointer"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition-all hover:scale-102 cursor-pointer whitespace-nowrap"
           >
             <Wrench className="w-4 h-4" />
             <span>+ Add Supervisor</span>
@@ -372,89 +372,89 @@ export const AdminUserManagement = () => {
       </div>
 
       {/* Summary KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3.5">
+        <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-semibold mb-1">
             <span>Total Personnel</span>
             <Users className="w-4 h-4 text-indigo-500" />
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white">
+          <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
             {totalUsers}
           </div>
-          <span className="text-[10px] text-slate-400 font-mono">
-            {activeCount} active in factory
+          <span className="text-[10px] text-slate-400 font-mono truncate block">
+            {activeCount} active in plant
           </span>
         </div>
 
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-purple-500/20 shadow-xs">
+        <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-purple-500/20 shadow-xs">
           <div className="flex items-center justify-between text-purple-600 dark:text-purple-400 text-xs font-semibold mb-1">
-            <span>Quality Auditors</span>
+            <span>Auditors</span>
             <ShieldCheck className="w-4 h-4 text-purple-500" />
           </div>
-          <div className="text-2xl font-black text-purple-700 dark:text-purple-300">
+          <div className="text-xl sm:text-2xl font-black text-purple-700 dark:text-purple-300">
             {auditorCount}
           </div>
-          <span className="text-[10px] text-slate-400 font-mono">
-            Factory roving & verification
+          <span className="text-[10px] text-slate-400 font-mono truncate block">
+            Quality assurance
           </span>
         </div>
 
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-500/20 shadow-xs">
+        <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-500/20 shadow-xs">
           <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400 text-xs font-semibold mb-1">
-            <span>Line Supervisors</span>
+            <span>Supervisors</span>
             <Wrench className="w-4 h-4 text-emerald-500" />
           </div>
-          <div className="text-2xl font-black text-emerald-700 dark:text-emerald-300">
+          <div className="text-xl sm:text-2xl font-black text-emerald-700 dark:text-emerald-300">
             {supervisorCount}
           </div>
-          <span className="text-[10px] text-slate-400 font-mono">
-            Sewing, cutting & packing lines
+          <span className="text-[10px] text-slate-400 font-mono truncate block">
+            Line in-charges
           </span>
         </div>
 
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-amber-500/20 shadow-xs">
+        <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-amber-500/20 shadow-xs">
           <div className="flex items-center justify-between text-amber-600 dark:text-amber-400 text-xs font-semibold mb-1">
-            <span>Executive Admins</span>
+            <span>Admins</span>
             <Crown className="w-4 h-4 text-amber-500" />
           </div>
-          <div className="text-2xl font-black text-amber-700 dark:text-amber-300">
+          <div className="text-xl sm:text-2xl font-black text-amber-700 dark:text-amber-300">
             {adminCount}
           </div>
-          <span className="text-[10px] text-slate-400 font-mono">
-            {inactiveCount > 0 ? `${inactiveCount} accounts deactivated` : 'All accounts active'}
+          <span className="text-[10px] text-slate-400 font-mono truncate block">
+            Operations directors
           </span>
         </div>
       </div>
 
-      {/* Search & Filter Controls */}
-      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+      {/* Search & Filter Controls with smooth horizontal swipe */}
+      <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Search input */}
-        <div className="relative flex-1 max-w-md">
+        <div className="relative flex-1 max-w-md w-full">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by name, ID (e.g. AUD-001, SUP-101), department, or email..."
+            placeholder="Search name, ID (e.g. AUD-001, SUP-101), department..."
             className="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
           />
         </div>
 
-        {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        {/* Filter Pills with Horizontal Scroll on Mobile */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar w-full md:w-auto py-0.5">
           <button
             onClick={() => setRoleFilter('ALL')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
               roleFilter === 'ALL'
                 ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            All Personnel ({users.length})
+            All ({users.length})
           </button>
           <button
             onClick={() => setRoleFilter('AUDITOR')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
               roleFilter === 'AUDITOR'
                 ? 'bg-purple-600 text-white shadow-xs'
                 : 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 hover:bg-purple-100'
@@ -464,7 +464,7 @@ export const AdminUserManagement = () => {
           </button>
           <button
             onClick={() => setRoleFilter('SUPERVISOR')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
               roleFilter === 'SUPERVISOR'
                 ? 'bg-emerald-600 text-white shadow-xs'
                 : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100'
@@ -474,7 +474,7 @@ export const AdminUserManagement = () => {
           </button>
           <button
             onClick={() => setRoleFilter('ADMIN')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
               roleFilter === 'ADMIN'
                 ? 'bg-amber-500 text-white shadow-xs'
                 : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100'
@@ -485,7 +485,7 @@ export const AdminUserManagement = () => {
           {inactiveCount > 0 && (
             <button
               onClick={() => setRoleFilter('INACTIVE')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                 roleFilter === 'INACTIVE'
                   ? 'bg-rose-600 text-white shadow-xs'
                   : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100'
@@ -498,7 +498,7 @@ export const AdminUserManagement = () => {
           <button
             onClick={loadUsers}
             title="Refresh Personnel"
-            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors shrink-0"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -692,12 +692,12 @@ export const AdminUserManagement = () => {
 
       {/* ================= MODAL 1: ONBOARD NEW USER ================= */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden my-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
             {/* Modal Header */}
-            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-amber-500/10 to-transparent">
+            <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-amber-500/10 to-transparent shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
                   <UserPlus className="w-4 h-4" />
                 </div>
                 <div>
@@ -711,7 +711,7 @@ export const AdminUserManagement = () => {
               </div>
               <button
                 onClick={() => setIsCreateModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -719,7 +719,7 @@ export const AdminUserManagement = () => {
 
             {/* If user was just created, show credential copy card */}
             {createdCredentials ? (
-              <div className="p-6 space-y-4">
+              <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
                 <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-200">
                   <div className="flex items-center gap-2 font-bold text-sm mb-1">
                     <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
@@ -737,7 +737,7 @@ export const AdminUserManagement = () => {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">Email:</span>
-                    <strong className="text-slate-900 dark:text-white">{createdCredentials.email}</strong>
+                    <strong className="text-slate-900 dark:text-white truncate max-w-[200px]">{createdCredentials.email}</strong>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">Initial Password:</span>
@@ -751,7 +751,7 @@ export const AdminUserManagement = () => {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">Department:</span>
-                    <span className="text-slate-700 dark:text-slate-300">{createdCredentials.department}</span>
+                    <span className="text-slate-700 dark:text-slate-300 truncate max-w-[200px]">{createdCredentials.department}</span>
                   </div>
                 </div>
 
@@ -787,7 +787,7 @@ export const AdminUserManagement = () => {
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleCreateUserSubmit} className="p-6 space-y-4">
+              <form onSubmit={handleCreateUserSubmit} className="p-4 sm:p-6 space-y-3.5 sm:space-y-4 overflow-y-auto flex-1">
                 {createError && (
                   <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 shrink-0" />
@@ -990,11 +990,11 @@ export const AdminUserManagement = () => {
 
       {/* ================= MODAL 2: RESET PASSWORD ================= */}
       {isResetPasswordModalOpen && selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
-          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
-            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-amber-500/10">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
+            <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-amber-500/10 shrink-0">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
                   <KeyRound className="w-4 h-4" />
                 </div>
                 <div>
@@ -1008,14 +1008,14 @@ export const AdminUserManagement = () => {
               </div>
               <button
                 onClick={() => setIsResetPasswordModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {resetSuccess ? (
-              <div className="p-6 space-y-4">
+              <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
                 <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200">
                   <div className="flex items-center gap-2 font-bold text-sm mb-1">
                     <CheckCircle2 className="w-5 h-5 text-emerald-600" />
@@ -1130,11 +1130,11 @@ export const AdminUserManagement = () => {
 
       {/* ================= MODAL 3: EDIT USER PROFILE ================= */}
       {isEditModalOpen && selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
-          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
-            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-100/50 dark:bg-slate-800/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
+            <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-100/50 dark:bg-slate-800/50 shrink-0">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
                   <Edit3 className="w-4 h-4" />
                 </div>
                 <div>
@@ -1148,13 +1148,13 @@ export const AdminUserManagement = () => {
               </div>
               <button
                 onClick={() => setIsEditModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleEditUserSubmit} className="p-6 space-y-3.5">
+            <form onSubmit={handleEditUserSubmit} className="p-4 sm:p-6 space-y-3.5 overflow-y-auto flex-1">
               {editError && (
                 <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-semibold">
                   {editError}
