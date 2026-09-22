@@ -5,15 +5,16 @@ const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('garment_qms_token'));
+  const [token, setToken] = useState(() => localStorage.getItem('garment_qms_token'));
   const [demoUsers, setDemoUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // If no token exists in localStorage, user is immediately not authenticated (loading = false)
+  const [loading, setLoading] = useState(() => Boolean(localStorage.getItem('garment_qms_token')));
 
   // Fetch demo users for the role switcher toggle
   const fetchDemoUsers = async () => {
     try {
       const res = await authService.getDemoUsers();
-      if (res.data.success) {
+      if (res.data?.success) {
         setDemoUsers(res.data.users);
         return res.data.users;
       }
@@ -23,47 +24,42 @@ export const AuthProvider = ({ children }) => {
     return [];
   };
 
-  // Initialize auth state with bulletproof error handling and timeout safeguard
+  // Initialize auth state
   useEffect(() => {
     let isMounted = true;
 
-    // Safety timeout: Never leave UI in loading state for more than 2 seconds
+    // Safety timeout: Never keep the app loading more than 1 second
     const safetyTimer = setTimeout(() => {
       if (isMounted) {
         setLoading(false);
       }
-    }, 2000);
+    }, 1000);
 
     const initAuth = async () => {
-      try {
-        const storedToken = localStorage.getItem('garment_qms_token');
+      // Fetch demo users in background
+      fetchDemoUsers();
 
-        // Run demo users and me profile checks in parallel
-        const [demoRes, meRes] = await Promise.allSettled([
-          authService.getDemoUsers(),
-          storedToken ? authService.getMe() : Promise.resolve(null),
-        ]);
-
-        if (!isMounted) return;
-
-        if (demoRes.status === 'fulfilled' && demoRes.value?.data?.success) {
-          setDemoUsers(demoRes.value.data.users);
-        }
-
-        if (meRes.status === 'fulfilled' && meRes.value?.data?.success) {
-          setUser(meRes.value.data.user);
-        } else if (storedToken) {
-          // Token was rejected or expired
+      const storedToken = localStorage.getItem('garment_qms_token');
+      if (storedToken) {
+        try {
+          const res = await authService.getMe();
+          if (isMounted && res.data?.success) {
+            setUser(res.data.user);
+          }
+        } catch (err) {
           console.warn('Session expired or invalid, clearing stored token...');
           localStorage.removeItem('garment_qms_token');
-          setToken(null);
-          setUser(null);
-        } else {
-          setUser(null);
+          if (isMounted) {
+            setToken(null);
+            setUser(null);
+          }
+        } finally {
+          clearTimeout(safetyTimer);
+          if (isMounted) {
+            setLoading(false);
+          }
         }
-      } catch (err) {
-        console.error('Auth initialization error:', err);
-      } finally {
+      } else {
         clearTimeout(safetyTimer);
         if (isMounted) {
           setLoading(false);

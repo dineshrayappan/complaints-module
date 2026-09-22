@@ -165,10 +165,11 @@ export const App = () => {
           </span>
           <button
             onClick={() => {
-              localStorage.removeItem('garment_qms_token');
+              localStorage.clear();
+              sessionStorage.clear();
               window.location.reload();
             }}
-            className="mt-3 px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 text-[11px] font-mono text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700 cursor-pointer"
+            className="mt-4 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
           >
             Reset Session & Return to Login
           </button>
