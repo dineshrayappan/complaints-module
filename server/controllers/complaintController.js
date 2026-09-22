@@ -203,7 +203,7 @@ const createComplaint = async (req, res) => {
 const getComplaints = async (req, res) => {
   try {
     if (mongoose.connection.readyState !== 1) {
-      const complaints = mockStore.getComplaints(req.query);
+      const complaints = mockStore.getComplaints(req.query, req.user);
       return res.status(200).json({
         success: true,
         count: complaints.length,
@@ -215,12 +215,26 @@ const getComplaints = async (req, res) => {
 
     const filter = {};
 
-    // RBAC: Action person can only view complaints assigned to them or their department
-    if (req.user.role === 'ACTION_PERSON') {
-      filter.$or = [
-        { 'assignedTo.userId': req.user._id },
-        { department: req.user.department },
-      ];
+    // RBAC: Action Person / Line Supervisor can view complaints assigned to their employeeId, userId, or department
+    if (req.user.role === 'ACTION_PERSON' || req.user.role === 'SUPERVISOR') {
+      const orConditions = [];
+      if (req.user.employeeId) {
+        orConditions.push({ 'assignedTo.employeeId': req.user.employeeId });
+      }
+      if (req.user._id) {
+        orConditions.push({ 'assignedTo.userId': req.user._id });
+        if (mongoose.Types.ObjectId.isValid(req.user._id)) {
+          orConditions.push({ 'assignedTo.userId': new mongoose.Types.ObjectId(req.user._id) });
+        }
+      }
+      if (req.user.department) {
+        orConditions.push({
+          department: new RegExp(`^${req.user.department.trim()}$`, 'i'),
+        });
+      }
+      if (orConditions.length > 0) {
+        filter.$or = orConditions;
+      }
     }
 
     // Tab-based filtering
@@ -304,16 +318,29 @@ const getComplaintById = async (req, res) => {
       });
     }
 
-    // RBAC check for Action Person
-    if (
-      req.user.role === 'ACTION_PERSON' &&
-      complaint.assignedTo.userId.toString() !== req.user._id.toString() &&
-      complaint.department !== req.user.department
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied. You can only view complaints for your assigned line.',
-      });
+    // RBAC check for Action Person / Supervisor
+    if (req.user.role === 'ACTION_PERSON' || req.user.role === 'SUPERVISOR') {
+      const userEmp = (req.user.employeeId || '').toUpperCase();
+      const userId = req.user._id ? req.user._id.toString() : '';
+      const userDept = (req.user.department || '').trim().toLowerCase();
+
+      const assignedEmp = (complaint.assignedTo?.employeeId || '').toUpperCase();
+      const assignedUserId = complaint.assignedTo?.userId
+        ? complaint.assignedTo.userId.toString()
+        : '';
+      const compDept = (complaint.department || '').trim().toLowerCase();
+
+      const isMatch =
+        (userEmp && assignedEmp === userEmp) ||
+        (userId && assignedUserId === userId) ||
+        (userDept && compDept === userDept);
+
+      if (!isMatch) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. You can only view complaints for your assigned line.',
+        });
+      }
     }
 
     res.status(200).json({
@@ -334,6 +361,39 @@ const getComplaintById = async (req, res) => {
 // @access  Private (Action Person or Auditor)
 const markInProgress = async (req, res) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      const complaint = mockStore.getComplaintById(req.params.id);
+      if (!complaint) {
+        return res.status(404).json({
+          success: false,
+          message: 'Complaint not found.',
+        });
+      }
+      if (complaint.status === 'Closed') {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot modify a closed complaint.',
+        });
+      }
+      complaint.status = 'In Progress';
+      complaint.timeline.push({
+        action: 'IN_PROGRESS',
+        performedBy: {
+          name: req.user.name,
+          role: req.user.role,
+          employeeId: req.user.employeeId,
+        },
+        notes: req.body.notes || 'Line In-Charge commenced defect rectification and machine inspection.',
+        timestamp: new Date(),
+      });
+      mockStore.updateComplaint(complaint._id, complaint);
+      return res.status(200).json({
+        success: true,
+        message: `Complaint ${complaint.complaintId} marked In Progress.`,
+        complaint,
+      });
+    }
+
     const complaint = await Complaint.findById(req.params.id);
 
     if (!complaint) {
@@ -383,6 +443,56 @@ const markInProgress = async (req, res) => {
 // @access  Private (Action Person only)
 const submitAction = async (req, res) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      const complaint = mockStore.getComplaintById(req.params.id);
+      if (!complaint) {
+        return res.status(404).json({
+          success: false,
+          message: 'Complaint not found.',
+        });
+      }
+      if (complaint.status === 'Closed') {
+        return res.status(400).json({
+          success: false,
+          message: 'Complaint has already been closed by audit.',
+        });
+      }
+      if (!req.file && !req.body.afterPhoto) {
+        return res.status(400).json({
+          success: false,
+          message: 'Mandatory After Photo proof is required to submit defect resolution.',
+        });
+      }
+      const { actionNotes, feedbackRemarks } = req.body;
+      if (!actionNotes || !feedbackRemarks) {
+        return res.status(400).json({
+          success: false,
+          message: 'Both Action Notes (work done) and Root Cause Feedback (preventive measures) are mandatory.',
+        });
+      }
+      const afterPhotoUrl = req.file ? getFileUrl(req, req.file.filename) : req.body.afterPhoto;
+      complaint.afterPhoto = afterPhotoUrl;
+      complaint.actionNotes = actionNotes;
+      complaint.feedbackRemarks = feedbackRemarks;
+      complaint.status = 'Under Verification';
+      complaint.timeline.push({
+        action: 'ACTION_SUBMITTED',
+        performedBy: {
+          name: req.user.name,
+          role: req.user.role,
+          employeeId: req.user.employeeId,
+        },
+        notes: `Corrective action submitted for audit verification. Action: "${actionNotes}". Root Cause: "${feedbackRemarks}"`,
+        timestamp: new Date(),
+      });
+      mockStore.updateComplaint(complaint._id, complaint);
+      return res.status(200).json({
+        success: true,
+        message: `Resolution for ${complaint.complaintId} submitted for audit verification.`,
+        complaint,
+      });
+    }
+
     const complaint = await Complaint.findById(req.params.id);
 
     if (!complaint) {
@@ -468,6 +578,57 @@ const verifyComplaint = async (req, res) => {
       });
     }
 
+    if (mongoose.connection.readyState !== 1) {
+      const complaint = mockStore.getComplaintById(req.params.id);
+      if (!complaint) {
+        return res.status(404).json({
+          success: false,
+          message: 'Complaint not found.',
+        });
+      }
+      if (decision === 'APPROVE') {
+        complaint.status = 'Closed';
+        complaint.actualCompletedAt = new Date();
+        complaint.rejectionReason = '';
+        complaint.timeline.push({
+          action: 'CLOSED',
+          performedBy: {
+            name: req.user.name,
+            role: req.user.role,
+            employeeId: req.user.employeeId,
+          },
+          notes: notes || 'Audit verified Before/After photos and approved closure of ticket.',
+          timestamp: new Date(),
+        });
+      } else if (decision === 'REJECT') {
+        const reason = rejectionReason || notes;
+        if (!reason) {
+          return res.status(400).json({
+            success: false,
+            message: 'A rejection reason is mandatory when returning a complaint to the line.',
+          });
+        }
+        complaint.status = 'Rejected / Sent Back';
+        complaint.rejectionReason = reason;
+        complaint.timeline.push({
+          action: 'REJECTED',
+          performedBy: {
+            name: req.user.name,
+            role: req.user.role,
+            employeeId: req.user.employeeId,
+          },
+          notes: `Audit rejected resolution and returned to line. Reason: ${reason}`,
+          timestamp: new Date(),
+        });
+      }
+      mockStore.updateComplaint(complaint._id, complaint);
+      return res.status(200).json({
+        success: true,
+        message: `Complaint ${complaint.complaintId} has been ${decision === 'APPROVE' ? 'Approved & Closed' : 'Rejected & Returned to line'}.`,
+        complaint,
+      });
+    }
+
     const complaint = await Complaint.findById(req.params.id);
 
     if (!complaint) {
@@ -547,6 +708,32 @@ const addTimelineComment = async (req, res) => {
       });
     }
 
+    if (mongoose.connection.readyState !== 1) {
+      const complaint = mockStore.getComplaintById(req.params.id);
+      if (!complaint) {
+        return res.status(404).json({
+          success: false,
+          message: 'Complaint not found.',
+        });
+      }
+      complaint.timeline.push({
+        action: 'COMMENT_ADDED',
+        performedBy: {
+          name: req.user.name,
+          role: req.user.role,
+          employeeId: req.user.employeeId,
+        },
+        notes: comment.trim(),
+        timestamp: new Date(),
+      });
+      mockStore.updateComplaint(complaint._id, complaint);
+      return res.status(200).json({
+        success: true,
+        message: 'Remark recorded in ticket audit trail.',
+        timeline: complaint.timeline,
+      });
+    }
+
     const complaint = await Complaint.findById(req.params.id);
 
     if (!complaint) {
@@ -616,11 +803,18 @@ const getKpiStats = async (req, res) => {
 
     const baseFilter = {};
 
-    if (req.user.role === 'ACTION_PERSON') {
-      baseFilter.$or = [
+    if (req.user.role === 'ACTION_PERSON' || req.user.role === 'SUPERVISOR') {
+      const orConditions = [
         { 'assignedTo.userId': req.user._id },
-        { department: req.user.department },
+        { 'assignedTo.employeeId': req.user.employeeId },
       ];
+      if (mongoose.Types.ObjectId.isValid(req.user._id)) {
+        orConditions.push({ 'assignedTo.userId': new mongoose.Types.ObjectId(req.user._id) });
+      }
+      if (req.user.department) {
+        orConditions.push({ department: new RegExp(`^${req.user.department.trim()}$`, 'i') });
+      }
+      baseFilter.$or = orConditions;
     }
 
     const allComplaints = await Complaint.find(baseFilter);
@@ -824,11 +1018,19 @@ const getAdminOversightStats = async (req, res) => {
 
     // 3. Supervisor Line-by-Line Accountability & Inaction
     const supervisorScorecard = supervisors.map((sup) => {
-      const assignedTickets = allComplaints.filter(
-        (c) =>
-          c.assignedTo?.userId?.toString() === sup._id.toString() ||
-          c.department === sup.department
-      );
+      const assignedTickets = allComplaints.filter((c) => {
+        const cAssignedId = c.assignedTo?.userId ? c.assignedTo.userId.toString() : '';
+        const cAssignedEmp = (c.assignedTo?.employeeId || '').toUpperCase();
+        const supEmp = (sup.employeeId || '').toUpperCase();
+        const cDept = (c.department || '').trim().toLowerCase();
+        const supDept = (sup.department || '').trim().toLowerCase();
+
+        return (
+          (sup._id && cAssignedId === sup._id.toString()) ||
+          (supEmp && cAssignedEmp === supEmp) ||
+          (supDept && cDept === supDept)
+        );
+      });
 
       const unstarted = assignedTickets.filter((c) => c.status === 'Assigned');
       const inProgress = assignedTickets.filter((c) => c.status === 'In Progress');
@@ -946,6 +1148,177 @@ const getAdminOversightStats = async (req, res) => {
   }
 };
 
+// @desc    Reassign defect ticket to a different supervisor
+// @route   PATCH /api/complaints/:id/reassign
+// @access  Private (Auditor or Admin)
+const reassignComplaint = async (req, res) => {
+  try {
+    const { assignedToUserId, notes } = req.body;
+    if (!assignedToUserId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide the target Line In-Charge / Supervisor to assign this task to.',
+      });
+    }
+
+    if (mongoose.connection.readyState !== 1) {
+      const complaint = mockStore.getComplaintById(req.params.id);
+      if (!complaint) {
+        return res.status(404).json({
+          success: false,
+          message: 'Complaint ticket not found.',
+        });
+      }
+
+      const supervisor =
+        mockStore.findUserById(assignedToUserId) ||
+        mockStore.getUsers().find(
+          (u) =>
+            u.employeeId === assignedToUserId ||
+            u._id === assignedToUserId ||
+            (u.email && u.email.toLowerCase() === assignedToUserId.toLowerCase())
+        );
+
+      if (!supervisor) {
+        return res.status(400).json({
+          success: false,
+          message: 'Selected Line In-Charge was not found in the Master Contact list.',
+        });
+      }
+
+      complaint.assignedTo = {
+        userId: supervisor._id,
+        employeeId: supervisor.employeeId,
+        name: supervisor.name,
+        department: supervisor.department,
+        designation: supervisor.designation,
+        mobileNumber: supervisor.mobileNumber,
+      };
+
+      complaint.timeline.push({
+        action: 'REASSIGNED',
+        performedBy: {
+          userId: req.user._id,
+          employeeId: req.user.employeeId,
+          name: req.user.name,
+          role: req.user.role,
+        },
+        notes:
+          notes ||
+          `Task reassigned to Line In-Charge ${supervisor.name} (${supervisor.employeeId} - ${supervisor.department})`,
+        timestamp: new Date(),
+      });
+
+      mockStore.updateComplaint(complaint._id, complaint);
+
+      return res.status(200).json({
+        success: true,
+        message: `Task successfully assigned to ${supervisor.name} (${supervisor.department}).`,
+        complaint,
+      });
+    }
+
+    let complaint = null;
+    if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+      complaint = await Complaint.findById(req.params.id);
+    }
+    if (!complaint) {
+      complaint = await Complaint.findOne({ complaintId: req.params.id });
+    }
+
+    if (!complaint) {
+      return res.status(404).json({
+        success: false,
+        message: 'Complaint ticket not found.',
+      });
+    }
+
+    let supervisor = null;
+    if (mongoose.Types.ObjectId.isValid(assignedToUserId)) {
+      supervisor = await User.findById(assignedToUserId);
+    }
+    if (!supervisor) {
+      supervisor = await User.findOne({
+        $or: [{ employeeId: assignedToUserId }, { email: assignedToUserId }],
+      });
+    }
+    if (!supervisor) {
+      const mockSup =
+        mockStore.findUserById(assignedToUserId) ||
+        mockStore.getUsers().find(
+          (u) => u.employeeId === assignedToUserId || u._id === assignedToUserId
+        );
+      if (mockSup) {
+        try {
+          supervisor = await User.findOneAndUpdate(
+            { employeeId: mockSup.employeeId },
+            {
+              _id: new mongoose.Types.ObjectId(mockSup._id),
+              employeeId: mockSup.employeeId,
+              name: mockSup.name,
+              email: mockSup.email,
+              password: mockSup.password || 'Password123!',
+              role: mockSup.role,
+              department: mockSup.department,
+              designation: mockSup.designation,
+              mobileNumber: mockSup.mobileNumber,
+              isActive: true,
+            },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+          );
+        } catch (e) {
+          supervisor = mockSup;
+        }
+      }
+    }
+
+    if (!supervisor) {
+      return res.status(400).json({
+        success: false,
+        message: 'Selected Line In-Charge was not found in the Master Contact list.',
+      });
+    }
+
+    complaint.assignedTo = {
+      userId: supervisor._id,
+      employeeId: supervisor.employeeId,
+      name: supervisor.name,
+      department: supervisor.department,
+      designation: supervisor.designation,
+      mobileNumber: supervisor.mobileNumber,
+    };
+
+    complaint.timeline.push({
+      action: 'REASSIGNED',
+      performedBy: {
+        userId: req.user._id,
+        employeeId: req.user.employeeId,
+        name: req.user.name,
+        role: req.user.role,
+      },
+      notes:
+        notes ||
+        `Task reassigned to Line In-Charge ${supervisor.name} (${supervisor.employeeId} - ${supervisor.department})`,
+      timestamp: new Date(),
+    });
+
+    await complaint.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `Task successfully assigned to ${supervisor.name} (${supervisor.department}).`,
+      complaint,
+    });
+  } catch (error) {
+    console.error('[ComplaintController:reassignComplaint] Error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to reassign defect task.',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createComplaint,
   getComplaints,
@@ -956,4 +1329,5 @@ module.exports = {
   addTimelineComment,
   getKpiStats,
   getAdminOversightStats,
+  reassignComplaint,
 };

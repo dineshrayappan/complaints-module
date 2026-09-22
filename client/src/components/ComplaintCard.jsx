@@ -52,12 +52,16 @@ export const ComplaintCard = ({
       ? complaint.assignedTo?.userId?._id?.toString()
       : complaint.assignedTo?.userId?.toString();
   const currentUserId = user?._id?.toString();
+  const assignedEmpId = (complaint.assignedTo?.employeeId || '').toUpperCase();
+  const userEmpId = (user?.employeeId || '').toUpperCase();
+  const compDept = (complaint.department || '').trim().toLowerCase();
+  const userDept = (user?.department || '').trim().toLowerCase();
 
   const canActionPersonAct =
     isActionPerson &&
-    (assignedUserId === currentUserId ||
-      complaint.assignedTo?.employeeId === user?.employeeId ||
-      complaint.department === user?.department);
+    ((assignedUserId && currentUserId && assignedUserId === currentUserId) ||
+      (assignedEmpId && userEmpId && assignedEmpId === userEmpId) ||
+      (compDept && userDept && compDept === userDept));
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-2xl p-3.5 sm:p-5 transition-all duration-200 shadow-xs hover:shadow-md flex flex-col justify-between group">

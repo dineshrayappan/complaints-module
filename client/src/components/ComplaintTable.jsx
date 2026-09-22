@@ -60,12 +60,16 @@ export const ComplaintTable = ({
                 ? c.assignedTo?.userId?._id?.toString()
                 : c.assignedTo?.userId?.toString();
             const currentUserId = user?._id?.toString();
+            const assignedEmpId = (c.assignedTo?.employeeId || '').toUpperCase();
+            const userEmpId = (user?.employeeId || '').toUpperCase();
+            const compDept = (c.department || '').trim().toLowerCase();
+            const userDept = (user?.department || '').trim().toLowerCase();
 
             const canAct =
               isActionPerson &&
-              (assignedUserId === currentUserId ||
-                c.assignedTo?.employeeId === user?.employeeId ||
-                c.department === user?.department);
+              ((assignedUserId && currentUserId && assignedUserId === currentUserId) ||
+                (assignedEmpId && userEmpId && assignedEmpId === userEmpId) ||
+                (compDept && userDept && compDept === userDept));
 
             return (
               <tr

@@ -15,6 +15,11 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // CRITICAL: When data is FormData, remove Content-Type so browser / axios
+    // automatically populates multipart/form-data with the required boundary string
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
     return config;
   },
   (error) => Promise.reject(error)
@@ -24,10 +29,6 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
-      // Clear token if expired or invalid
-      // localStorage.removeItem('garment_qms_token');
-    }
     return Promise.reject(error);
   }
 );
@@ -53,16 +54,26 @@ export const complaintService = {
   getComplaints: (params) => api.get('/complaints', { params }),
   getComplaintById: (id) => api.get(`/complaints/${id}`),
   getKpiStats: () => api.get('/complaints/stats/kpi'),
-  createComplaint: (formData) =>
-    api.post('/complaints', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
+  createComplaint: (data) => {
+    if (typeof FormData !== 'undefined' && data instanceof FormData) {
+      return api.post('/complaints', data, {
+        headers: { 'Content-Type': undefined },
+      });
+    }
+    return api.post('/complaints', data);
+  },
+  reassignComplaint: (id, assignedToUserId, notes) =>
+    api.patch(`/complaints/${id}/reassign`, { assignedToUserId, notes }),
   markInProgress: (id, notes) =>
     api.patch(`/complaints/${id}/in-progress`, { notes }),
-  submitAction: (id, formData) =>
-    api.post(`/complaints/${id}/submit-action`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
+  submitAction: (id, data) => {
+    if (typeof FormData !== 'undefined' && data instanceof FormData) {
+      return api.post(`/complaints/${id}/submit-action`, data, {
+        headers: { 'Content-Type': undefined },
+      });
+    }
+    return api.post(`/complaints/${id}/submit-action`, data);
+  },
   verifyComplaint: (id, payload) =>
     api.post(`/complaints/${id}/verify`, payload),
   addTimelineComment: (id, comment) =>

@@ -411,8 +411,28 @@ module.exports = {
     }
     return null;
   },
-  getComplaints: (params = {}) => {
+  getComplaints: (params = {}, user = null) => {
     let result = [...mockComplaints];
+
+    // Role-based filtering for Supervisor / Action Person
+    if (user && (user.role === 'ACTION_PERSON' || user.role === 'SUPERVISOR')) {
+      const uEmp = (user.employeeId || '').toUpperCase();
+      const uId = String(user._id || '');
+      const uDept = (user.department || '').trim().toLowerCase();
+
+      result = result.filter((c) => {
+        const cAssignedId = String(c.assignedTo?.userId || '');
+        const cAssignedEmp = (c.assignedTo?.employeeId || '').toUpperCase();
+        const cDept = (c.department || '').trim().toLowerCase();
+
+        return (
+          (uEmp && cAssignedEmp === uEmp) ||
+          (uId && cAssignedId === uId) ||
+          (uDept && cDept === uDept)
+        );
+      });
+    }
+
     if (params.tab === 'pending') {
       result = result.filter((c) => c.status === 'Assigned' || c.status === 'In Progress');
     } else if (params.tab === 'under_verification') {

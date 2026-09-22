@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   X,
   Clock,
@@ -12,11 +12,15 @@ import {
   Check,
   RotateCcw,
   ZoomIn,
+  UserPlus,
+  Search,
+  UserCheck,
 } from 'lucide-react';
 import CountdownBadge from './CountdownBadge';
 import { formatAbsoluteTime } from '../utils/timer';
 import { complaintService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { DUMMY_SUPERVISORS } from './NewComplaintModal';
 
 export const ComplaintDetailModal = ({
   complaint,
@@ -24,7 +28,7 @@ export const ComplaintDetailModal = ({
   onClose,
   onUpdateComplaint,
 }) => {
-  const { user, isAuditor } = useAuth();
+  const { user, isAuditor, isAdmin, demoUsers } = useAuth();
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
 
@@ -34,6 +38,73 @@ export const ComplaintDetailModal = ({
   const [verifying, setVerifying] = useState(false);
   const [activeZoomImage, setActiveZoomImage] = useState(null);
   const [error, setError] = useState(null);
+
+  // Reassignment state
+  const [showReassignBox, setShowReassignBox] = useState(false);
+  const [selectedSupervisorId, setSelectedSupervisorId] = useState('');
+  const [reassignNotes, setReassignNotes] = useState('');
+  const [reassigning, setReassigning] = useState(false);
+  const [reassignSearch, setReassignSearch] = useState('');
+
+  const canReassign = (isAuditor || isAdmin) && complaint?.status !== 'Closed';
+
+  // Master Contact List of Supervisors (10 dummy supervisors + registered users)
+  const supervisorsList = useMemo(() => {
+    const list = [...(demoUsers || [])]
+      .filter((u) => u.role === 'ACTION_PERSON' || u.role === 'SUPERVISOR')
+      .concat(DUMMY_SUPERVISORS);
+
+    const seen = new Set();
+    const unique = [];
+    for (const sup of list) {
+      const key = sup.employeeId || sup._id;
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(sup);
+      }
+    }
+    return unique;
+  }, [demoUsers]);
+
+  const filteredSupervisors = supervisorsList.filter((s) => {
+    if (!reassignSearch.trim()) return true;
+    const term = reassignSearch.toLowerCase();
+    return (
+      s.name?.toLowerCase().includes(term) ||
+      s.employeeId?.toLowerCase().includes(term) ||
+      s.department?.toLowerCase().includes(term) ||
+      s.designation?.toLowerCase().includes(term) ||
+      s.mobileNumber?.toLowerCase().includes(term)
+    );
+  });
+
+  const handleReassign = async (e) => {
+    e.preventDefault();
+    if (!selectedSupervisorId) {
+      setError('Please select a Line In-Charge to assign this task to.');
+      return;
+    }
+
+    try {
+      setReassigning(true);
+      setError(null);
+      const res = await complaintService.reassignComplaint(
+        complaint._id,
+        selectedSupervisorId,
+        reassignNotes.trim()
+      );
+      if (res.data?.success) {
+        onUpdateComplaint(res.data.complaint);
+        setShowReassignBox(false);
+        setReassignNotes('');
+        setSelectedSupervisorId('');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to reassign defect task.');
+    } finally {
+      setReassigning(false);
+    }
+  };
 
   if (!isOpen || !complaint) return null;
 
@@ -100,6 +171,8 @@ export const ComplaintDetailModal = ({
         return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/40';
       case 'REJECTED':
         return 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/40';
+      case 'REASSIGNED':
+        return 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/20 dark:text-purple-400 dark:border-purple-500/40';
       case 'CLOSED':
         return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/40';
       default:
@@ -245,10 +318,116 @@ export const ComplaintDetailModal = ({
             </div>
 
             {/* SLA & Line In-Charge Snapshot */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
-              <span className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
-                Assignment & SLA Window
-              </span>
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
+                  Assignment & SLA Window
+                </span>
+                {canReassign && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowReassignBox(!showReassignBox);
+                      setSelectedSupervisorId(
+                        complaint.assignedTo?.userId || complaint.assignedTo?.employeeId || ''
+                      );
+                    }}
+                    className="text-[11px] font-bold text-indigo-600 dark:text-cyan-400 hover:underline flex items-center gap-1 cursor-pointer bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-lg border border-indigo-200 dark:border-indigo-800"
+                  >
+                    <UserPlus className="w-3 h-3" />
+                    <span>{showReassignBox ? 'Cancel Reassign' : 'Reassign In-Charge'}</span>
+                  </button>
+                )}
+              </div>
+
+              {showReassignBox && (
+                <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-indigo-200 dark:border-indigo-800/80 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <UserCheck className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
+                      Select New Line In-Charge
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      10 Contacts Available
+                    </span>
+                  </div>
+
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
+                    <input
+                      type="text"
+                      value={reassignSearch}
+                      onChange={(e) => setReassignSearch(e.target.value)}
+                      placeholder="Search supervisor by name, line, or ID..."
+                      className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1 no-scrollbar">
+                    {filteredSupervisors.map((s) => {
+                      const isSelected =
+                        selectedSupervisorId === s._id || selectedSupervisorId === s.employeeId;
+                      return (
+                        <div
+                          key={s.employeeId || s._id}
+                          onClick={() => setSelectedSupervisorId(s._id || s.employeeId)}
+                          className={`p-2 rounded-lg border text-[11px] cursor-pointer flex items-center justify-between transition-colors ${
+                            isSelected
+                              ? 'bg-indigo-50 dark:bg-indigo-950/70 border-indigo-400 dark:border-cyan-500 text-slate-900 dark:text-white font-medium'
+                              : 'bg-slate-50/60 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'
+                          }`}
+                        >
+                          <div className="min-w-0 pr-2">
+                            <div className="font-bold truncate flex items-center gap-1.5">
+                              <span>{s.name}</span>
+                              <span className="text-[10px] font-mono font-normal text-slate-400">
+                                ({s.employeeId})
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                              {s.department} • {s.designation}
+                            </div>
+                          </div>
+                          <div className="shrink-0 flex items-center gap-1.5">
+                            <span className="text-[10px] font-mono text-slate-400">
+                              {s.mobileNumber}
+                            </span>
+                            {isSelected && (
+                              <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <input
+                    type="text"
+                    value={reassignNotes}
+                    onChange={(e) => setReassignNotes(e.target.value)}
+                    placeholder="Optional reassignment handover reason..."
+                    className="w-full px-2.5 py-1.5 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-800 dark:text-slate-200"
+                  />
+
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowReassignBox(false)}
+                      className="px-2.5 py-1 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={reassigning || !selectedSupervisorId}
+                      onClick={handleReassign}
+                      className="px-3.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1 shadow-xs transition-colors"
+                    >
+                      {reassigning ? 'Reassigning...' : 'Confirm Reassign'}
+                    </button>
+                  </div>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <div>
                   <div className="font-bold text-slate-900 dark:text-slate-200 text-sm">

@@ -11,6 +11,7 @@ const timelineItemSchema = new mongoose.Schema({
       'REJECTED',
       'CLOSED',
       'COMMENT_ADDED',
+      'REASSIGNED',
     ],
     required: true,
   },
