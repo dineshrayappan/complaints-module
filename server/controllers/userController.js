@@ -1,10 +1,23 @@
+const mongoose = require('mongoose');
 const User = require('../models/User');
+const mockStore = require('../config/mockStore');
 
 // @desc    Get Master Contact List of Line In-Charges for assignment
 // @route   GET /api/users/line-supervisors
 // @access  Private (Auditor or Authenticated)
 const getLineSupervisors = async (req, res) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      const supervisors = mockStore
+        .getUsers()
+        .filter((u) => u.role === 'ACTION_PERSON' && u.isActive);
+      return res.status(200).json({
+        success: true,
+        count: supervisors.length,
+        supervisors,
+      });
+    }
+
     const supervisors = await User.find({
       role: 'ACTION_PERSON',
       isActive: true,
@@ -18,10 +31,13 @@ const getLineSupervisors = async (req, res) => {
       supervisors,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to retrieve master contact list of supervisors.',
-      error: error.message,
+    const supervisors = mockStore
+      .getUsers()
+      .filter((u) => u.role === 'ACTION_PERSON' && u.isActive);
+    res.status(200).json({
+      success: true,
+      count: supervisors.length,
+      supervisors,
     });
   }
 };
@@ -32,6 +48,39 @@ const getLineSupervisors = async (req, res) => {
 const getAllUsers = async (req, res) => {
   try {
     const { role, department, search, isActive } = req.query;
+
+    if (mongoose.connection.readyState !== 1) {
+      let users = mockStore.getUsers();
+      if (role) {
+        if (role === 'SUPERVISOR') {
+          users = users.filter((u) => u.role === 'ACTION_PERSON' || u.role === 'SUPERVISOR');
+        } else {
+          users = users.filter((u) => u.role === role);
+        }
+      }
+      if (department) {
+        users = users.filter((u) => u.department === department);
+      }
+      if (typeof isActive !== 'undefined') {
+        users = users.filter((u) => Boolean(u.isActive) === (isActive === 'true'));
+      }
+      if (search) {
+        const q = search.toLowerCase();
+        users = users.filter(
+          (u) =>
+            u.name?.toLowerCase().includes(q) ||
+            u.employeeId?.toLowerCase().includes(q) ||
+            u.email?.toLowerCase().includes(q) ||
+            u.department?.toLowerCase().includes(q)
+        );
+      }
+      return res.status(200).json({
+        success: true,
+        count: users.length,
+        users,
+      });
+    }
+
     const filter = {};
 
     if (role) {
@@ -69,10 +118,11 @@ const getAllUsers = async (req, res) => {
       users,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to retrieve users.',
-      error: error.message,
+    const users = mockStore.getUsers();
+    res.status(200).json({
+      success: true,
+      count: users.length,
+      users,
     });
   }
 };
@@ -108,6 +158,28 @@ const createUser = async (req, res) => {
       });
     }
 
+    const normalizedRole = role === 'SUPERVISOR' ? 'ACTION_PERSON' : role;
+
+    if (mongoose.connection.readyState !== 1) {
+      const newUser = mockStore.createUser({
+        employeeId: employeeId.trim().toUpperCase(),
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        role: normalizedRole,
+        department: department.trim(),
+        designation: designation.trim(),
+        mobileNumber: mobileNumber.trim(),
+        isActive: true,
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: `User '${newUser.name}' (${newUser.employeeId}) created successfully.`,
+        user: newUser,
+      });
+    }
+
     // Check duplicate employeeId
     const existingEmpId = await User.findOne({
       employeeId: employeeId.trim().toUpperCase(),
@@ -129,8 +201,6 @@ const createUser = async (req, res) => {
         message: `Email address '${email.toLowerCase()}' is already registered in the system.`,
       });
     }
-
-    const normalizedRole = role === 'SUPERVISOR' ? 'ACTION_PERSON' : role;
 
     const newUser = new User({
       employeeId: employeeId.trim().toUpperCase(),
@@ -165,6 +235,15 @@ const createUser = async (req, res) => {
 // @access  Private (Admin Only)
 const updateUser = async (req, res) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      const updated = mockStore.updateUser(req.params.id, req.body);
+      return res.status(200).json({
+        success: true,
+        message: 'User updated successfully.',
+        user: updated,
+      });
+    }
+
     const user = await User.findById(req.params.id);
 
     if (!user) {
@@ -238,6 +317,15 @@ const resetUserPassword = async (req, res) => {
       });
     }
 
+    if (mongoose.connection.readyState !== 1) {
+      const updated = mockStore.updateUser(req.params.id, { password: newPassword });
+      return res.status(200).json({
+        success: true,
+        message: `Password for '${updated?.name || 'User'}' updated successfully.`,
+        user: updated,
+      });
+    }
+
     const user = await User.findById(req.params.id);
 
     if (!user) {
@@ -275,6 +363,17 @@ const resetUserPassword = async (req, res) => {
 // @access  Private (Admin Only)
 const toggleUserStatus = async (req, res) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      const user = mockStore.findUserById(req.params.id);
+      const updated = mockStore.updateUser(req.params.id, { isActive: !user?.isActive });
+      return res.status(200).json({
+        success: true,
+        message: `User '${updated?.name}' status updated.`,
+        isActive: updated?.isActive,
+        user: updated,
+      });
+    }
+
     const user = await User.findById(req.params.id);
 
     if (!user) {

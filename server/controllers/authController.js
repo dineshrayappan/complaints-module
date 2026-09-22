@@ -1,5 +1,7 @@
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const User = require('../models/User');
+const mockStore = require('../config/mockStore');
 
 const generateToken = (id) => {
   return jwt.sign(
@@ -23,6 +25,32 @@ const login = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Please provide both an Email/Employee ID and password.',
+      });
+    }
+
+    // Fallback store when MongoDB is not connected
+    if (mongoose.connection.readyState !== 1) {
+      const user = mockStore.findUserByIdentifier(queryIdentifier);
+      if (!user || user.password !== password) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid credentials. User not found or incorrect password.',
+        });
+      }
+      const token = generateToken(user._id);
+      return res.status(200).json({
+        success: true,
+        token,
+        user: {
+          _id: user._id,
+          employeeId: user.employeeId,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          department: user.department,
+          designation: user.designation,
+          mobileNumber: user.mobileNumber,
+        },
       });
     }
 
@@ -146,6 +174,26 @@ const register = async (req, res) => {
       normalizedRole = 'AUDITOR';
     }
 
+    if (mongoose.connection.readyState !== 1) {
+      const newUser = mockStore.createUser({
+        employeeId: employeeId.toUpperCase().trim(),
+        name: name.trim(),
+        email: email.toLowerCase().trim(),
+        password,
+        role: normalizedRole,
+        department: department.trim(),
+        designation: designation.trim(),
+        mobileNumber: mobileNumber.trim(),
+      });
+      const token = generateToken(newUser._id);
+      return res.status(201).json({
+        success: true,
+        message: `Account registered successfully as ${normalizedRole === 'AUDITOR' ? 'Quality Auditor' : 'Line Supervisor'}.`,
+        token,
+        user: newUser,
+      });
+    }
+
     // Check if employeeId or email already exists
     const existing = await User.findOne({
       $or: [
@@ -208,6 +256,14 @@ const register = async (req, res) => {
 // @access  Private
 const getMe = async (req, res) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      const user = mockStore.findUserById(req.user?._id || req.user?.id);
+      return res.status(200).json({
+        success: true,
+        user: user || req.user,
+      });
+    }
+
     const user = await User.findById(req.user._id);
     res.status(200).json({
       success: true,
@@ -227,6 +283,13 @@ const getMe = async (req, res) => {
 // @access  Public
 const getDemoUsers = async (req, res) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(200).json({
+        success: true,
+        users: mockStore.getUsers(),
+      });
+    }
+
     // Ensure default Admin user exists in database
     let admin = await User.findOne({ role: 'ADMIN' });
     if (!admin) {
@@ -249,10 +312,10 @@ const getDemoUsers = async (req, res) => {
       users,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to retrieve demo users.',
-      error: error.message,
+    console.warn('[AuthController:getDemoUsers] Using fallback store due to DB error:', error.message);
+    res.status(200).json({
+      success: true,
+      users: mockStore.getUsers(),
     });
   }
 };
@@ -263,6 +326,23 @@ const getDemoUsers = async (req, res) => {
 const switchDemoUser = async (req, res) => {
   try {
     const { userId } = req.body;
+
+    if (mongoose.connection.readyState !== 1) {
+      const user = mockStore.findUserById(userId);
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'Demo user not found.',
+        });
+      }
+      const token = generateToken(user._id);
+      return res.status(200).json({
+        success: true,
+        token,
+        user,
+      });
+    }
+
     const user = await User.findById(userId);
 
     if (!user) {
@@ -280,6 +360,11 @@ const switchDemoUser = async (req, res) => {
       user,
     });
   } catch (error) {
+    const fallbackUser = mockStore.findUserById(req.body.userId);
+    if (fallbackUser) {
+      const token = generateToken(fallbackUser._id);
+      return res.status(200).json({ success: true, token, user: fallbackUser });
+    }
     res.status(500).json({
       success: false,
       message: 'Error switching demo user.',

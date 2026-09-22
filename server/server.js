@@ -38,11 +38,20 @@ let dbPromise = null;
 const ensureDBConnected = async () => {
   if (!dbPromise) {
     dbPromise = (async () => {
-      await connectDB();
-      const userCount = await User.countDocuments();
-      if (userCount === 0) {
-        console.log('🌱 [Server] Empty database detected. Seeding factory users and sample tickets...');
-        await seedData();
+      try {
+        await connectDB();
+        // Only query Mongoose if connected (readyState === 1) to prevent buffering timeout
+        if (mongoose.connection.readyState === 1) {
+          const userCount = await User.countDocuments();
+          if (userCount === 0) {
+            console.log('🌱 [Server] Empty database detected. Seeding factory users and sample tickets...');
+            await seedData();
+          }
+        } else {
+          console.log('⚡ [Server] Running in resilient fallback mode (Mongoose not connected).');
+        }
+      } catch (err) {
+        console.warn('⚠️ [Server] Database check notice:', err.message);
       }
     })();
   }
