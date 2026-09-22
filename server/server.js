@@ -76,27 +76,47 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-// Initialize Database and start server
-connectDB()
-  .then(async () => {
-    // Check if initial users exist, if not automatically seed
-    const userCount = await User.countDocuments();
-    if (userCount === 0) {
-      console.log('🌱 [Server] Empty database detected. Seeding factory users and sample tickets...');
-      await seedData();
-    }
+let dbPromise = null;
+const ensureDBConnected = async () => {
+  if (!dbPromise) {
+    dbPromise = (async () => {
+      await connectDB();
+      const userCount = await User.countDocuments();
+      if (userCount === 0) {
+        console.log('🌱 [Server] Empty database detected. Seeding factory users and sample tickets...');
+        await seedData();
+      }
+    })();
+  }
+  return dbPromise;
+};
 
-    app.listen(PORT, () => {
-      console.log(`=======================================================`);
-      console.log(`🧵 GARMENT QMS SERVER ONLINE ON PORT ${PORT}`);
-      console.log(`📍 REST API: http://localhost:${PORT}/api`);
-      console.log(`📸 Proof Uploads: http://localhost:${PORT}/uploads`);
-      console.log(`=======================================================`);
+// Ensure DB is ready on incoming requests (essential for Vercel serverless)
+app.use(async (req, res, next) => {
+  try {
+    await ensureDBConnected();
+    next();
+  } catch (err) {
+    console.error('[DB Initialization Error]:', err);
+    next(err);
+  }
+});
+
+// Start standalone server only when executed directly (not in Vercel serverless)
+if (require.main === module || !process.env.VERCEL) {
+  ensureDBConnected()
+    .then(() => {
+      app.listen(PORT, () => {
+        console.log(`=======================================================`);
+        console.log(`🧵 GARMENT QMS SERVER ONLINE ON PORT ${PORT}`);
+        console.log(`📍 REST API: http://localhost:${PORT}/api`);
+        console.log(`📸 Proof Uploads: http://localhost:${PORT}/uploads`);
+        console.log(`=======================================================`);
+      });
+    })
+    .catch((err) => {
+      console.error('Fatal database startup failure:', err);
     });
-  })
-  .catch((err) => {
-    console.error('Fatal database startup failure:', err);
-    process.exit(1);
-  });
+}
 
 module.exports = app;
