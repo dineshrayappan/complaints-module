@@ -7,23 +7,32 @@ const mockStore = require('../config/mockStore');
 // @access  Private (Auditor or Authenticated)
 const getLineSupervisors = async (req, res) => {
   try {
+    const mockSupervisors = mockStore
+      .getUsers()
+      .filter((u) => u.role === 'ACTION_PERSON' && u.isActive);
+
     if (mongoose.connection.readyState !== 1) {
-      const supervisors = mockStore
-        .getUsers()
-        .filter((u) => u.role === 'ACTION_PERSON' && u.isActive);
       return res.status(200).json({
         success: true,
-        count: supervisors.length,
-        supervisors,
+        count: mockSupervisors.length,
+        supervisors: mockSupervisors,
       });
     }
 
-    const supervisors = await User.find({
+    let supervisors = await User.find({
       role: 'ACTION_PERSON',
       isActive: true,
     })
       .select('name employeeId department designation mobileNumber email')
-      .sort({ department: 1, name: 1 });
+      .sort({ department: 1, name: 1 })
+      .lean();
+
+    // Ensure all 10 standard dummy supervisors are available
+    if (supervisors.length < mockSupervisors.length) {
+      const existingEmployeeIds = new Set(supervisors.map((s) => s.employeeId));
+      const missing = mockSupervisors.filter((m) => !existingEmployeeIds.has(m.employeeId));
+      supervisors = [...supervisors, ...missing];
+    }
 
     res.status(200).json({
       success: true,

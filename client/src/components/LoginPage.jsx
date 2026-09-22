@@ -551,7 +551,7 @@ export const LoginPage = () => {
                   ))}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1 no-scrollbar">
                   {supervisorUsers.map((sup) => (
                     <button
                       key={sup._id}

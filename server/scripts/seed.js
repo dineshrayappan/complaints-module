@@ -185,7 +185,79 @@ const seedData = async () => {
       isActive: true,
     });
 
-    console.log('✅ [Seed] Successfully seeded 1 Auditor and 4 Line In-Charges.');
+    const supervisor5 = await User.create({
+      employeeId: 'SUP-105',
+      name: 'Ramesh Patel',
+      email: 'ramesh@factory.com',
+      password: 'Password123!',
+      role: 'ACTION_PERSON',
+      department: 'Sewing Line 3',
+      designation: 'Line 3 Supervisor',
+      mobileNumber: '+91 98555 66778',
+      isActive: true,
+    });
+
+    const supervisor6 = await User.create({
+      employeeId: 'SUP-106',
+      name: 'Kavita Deshmukh',
+      email: 'kavita@factory.com',
+      password: 'Password123!',
+      role: 'ACTION_PERSON',
+      department: 'Sewing Line 4',
+      designation: 'Line 4 Supervisor',
+      mobileNumber: '+91 98666 77889',
+      isActive: true,
+    });
+
+    const supervisor7 = await User.create({
+      employeeId: 'SUP-107',
+      name: "Anthony D'Souza",
+      email: 'anthony@factory.com',
+      password: 'Password123!',
+      role: 'ACTION_PERSON',
+      department: 'Embroidery & Printing',
+      designation: 'Embroidery Unit Master',
+      mobileNumber: '+91 98777 88990',
+      isActive: true,
+    });
+
+    const supervisor8 = await User.create({
+      employeeId: 'SUP-108',
+      name: 'Meera Nambiar',
+      email: 'meera@factory.com',
+      password: 'Password123!',
+      role: 'ACTION_PERSON',
+      department: 'Wet Processing & Washing',
+      designation: 'Washing Lab In-Charge',
+      mobileNumber: '+91 98888 99001',
+      isActive: true,
+    });
+
+    const supervisor9 = await User.create({
+      employeeId: 'SUP-109',
+      name: 'Gurpreet Singh',
+      email: 'gurpreet@factory.com',
+      password: 'Password123!',
+      role: 'ACTION_PERSON',
+      department: 'Trims & Special Machinery',
+      designation: 'Buttoning & Snap Rivet Master',
+      mobileNumber: '+91 98999 00112',
+      isActive: true,
+    });
+
+    const supervisor10 = await User.create({
+      employeeId: 'SUP-110',
+      name: 'Lakshmi Narayanan',
+      email: 'lakshmi@factory.com',
+      password: 'Password123!',
+      role: 'ACTION_PERSON',
+      department: 'End-Line Inspection',
+      designation: 'Final QC & Audit Coordinator',
+      mobileNumber: '+91 98012 34567',
+      isActive: true,
+    });
+
+    console.log('✅ [Seed] Successfully seeded 1 Auditor and 10 Line In-Charges.');
 
     const now = new Date();
 
