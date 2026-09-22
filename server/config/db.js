@@ -25,7 +25,7 @@ const connectDB = async () => {
       console.log('✅ [Database] Successfully connected to in-memory MongoDB instance');
     } catch (memErr) {
       console.error('❌ [Database] Failed to initialize in-memory MongoDB:', memErr.message);
-      process.exit(1);
+      // Do not crash serverless process - let express return meaningful error responses
     }
   }
 };

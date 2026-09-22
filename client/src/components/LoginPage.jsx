@@ -104,7 +104,11 @@ export const LoginPage = () => {
     setSuccessMessage('');
     setLoading(true);
     try {
-      await switchUser(userObj._id);
+      const res = await switchUser(userObj._id);
+      if (res && !res.success) {
+        setErrorMessage(res.message || 'Failed to sign in with selected profile.');
+        setLoading(false);
+      }
     } catch (err) {
       setErrorMessage('Failed to sign in with demo profile.');
       setLoading(false);

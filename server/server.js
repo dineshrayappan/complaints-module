@@ -33,12 +33,23 @@ app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 const uploadsPath = path.join(__dirname, 'uploads');
 app.use('/uploads', express.static(uploadsPath));
 
-// API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/complaints', complaintRoutes);
+// DB initialization promise for serverless and standalone execution
+let dbPromise = null;
+const ensureDBConnected = async () => {
+  if (!dbPromise) {
+    dbPromise = (async () => {
+      await connectDB();
+      const userCount = await User.countDocuments();
+      if (userCount === 0) {
+        console.log('🌱 [Server] Empty database detected. Seeding factory users and sample tickets...');
+        await seedData();
+      }
+    })();
+  }
+  return dbPromise;
+};
 
-// Health check endpoint
+// Health check endpoint (always accessible without DB dependency)
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
@@ -46,6 +57,22 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// Ensure DB is ready on incoming API requests (essential for Vercel serverless)
+app.use('/api', async (req, res, next) => {
+  try {
+    await ensureDBConnected();
+    next();
+  } catch (err) {
+    console.error('[DB Initialization Error]:', err);
+    next(err);
+  }
+});
+
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/complaints', complaintRoutes);
 
 // Central Error Handler
 app.use((err, req, res, next) => {
@@ -75,32 +102,6 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-
-let dbPromise = null;
-const ensureDBConnected = async () => {
-  if (!dbPromise) {
-    dbPromise = (async () => {
-      await connectDB();
-      const userCount = await User.countDocuments();
-      if (userCount === 0) {
-        console.log('🌱 [Server] Empty database detected. Seeding factory users and sample tickets...');
-        await seedData();
-      }
-    })();
-  }
-  return dbPromise;
-};
-
-// Ensure DB is ready on incoming requests (essential for Vercel serverless)
-app.use(async (req, res, next) => {
-  try {
-    await ensureDBConnected();
-    next();
-  } catch (err) {
-    console.error('[DB Initialization Error]:', err);
-    next(err);
-  }
-});
 
 // Start standalone server only when executed directly (not in Vercel serverless)
 if (require.main === module || !process.env.VERCEL) {
