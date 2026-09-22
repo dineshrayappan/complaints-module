@@ -157,12 +157,21 @@ export const App = () => {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-3 text-center">
           <div className="w-10 h-10 rounded-xl border-3 border-indigo-600 border-t-transparent animate-spin" />
           <span className="text-xs font-bold text-slate-500 font-mono tracking-wider uppercase">
             Loading Textile QMS Workspace...
           </span>
+          <button
+            onClick={() => {
+              localStorage.removeItem('garment_qms_token');
+              window.location.reload();
+            }}
+            className="mt-3 px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 text-[11px] font-mono text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700 cursor-pointer"
+          >
+            Reset Session & Return to Login
+          </button>
         </div>
       </div>
     );

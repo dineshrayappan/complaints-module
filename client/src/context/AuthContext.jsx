@@ -23,30 +23,60 @@ export const AuthProvider = ({ children }) => {
     return [];
   };
 
-  // Initialize auth state
+  // Initialize auth state with bulletproof error handling and timeout safeguard
   useEffect(() => {
-    const initAuth = async () => {
-      await fetchDemoUsers();
+    let isMounted = true;
 
-      if (token) {
-        try {
-          const res = await authService.getMe();
-          if (res.data.success) {
-            setUser(res.data.user);
-          }
-        } catch (err) {
+    // Safety timeout: Never leave UI in loading state for more than 2 seconds
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) {
+        setLoading(false);
+      }
+    }, 2000);
+
+    const initAuth = async () => {
+      try {
+        const storedToken = localStorage.getItem('garment_qms_token');
+
+        // Run demo users and me profile checks in parallel
+        const [demoRes, meRes] = await Promise.allSettled([
+          authService.getDemoUsers(),
+          storedToken ? authService.getMe() : Promise.resolve(null),
+        ]);
+
+        if (!isMounted) return;
+
+        if (demoRes.status === 'fulfilled' && demoRes.value?.data?.success) {
+          setDemoUsers(demoRes.value.data.users);
+        }
+
+        if (meRes.status === 'fulfilled' && meRes.value?.data?.success) {
+          setUser(meRes.value.data.user);
+        } else if (storedToken) {
+          // Token was rejected or expired
           console.warn('Session expired or invalid, clearing stored token...');
           localStorage.removeItem('garment_qms_token');
           setToken(null);
           setUser(null);
+        } else {
+          setUser(null);
         }
-      } else {
-        setUser(null);
+      } catch (err) {
+        console.error('Auth initialization error:', err);
+      } finally {
+        clearTimeout(safetyTimer);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
-      setLoading(false);
     };
 
     initAuth();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(safetyTimer);
+    };
   }, []);
 
   const switchUser = async (userId) => {
