@@ -15,6 +15,8 @@ import {
   UserPlus,
   Search,
   UserCheck,
+  Play,
+  Camera,
 } from 'lucide-react';
 import CountdownBadge from './CountdownBadge';
 import { formatAbsoluteTime } from '../utils/timer';
@@ -22,11 +24,18 @@ import { complaintService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { DUMMY_SUPERVISORS } from './NewComplaintModal';
 
+const FALLBACK_BEFORE_IMG =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23fee2e2'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='16' font-weight='bold' fill='%23b91c1c'%3EBefore Defect Photo%3C/text%3E%3C/svg%3E";
+const FALLBACK_AFTER_IMG =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23dcfce7'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='16' font-weight='bold' fill='%2315803d'%3EAfter Resolution Photo%3C/text%3E%3C/svg%3E";
+
 export const ComplaintDetailModal = ({
   complaint,
   isOpen,
   onClose,
   onUpdateComplaint,
+  onStartProgress,
+  onSubmitAction,
 }) => {
   const { user, isAuditor, isAdmin, demoUsers } = useAuth();
   const [commentText, setCommentText] = useState('');
@@ -257,7 +266,7 @@ export const ComplaintDetailModal = ({
                   alt="Defect Before"
                   onError={(e) => {
                     e.currentTarget.onerror = null;
-                    e.currentTarget.src = 'https://images.unsplash.com/photo-1584992236310-6edddc08acff?w=400&q=80';
+                    e.currentTarget.src = FALLBACK_BEFORE_IMG;
                   }}
                   className="w-full h-44 sm:h-56 object-cover group-hover:scale-105 transition-transform duration-300"
                 />
@@ -282,7 +291,7 @@ export const ComplaintDetailModal = ({
                     alt="Defect After"
                     onError={(e) => {
                       e.currentTarget.onerror = null;
-                      e.currentTarget.src = 'https://images.unsplash.com/photo-1584992236310-6edddc08acff?w=400&q=80';
+                      e.currentTarget.src = FALLBACK_AFTER_IMG;
                     }}
                     className="w-full h-52 sm:h-56 object-cover group-hover:scale-105 transition-transform duration-300"
                   />
@@ -477,16 +486,26 @@ export const ComplaintDetailModal = ({
           </div>
 
           {/* Section 3: Action Taken & Root Cause (if submitted) */}
-          {(complaint.actionNotes || complaint.feedbackRemarks) && (
+          {(complaint.afterPhoto ||
+            complaint.actionNotes ||
+            complaint.feedbackRemarks ||
+            complaint.status === 'Under Verification' ||
+            complaint.status === 'Closed') && (
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase text-emerald-700 dark:text-emerald-400 tracking-wider flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4" />
-                  Supervisor Resolution & Root Cause Feedback
+                  Supervisor / Auditor Resolution & Root Cause Feedback
                 </span>
-                <span className="text-[11px] font-mono text-slate-500">
-                  Shop-Floor Input
-                </span>
+                {complaint.actualCompletedAt ? (
+                  <span className="text-[11px] font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                    Completed: {formatAbsoluteTime(complaint.actualCompletedAt)}
+                  </span>
+                ) : (
+                  <span className="text-[11px] font-mono text-slate-500">
+                    Shop-Floor Input
+                  </span>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
@@ -519,6 +538,56 @@ export const ComplaintDetailModal = ({
                 Audit Rejection Notice: Returned to Line
               </div>
               <p className="text-rose-900 dark:text-rose-100">{complaint.rejectionReason}</p>
+            </div>
+          )}
+
+          {/* Action Box for Starting Rework */}
+          {complaint.status === 'Assigned' && onStartProgress && (
+            <div className="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">
+                  Ready to commence rectification work?
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Update status to In Progress to record floor commencement in the audit log.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onStartProgress(complaint);
+                }}
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"
+              >
+                <Play className="w-4 h-4" />
+                <span>Start Defect Rework</span>
+              </button>
+            </div>
+          )}
+
+          {/* Action Box for Submitting Resolution Proof */}
+          {['In Progress', 'Rejected / Sent Back'].includes(complaint.status) && onSubmitAction && (
+            <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">
+                  Work Completed? Submit Rectification Proof
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Upload mandatory After Photo proof and action notes for Quality Audit verification.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onSubmitAction(complaint);
+                }}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"
+              >
+                <Camera className="w-4 h-4" />
+                <span>Submit Resolution Proof & After Photo</span>
+              </button>
             </div>
           )}
 

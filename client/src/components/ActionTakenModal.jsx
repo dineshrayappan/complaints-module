@@ -12,6 +12,9 @@ import { complaintService } from '../services/api';
 import { compressImage, formatFileSize } from '../utils/imageCompressor';
 import CountdownBadge from './CountdownBadge';
 
+const FALLBACK_BEFORE_IMG =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Crect width='160' height='160' fill='%23fee2e2'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='12' font-weight='bold' fill='%23b91c1c'%3EBefore Photo%3C/text%3E%3C/svg%3E";
+
 export const ActionTakenModal = ({ complaint, isOpen, onClose, onSuccess }) => {
   const fileInputRef = useRef(null);
   const [submitting, setSubmitting] = useState(false);
@@ -45,8 +48,8 @@ export const ActionTakenModal = ({ complaint, isOpen, onClose, onSuccess }) => {
       });
 
       setAfterFile(result.file || file);
-      setPreviewUrl(result.previewUrl || result.base64);
-      setPhotoBase64(result.base64 || '');
+      setPreviewUrl(result.previewUrl || result.dataUrl);
+      setPhotoBase64(result.dataUrl || '');
       setImageMeta({
         originalSize: result.originalSize || file.size,
         compressedSize: result.compressedSize || file.size,
@@ -88,14 +91,14 @@ export const ActionTakenModal = ({ complaint, isOpen, onClose, onSuccess }) => {
     try {
       setSubmitting(true);
       const formData = new FormData();
-      if (afterFile) {
-        formData.append('afterPhoto', afterFile);
-      }
+      formData.append('actionNotes', actionNotes.trim());
+      formData.append('feedbackRemarks', feedbackRemarks.trim());
       if (photoBase64) {
         formData.append('afterPhotoBase64', photoBase64);
       }
-      formData.append('actionNotes', actionNotes.trim());
-      formData.append('feedbackRemarks', feedbackRemarks.trim());
+      if (afterFile) {
+        formData.append('afterPhoto', afterFile);
+      }
 
       const res = await complaintService.submitAction(complaint._id, formData);
       if (res.data.success) {
@@ -158,6 +161,10 @@ export const ActionTakenModal = ({ complaint, isOpen, onClose, onSuccess }) => {
               <img
                 src={complaint.beforePhoto}
                 alt="Before Defect"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = FALLBACK_BEFORE_IMG;
+                }}
                 className="w-16 h-16 object-cover rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs"
               />
               <div>

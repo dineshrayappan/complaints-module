@@ -11,13 +11,18 @@ import {
 import CountdownBadge from './CountdownBadge';
 import { useAuth } from '../context/AuthContext';
 
+const FALLBACK_BEFORE_IMG =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Crect width='160' height='160' fill='%23fee2e2'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='12' font-weight='bold' fill='%23b91c1c'%3EBefore Photo%3C/text%3E%3C/svg%3E";
+const FALLBACK_AFTER_IMG =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Crect width='160' height='160' fill='%23dcfce7'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='12' font-weight='bold' fill='%2315803d'%3EAfter Photo%3C/text%3E%3C/svg%3E";
+
 export const ComplaintCard = ({
   complaint,
   onViewDetails,
   onStartProgress,
   onSubmitAction,
 }) => {
-  const { isAuditor, isActionPerson, user } = useAuth();
+  const { isAuditor, isActionPerson, isAdmin, user } = useAuth();
 
   const getPriorityBadge = (priority) => {
     switch (priority) {
@@ -57,8 +62,7 @@ export const ComplaintCard = ({
   const compDept = (complaint.department || '').trim().toLowerCase();
   const userDept = (user?.department || '').trim().toLowerCase();
 
-  const canActionPersonAct =
-    isActionPerson || isAdmin;
+  const canActionPersonAct = isAuditor || isActionPerson || isAdmin;
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-2xl p-3.5 sm:p-5 transition-all duration-200 shadow-xs hover:shadow-md flex flex-col justify-between group">
@@ -112,7 +116,11 @@ export const ComplaintCard = ({
         </p>
 
         {/* Solution Details & Proof (Visible on Auditor & Supervisor pages once resolved) */}
-        {(complaint.afterPhoto || complaint.actionNotes) && (
+        {(complaint.afterPhoto ||
+          complaint.actionNotes ||
+          complaint.feedbackRemarks ||
+          complaint.status === 'Under Verification' ||
+          complaint.status === 'Closed') && (
           <div className="mb-3 p-2.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 text-xs">
             <div className="flex items-center justify-between font-bold text-emerald-800 dark:text-emerald-300 text-[11px] mb-1">
               <span className="flex items-center gap-1">
@@ -152,7 +160,7 @@ export const ComplaintCard = ({
               alt="Before Defect Proof"
               onError={(e) => {
                 e.currentTarget.onerror = null;
-                e.currentTarget.src = 'https://images.unsplash.com/photo-1584992236310-6edddc08acff?w=400&q=80';
+                e.currentTarget.src = FALLBACK_BEFORE_IMG;
               }}
               className="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-xl border border-slate-200 dark:border-slate-700 group-hover/img:border-indigo-500 transition-all shadow-xs"
             />
@@ -172,7 +180,7 @@ export const ComplaintCard = ({
                 alt="After Resolution Proof"
                 onError={(e) => {
                   e.currentTarget.onerror = null;
-                  e.currentTarget.src = 'https://images.unsplash.com/photo-1584992236310-6edddc08acff?w=400&q=80';
+                  e.currentTarget.src = FALLBACK_AFTER_IMG;
                 }}
                 className="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-xl border border-emerald-300 dark:border-emerald-600 group-hover/img:border-emerald-500 transition-all shadow-xs"
               />

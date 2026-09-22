@@ -247,6 +247,9 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
       try {
         setPreviewUrl(URL.createObjectURL(file));
       } catch (e) {}
+      const reader = new FileReader();
+      reader.onloadend = () => setPhotoBase64(reader.result);
+      reader.readAsDataURL(file);
     } finally {
       setCompressing(false);
     }
@@ -307,21 +310,22 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
     try {
       setSubmitting(true);
       const formData = new FormData();
-      if (beforeFile) {
-        formData.append('beforePhoto', beforeFile);
-      }
-      if (photoBase64) {
-        formData.append('beforePhotoBase64', photoBase64);
-      } else if (previewUrl && previewUrl.startsWith('data:')) {
-        formData.append('beforePhotoBase64', previewUrl);
-      }
       formData.append('category', category || 'Stitching Fault');
       formData.append('department', selectedSupervisor?.department || 'Sewing Line 1');
       formData.append('location', location.trim() || 'Floor 1');
       formData.append('priority', priority || 'HIGH');
       formData.append('description', description.trim());
       formData.append('assignedToUserId', assignedId);
+      formData.append('assignedToId', assignedId);
       formData.append('deadlineHours', (deadlineHours || 16).toString());
+      if (photoBase64) {
+        formData.append('beforePhotoBase64', photoBase64);
+      } else if (previewUrl && previewUrl.startsWith('data:')) {
+        formData.append('beforePhotoBase64', previewUrl);
+      }
+      if (beforeFile) {
+        formData.append('beforePhoto', beforeFile);
+      }
 
       const res = await complaintService.createComplaint(formData);
       if (res.data.success) {

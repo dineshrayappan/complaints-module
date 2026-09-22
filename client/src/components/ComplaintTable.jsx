@@ -3,13 +3,18 @@ import { Eye, Camera, CheckCheck, Play, Phone } from 'lucide-react';
 import CountdownBadge from './CountdownBadge';
 import { useAuth } from '../context/AuthContext';
 
+const FALLBACK_BEFORE_IMG =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Crect width='80' height='80' fill='%23fee2e2'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='10' font-weight='bold' fill='%23b91c1c'%3EBefore%3C/text%3E%3C/svg%3E";
+const FALLBACK_AFTER_IMG =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Crect width='80' height='80' fill='%23dcfce7'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='10' font-weight='bold' fill='%2315803d'%3EAfter%3C/text%3E%3C/svg%3E";
+
 export const ComplaintTable = ({
   complaints,
   onViewDetails,
   onStartProgress,
   onSubmitAction,
 }) => {
-  const { isAuditor, isActionPerson, user } = useAuth();
+  const { isAuditor, isActionPerson, isAdmin, user } = useAuth();
 
   const getPriorityStyle = (priority) => {
     switch (priority) {
@@ -65,7 +70,7 @@ export const ComplaintTable = ({
             const compDept = (c.department || '').trim().toLowerCase();
             const userDept = (user?.department || '').trim().toLowerCase();
 
-            const canAct = isActionPerson || isAdmin;
+            const canAct = isAuditor || isActionPerson || isAdmin;
 
             return (
               <tr
@@ -94,7 +99,7 @@ export const ComplaintTable = ({
                         alt="Solution Proof"
                         onError={(e) => {
                           e.currentTarget.onerror = null;
-                          e.currentTarget.src = 'https://images.unsplash.com/photo-1584992236310-6edddc08acff?w=400&q=80';
+                          e.currentTarget.src = FALLBACK_AFTER_IMG;
                         }}
                         className="w-8 h-8 rounded-lg object-cover border border-emerald-400 shrink-0"
                         title="Solution Photo Attached"
@@ -105,7 +110,7 @@ export const ComplaintTable = ({
                         alt="Defect"
                         onError={(e) => {
                           e.currentTarget.onerror = null;
-                          e.currentTarget.src = 'https://images.unsplash.com/photo-1584992236310-6edddc08acff?w=400&q=80';
+                          e.currentTarget.src = FALLBACK_BEFORE_IMG;
                         }}
                         className="w-8 h-8 rounded-lg object-cover border border-slate-200 dark:border-slate-700 shrink-0"
                       />

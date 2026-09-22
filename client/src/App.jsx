@@ -154,6 +154,7 @@ export const App = () => {
   // On action submitted
   const handleActionSuccess = (updatedTicket) => {
     showToast(`Proof for ${updatedTicket?.complaintId || 'Ticket'} submitted for Audit Verification!`);
+    setActiveTab('all');
     if (updatedTicket) {
       setComplaints((prev) =>
         prev.map((c) =>
@@ -445,6 +446,8 @@ export const App = () => {
         isOpen={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}
         onUpdateComplaint={handleComplaintUpdated}
+        onStartProgress={handleStartProgress}
+        onSubmitAction={handleOpenActionModal}
       />
     </div>
   );

@@ -1,7 +1,52 @@
+const fs = require('fs');
+const path = require('path');
 const mongoose = require('mongoose');
 const Complaint = require('../models/Complaint');
 const User = require('../models/User');
 const mockStore = require('../config/mockStore');
+
+// Helper to convert any image path (including disk files in /uploads) into a self-contained data URL
+const ensureDataUrl = (photoPath) => {
+  if (!photoPath) return photoPath;
+  if (
+    photoPath.startsWith('data:image/') ||
+    photoPath.startsWith('http://') ||
+    photoPath.startsWith('https://')
+  ) {
+    return photoPath;
+  }
+  if (photoPath.startsWith('/uploads/') || !photoPath.includes('/')) {
+    const filename = photoPath.replace(/^\/uploads\//, '');
+    const diskPath = path.join(__dirname, '..', 'uploads', filename);
+    if (fs.existsSync(diskPath)) {
+      try {
+        const ext = path.extname(filename).toLowerCase();
+        let mime = 'image/jpeg';
+        if (ext === '.png') mime = 'image/png';
+        else if (ext === '.webp') mime = 'image/webp';
+        else if (ext === '.svg') mime = 'image/svg+xml';
+        const fileBuf = fs.readFileSync(diskPath);
+        return `data:${mime};base64,${fileBuf.toString('base64')}`;
+      } catch (e) {
+        return photoPath;
+      }
+    }
+  }
+  return photoPath;
+};
+
+// Helper to ensure all complaint outputs have self-contained data URLs
+const formatComplaintOutput = (complaint) => {
+  if (!complaint) return null;
+  const obj = typeof complaint.toObject === 'function' ? complaint.toObject() : { ...complaint };
+  if (obj.beforePhoto) {
+    obj.beforePhoto = ensureDataUrl(obj.beforePhoto);
+  }
+  if (obj.afterPhoto) {
+    obj.afterPhoto = ensureDataUrl(obj.afterPhoto);
+  }
+  return obj;
+};
 
 // Helper to format file URL
 const getFileUrl = (req, filename) => {
@@ -32,6 +77,8 @@ const createComplaint = async (req, res) => {
       deadlineHours,
     } = req.body;
 
+    const targetSupervisorId = assignedToUserId || req.body.assignedToId;
+
     // Validate SLA bounds: strictly between 12 and 24 hours, default gracefully to 16
     let hours = Number(deadlineHours);
     if (isNaN(hours) || hours < 12 || hours > 24) {
@@ -40,8 +87,16 @@ const createComplaint = async (req, res) => {
 
     // Check Before Photo (file or base64 or url)
     let beforePhotoUrl = null;
-    if (req.file) {
-      beforePhotoUrl = getFileUrl(req, req.file.filename);
+    if (req.body.beforePhotoBase64 && req.body.beforePhotoBase64.startsWith('data:image/')) {
+      beforePhotoUrl = req.body.beforePhotoBase64;
+    } else if (req.file) {
+      try {
+        const fileBuf = fs.readFileSync(req.file.path);
+        const mime = req.file.mimetype || 'image/jpeg';
+        beforePhotoUrl = `data:${mime};base64,${fileBuf.toString('base64')}`;
+      } catch (err) {
+        beforePhotoUrl = getFileUrl(req, req.file.filename);
+      }
     } else if (req.body.beforePhoto) {
       beforePhotoUrl = req.body.beforePhoto;
     } else if (req.body.beforePhotoUrl) {
@@ -66,8 +121,8 @@ const createComplaint = async (req, res) => {
 
     if (mongoose.connection.readyState !== 1) {
       const supervisor =
-        mockStore.findUserById(assignedToUserId) ||
-        mockStore.getUsers().find((u) => u.employeeId === assignedToUserId) ||
+        mockStore.findUserById(targetSupervisorId) ||
+        mockStore.getUsers().find((u) => u.employeeId === targetSupervisorId) ||
         mockStore.getUsers().find((u) => u.role === 'ACTION_PERSON') || {
           _id: '6ab21322cd50706ee2a84637',
           employeeId: 'SUP-101',
@@ -100,26 +155,26 @@ const createComplaint = async (req, res) => {
       return res.status(201).json({
         success: true,
         message: `Defect logged with ID ${newTicket.complaintId}. 12–24h resolution SLA active.`,
-        complaint: newTicket,
+        complaint: formatComplaintOutput(newTicket),
       });
     }
 
     // Lookup supervisor from pre-configured Master Contact list
     let supervisor = null;
-    if (assignedToUserId) {
-      if (mongoose.Types.ObjectId.isValid(assignedToUserId)) {
-        supervisor = await User.findById(assignedToUserId).catch(() => null);
+    if (targetSupervisorId) {
+      if (mongoose.Types.ObjectId.isValid(targetSupervisorId)) {
+        supervisor = await User.findById(targetSupervisorId).catch(() => null);
       }
       if (!supervisor) {
         supervisor = await User.findOne({
-          $or: [{ employeeId: assignedToUserId }, { email: assignedToUserId }],
+          $or: [{ employeeId: targetSupervisorId }, { email: targetSupervisorId }],
         }).catch(() => null);
       }
       if (!supervisor) {
         const mockSup =
-          mockStore.findUserById(assignedToUserId) ||
+          mockStore.findUserById(targetSupervisorId) ||
           mockStore.getUsers().find(
-            (u) => u.employeeId === assignedToUserId || u._id === assignedToUserId
+            (u) => u.employeeId === targetSupervisorId || u._id === targetSupervisorId
           );
         if (mockSup) {
           try {
@@ -205,7 +260,7 @@ const createComplaint = async (req, res) => {
       return res.status(201).json({
         success: true,
         message: `Complaint ${complaint.complaintId} created and assigned successfully.`,
-        complaint,
+        complaint: formatComplaintOutput(complaint),
       });
     } catch (dbErr) {
       console.error('[ComplaintController:createComplaint] DB save failed, falling back to mockStore:', dbErr.message);
@@ -232,7 +287,7 @@ const createComplaint = async (req, res) => {
       return res.status(201).json({
         success: true,
         message: `Complaint ${fallbackTicket.complaintId} created and assigned successfully.`,
-        complaint: fallbackTicket,
+        complaint: formatComplaintOutput(fallbackTicket),
       });
     }
   } catch (error) {
@@ -255,7 +310,7 @@ const getComplaints = async (req, res) => {
       return res.status(200).json({
         success: true,
         count: complaints.length,
-        complaints,
+        complaints: complaints.map(formatComplaintOutput),
       });
     }
 
@@ -324,7 +379,7 @@ const getComplaints = async (req, res) => {
     res.status(200).json({
       success: true,
       count: complaints.length,
-      complaints,
+      complaints: complaints.map(formatComplaintOutput),
     });
   } catch (error) {
     console.error('[ComplaintController:getComplaints] Error:', error);
@@ -332,7 +387,7 @@ const getComplaints = async (req, res) => {
     res.status(200).json({
       success: true,
       count: complaints.length,
-      complaints,
+      complaints: complaints.map(formatComplaintOutput),
     });
   }
 };
@@ -350,7 +405,7 @@ const getComplaintById = async (req, res) => {
           message: 'Complaint ticket not found.',
         });
       }
-      return res.status(200).json({ success: true, complaint });
+      return res.status(200).json({ success: true, complaint: formatComplaintOutput(complaint) });
     }
 
     let complaint = null;
@@ -370,7 +425,7 @@ const getComplaintById = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      complaint,
+      complaint: formatComplaintOutput(complaint),
     });
   } catch (error) {
     res.status(500).json({
@@ -415,7 +470,7 @@ const markInProgress = async (req, res) => {
       return res.status(200).json({
         success: true,
         message: `Complaint ${complaint.complaintId} marked In Progress.`,
-        complaint,
+        complaint: formatComplaintOutput(complaint),
       });
     }
 
@@ -462,7 +517,7 @@ const markInProgress = async (req, res) => {
     res.status(200).json({
       success: true,
       message: `Complaint ${complaint.complaintId} marked In Progress.`,
-      complaint,
+      complaint: formatComplaintOutput(complaint),
     });
   } catch (error) {
     res.status(500).json({
@@ -481,14 +536,26 @@ const submitAction = async (req, res) => {
     const { actionNotes, feedbackRemarks } = req.body;
 
     let afterPhotoUrl = null;
-    if (req.file) {
-      afterPhotoUrl = getFileUrl(req, req.file.filename);
+    if (req.body.afterPhotoBase64 && req.body.afterPhotoBase64.startsWith('data:image/')) {
+      afterPhotoUrl = req.body.afterPhotoBase64;
+    } else if (req.file) {
+      try {
+        const fileBuf = fs.readFileSync(req.file.path);
+        const mime = req.file.mimetype || 'image/jpeg';
+        afterPhotoUrl = `data:${mime};base64,${fileBuf.toString('base64')}`;
+      } catch (err) {
+        afterPhotoUrl = getFileUrl(req, req.file.filename);
+      }
     } else if (req.body.afterPhoto) {
       afterPhotoUrl = req.body.afterPhoto;
     } else if (req.body.afterPhotoUrl) {
       afterPhotoUrl = req.body.afterPhotoUrl;
     } else if (req.body.afterPhotoBase64) {
       afterPhotoUrl = req.body.afterPhotoBase64;
+    }
+
+    if (afterPhotoUrl) {
+      afterPhotoUrl = ensureDataUrl(afterPhotoUrl);
     }
 
     if (!afterPhotoUrl) {
@@ -538,7 +605,7 @@ const submitAction = async (req, res) => {
       return res.status(200).json({
         success: true,
         message: `Resolution for ${complaint.complaintId} submitted for audit verification.`,
-        complaint,
+        complaint: formatComplaintOutput(complaint),
       });
     }
 
@@ -591,7 +658,7 @@ const submitAction = async (req, res) => {
     res.status(200).json({
       success: true,
       message: `Resolution for ${complaint.complaintId} submitted for audit verification.`,
-      complaint,
+      complaint: formatComplaintOutput(complaint),
     });
   } catch (error) {
     console.error('[ComplaintController:submitAction] Error:', error);
@@ -664,7 +731,7 @@ const verifyComplaint = async (req, res) => {
       return res.status(200).json({
         success: true,
         message: `Complaint ${complaint.complaintId} has been ${decision === 'APPROVE' ? 'Approved & Closed' : 'Rejected & Returned to line'}.`,
-        complaint,
+        complaint: formatComplaintOutput(complaint),
       });
     }
 
@@ -721,7 +788,7 @@ const verifyComplaint = async (req, res) => {
     res.status(200).json({
       success: true,
       message: `Complaint ${complaint.complaintId} has been ${decision === 'APPROVE' ? 'Approved & Closed' : 'Rejected & Returned to line'}.`,
-      complaint,
+      complaint: formatComplaintOutput(complaint),
     });
   } catch (error) {
     console.error('[ComplaintController:verifyComplaint] Error:', error);
@@ -1346,7 +1413,7 @@ const reassignComplaint = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: `Task successfully assigned to ${supervisor.name} (${supervisor.department}).`,
-      complaint,
+      complaint: formatComplaintOutput(complaint),
     });
   } catch (error) {
     console.error('[ComplaintController:reassignComplaint] Error:', error);
