@@ -153,15 +153,40 @@ export const App = () => {
 
   // On action submitted
   const handleActionSuccess = (updatedTicket) => {
-    showToast(`Proof for ${updatedTicket.complaintId} submitted for Audit Verification!`);
+    showToast(`Proof for ${updatedTicket?.complaintId || 'Ticket'} submitted for Audit Verification!`);
+    if (updatedTicket) {
+      setComplaints((prev) =>
+        prev.map((c) =>
+          c._id === updatedTicket._id || c.complaintId === updatedTicket.complaintId
+            ? { ...c, ...updatedTicket }
+            : c
+        )
+      );
+      if (
+        selectedComplaint &&
+        (selectedComplaint._id === updatedTicket._id ||
+          selectedComplaint.complaintId === updatedTicket.complaintId)
+      ) {
+        setSelectedComplaint(updatedTicket);
+      }
+    }
     loadData();
   };
 
   // On ticket update from detail modal
   const handleComplaintUpdated = (updatedTicket) => {
-    setSelectedComplaint(updatedTicket);
+    if (updatedTicket) {
+      setSelectedComplaint(updatedTicket);
+      setComplaints((prev) =>
+        prev.map((c) =>
+          c._id === updatedTicket._id || c.complaintId === updatedTicket.complaintId
+            ? { ...c, ...updatedTicket }
+            : c
+        )
+      );
+      showToast(`Ticket ${updatedTicket.complaintId} updated successfully.`);
+    }
     loadData();
-    showToast(`Ticket ${updatedTicket.complaintId} updated successfully.`);
   };
 
   // Render dedicated Login Page when not authenticated

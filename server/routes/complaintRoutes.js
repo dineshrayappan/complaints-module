@@ -82,7 +82,7 @@ router.patch('/:id/in-progress', verifyToken, markInProgress);
 router.post(
   '/:id/submit-action',
   verifyToken,
-  requireRole(['ACTION_PERSON', 'SUPERVISOR']),
+  requireRole(['ACTION_PERSON', 'SUPERVISOR', 'ADMIN', 'AUDITOR']),
   safeUploadAfterPhoto,
   submitAction
 );

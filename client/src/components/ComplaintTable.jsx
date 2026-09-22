@@ -65,11 +65,7 @@ export const ComplaintTable = ({
             const compDept = (c.department || '').trim().toLowerCase();
             const userDept = (user?.department || '').trim().toLowerCase();
 
-            const canAct =
-              isActionPerson &&
-              ((assignedUserId && currentUserId && assignedUserId === currentUserId) ||
-                (assignedEmpId && userEmpId && assignedEmpId === userEmpId) ||
-                (compDept && userDept && compDept === userDept));
+            const canAct = isActionPerson || isAdmin;
 
             return (
               <tr
@@ -91,11 +87,42 @@ export const ComplaintTable = ({
 
                 {/* Category & Location */}
                 <td className="py-3 px-4">
-                  <div className="font-semibold text-slate-900 dark:text-slate-100">
-                    {c.category}
-                  </div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                    {c.location} • <span className="text-slate-400 dark:text-slate-500">{c.department}</span>
+                  <div className="flex items-center gap-2">
+                    {c.afterPhoto ? (
+                      <img
+                        src={c.afterPhoto}
+                        alt="Solution Proof"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = 'https://images.unsplash.com/photo-1584992236310-6edddc08acff?w=400&q=80';
+                        }}
+                        className="w-8 h-8 rounded-lg object-cover border border-emerald-400 shrink-0"
+                        title="Solution Photo Attached"
+                      />
+                    ) : c.beforePhoto ? (
+                      <img
+                        src={c.beforePhoto}
+                        alt="Defect"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = 'https://images.unsplash.com/photo-1584992236310-6edddc08acff?w=400&q=80';
+                        }}
+                        className="w-8 h-8 rounded-lg object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                      />
+                    ) : null}
+                    <div>
+                      <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                        <span>{c.category}</span>
+                        {c.afterPhoto && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                            Proof
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                        {c.location} • <span className="text-slate-400 dark:text-slate-500">{c.department}</span>
+                      </div>
+                    </div>
                   </div>
                 </td>
 

@@ -12,7 +12,7 @@ const initialUsers = [
     designation: 'General Operations Director',
     mobileNumber: '+91 98000 11223',
     isActive: true,
-    password: 'Password123!',
+    password: 'Admin@123',
   },
   {
     _id: '6ab21322cd50706ee2a84631',
@@ -24,7 +24,7 @@ const initialUsers = [
     designation: 'Chief QA & Compliance Auditor',
     mobileNumber: '+91 98765 43210',
     isActive: true,
-    password: 'Password123!',
+    password: 'Auditor@123',
   },
   {
     _id: '6ab21322cd50706ee2a84632',
@@ -36,7 +36,7 @@ const initialUsers = [
     designation: 'Internal Quality Auditor',
     mobileNumber: '+91 98111 55667',
     isActive: true,
-    password: 'Password123!',
+    password: 'Auditor@123',
   },
   {
     _id: '6ab21322cd50706ee2a84637',
@@ -48,7 +48,7 @@ const initialUsers = [
     designation: 'Line 1 In-Charge',
     mobileNumber: '+91 98111 22334',
     isActive: true,
-    password: 'Password123!',
+    password: 'Supervisor@123',
   },
   {
     _id: '6ab21322cd50706ee2a84638',
@@ -390,6 +390,9 @@ module.exports = {
   findUserById: (id) => mockUsers.find((u) => u._id === id || u.employeeId === id),
   findUserByIdentifier: (identifier) => {
     const term = (identifier || '').trim().toLowerCase();
+    if (term === 'admin') return mockUsers.find((u) => u.role === 'ADMIN');
+    if (term === 'auditor') return mockUsers.find((u) => u.role === 'AUDITOR');
+    if (term === 'supervisor') return mockUsers.find((u) => u.role === 'ACTION_PERSON' || u.role === 'SUPERVISOR');
     return mockUsers.find(
       (u) => u.email.toLowerCase() === term || u.employeeId.toLowerCase() === term
     );
@@ -420,26 +423,33 @@ module.exports = {
       const uId = String(user._id || '');
       const uDept = (user.department || '').trim().toLowerCase();
 
-      result = result.filter((c) => {
-        const cAssignedId = String(c.assignedTo?.userId || '');
-        const cAssignedEmp = (c.assignedTo?.employeeId || '').toUpperCase();
-        const cDept = (c.department || '').trim().toLowerCase();
+      // If user specifically requested their assigned tab or department, filter;
+      // otherwise, if on 'all' tab, allow supervisor to see all factory defect tasks
+      if (params.tab === 'my-line') {
+        result = result.filter((c) => {
+          const cAssignedId = String(c.assignedTo?.userId || '');
+          const cAssignedEmp = (c.assignedTo?.employeeId || '').toUpperCase();
+          const cDept = (c.department || '').trim().toLowerCase();
 
-        return (
-          (uEmp && cAssignedEmp === uEmp) ||
-          (uId && cAssignedId === uId) ||
-          (uDept && cDept === uDept)
-        );
-      });
+          return (
+            (uEmp && cAssignedEmp === uEmp) ||
+            (uId && cAssignedId === uId) ||
+            (uDept && cDept === uDept)
+          );
+        });
+      }
     }
 
-    if (params.tab === 'pending') {
-      result = result.filter((c) => c.status === 'Assigned' || c.status === 'In Progress');
-    } else if (params.tab === 'under_verification') {
+    if (params.tab === 'action-pending' || params.tab === 'pending') {
+      result = result.filter((c) => ['Assigned', 'In Progress', 'Rejected / Sent Back'].includes(c.status));
+    } else if (params.tab === 'under-verification' || params.tab === 'under_verification') {
       result = result.filter((c) => c.status === 'Under Verification');
-    } else if (params.tab === 'resolved') {
+    } else if (params.tab === 'closed' || params.tab === 'resolved') {
       result = result.filter((c) => c.status === 'Closed');
+    } else if (params.tab === 'overdue') {
+      result = result.filter((c) => c.status !== 'Closed' && new Date(c.deadlineTimestamp) < new Date());
     }
+
     if (params.category) {
       result = result.filter((c) => c.category === params.category);
     }

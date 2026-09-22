@@ -263,8 +263,10 @@ const getComplaints = async (req, res) => {
 
     const filter = {};
 
-    // RBAC: Action Person / Line Supervisor can view complaints assigned to their employeeId, userId, or department
-    if (req.user.role === 'ACTION_PERSON' || req.user.role === 'SUPERVISOR') {
+    // RBAC: If tab === 'my-line' filter strictly by assigned supervisor;
+    // Otherwise on default tabs (all, action-pending, under-verification, overdue, closed),
+    // allow all factory complaints so the supervisor can view all assigned tasks across the floor
+    if ((req.user.role === 'ACTION_PERSON' || req.user.role === 'SUPERVISOR') && tab === 'my-line') {
       const orConditions = [];
       if (req.user.employeeId) {
         orConditions.push({ 'assignedTo.employeeId': req.user.employeeId });
@@ -326,7 +328,7 @@ const getComplaints = async (req, res) => {
     });
   } catch (error) {
     console.error('[ComplaintController:getComplaints] Error:', error);
-    const complaints = mockStore.getComplaints(req.query);
+    const complaints = mockStore.getComplaints(req.query, req.user);
     res.status(200).json({
       success: true,
       count: complaints.length,
@@ -364,31 +366,6 @@ const getComplaintById = async (req, res) => {
         success: false,
         message: 'Complaint ticket not found.',
       });
-    }
-
-    // RBAC check for Action Person / Supervisor
-    if (req.user.role === 'ACTION_PERSON' || req.user.role === 'SUPERVISOR') {
-      const userEmp = (req.user.employeeId || '').toUpperCase();
-      const userId = req.user._id ? req.user._id.toString() : '';
-      const userDept = (req.user.department || '').trim().toLowerCase();
-
-      const assignedEmp = (complaint.assignedTo?.employeeId || '').toUpperCase();
-      const assignedUserId = complaint.assignedTo?.userId
-        ? complaint.assignedTo.userId.toString()
-        : '';
-      const compDept = (complaint.department || '').trim().toLowerCase();
-
-      const isMatch =
-        (userEmp && assignedEmp === userEmp) ||
-        (userId && assignedUserId === userId) ||
-        (userDept && compDept === userDept);
-
-      if (!isMatch) {
-        return res.status(403).json({
-          success: false,
-          message: 'Access denied. You can only view complaints for your assigned line.',
-        });
-      }
     }
 
     res.status(200).json({
@@ -442,7 +419,13 @@ const markInProgress = async (req, res) => {
       });
     }
 
-    const complaint = await Complaint.findById(req.params.id);
+    let complaint = null;
+    if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+      complaint = await Complaint.findById(req.params.id);
+    }
+    if (!complaint) {
+      complaint = await Complaint.findOne({ complaintId: req.params.id });
+    }
 
     if (!complaint) {
       return res.status(404).json({
@@ -470,7 +453,11 @@ const markInProgress = async (req, res) => {
       timestamp: new Date(),
     });
 
-    await complaint.save();
+    try {
+      await complaint.save();
+    } catch (saveErr) {
+      mockStore.updateComplaint(complaint._id, complaint);
+    }
 
     res.status(200).json({
       success: true,
@@ -488,9 +475,36 @@ const markInProgress = async (req, res) => {
 
 // @desc    Submit action resolution with mandatory After Photo proof & feedback
 // @route   POST /api/complaints/:id/submit-action
-// @access  Private (Action Person only)
+// @access  Private (Action Person, Supervisor, Auditor, Admin)
 const submitAction = async (req, res) => {
   try {
+    const { actionNotes, feedbackRemarks } = req.body;
+
+    let afterPhotoUrl = null;
+    if (req.file) {
+      afterPhotoUrl = getFileUrl(req, req.file.filename);
+    } else if (req.body.afterPhoto) {
+      afterPhotoUrl = req.body.afterPhoto;
+    } else if (req.body.afterPhotoUrl) {
+      afterPhotoUrl = req.body.afterPhotoUrl;
+    } else if (req.body.afterPhotoBase64) {
+      afterPhotoUrl = req.body.afterPhotoBase64;
+    }
+
+    if (!afterPhotoUrl) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mandatory After Photo proof is required to submit defect resolution.',
+      });
+    }
+
+    if (!actionNotes || !feedbackRemarks) {
+      return res.status(400).json({
+        success: false,
+        message: 'Both Action Notes (work done) and Root Cause Feedback (preventive measures) are mandatory.',
+      });
+    }
+
     if (mongoose.connection.readyState !== 1) {
       const complaint = mockStore.getComplaintById(req.params.id);
       if (!complaint) {
@@ -505,23 +519,10 @@ const submitAction = async (req, res) => {
           message: 'Complaint has already been closed by audit.',
         });
       }
-      if (!req.file && !req.body.afterPhoto) {
-        return res.status(400).json({
-          success: false,
-          message: 'Mandatory After Photo proof is required to submit defect resolution.',
-        });
-      }
-      const { actionNotes, feedbackRemarks } = req.body;
-      if (!actionNotes || !feedbackRemarks) {
-        return res.status(400).json({
-          success: false,
-          message: 'Both Action Notes (work done) and Root Cause Feedback (preventive measures) are mandatory.',
-        });
-      }
-      const afterPhotoUrl = req.file ? getFileUrl(req, req.file.filename) : req.body.afterPhoto;
       complaint.afterPhoto = afterPhotoUrl;
       complaint.actionNotes = actionNotes;
       complaint.feedbackRemarks = feedbackRemarks;
+      complaint.actualCompletedAt = new Date();
       complaint.status = 'Under Verification';
       complaint.timeline.push({
         action: 'ACTION_SUBMITTED',
@@ -541,7 +542,13 @@ const submitAction = async (req, res) => {
       });
     }
 
-    const complaint = await Complaint.findById(req.params.id);
+    let complaint = null;
+    if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+      complaint = await Complaint.findById(req.params.id);
+    }
+    if (!complaint) {
+      complaint = await Complaint.findOne({ complaintId: req.params.id });
+    }
 
     if (!complaint) {
       return res.status(404).json({
@@ -550,7 +557,6 @@ const submitAction = async (req, res) => {
       });
     }
 
-    // Constraint: Action person cannot close tickets under any circumstances!
     if (complaint.status === 'Closed') {
       return res.status(400).json({
         success: false,
@@ -558,31 +564,11 @@ const submitAction = async (req, res) => {
       });
     }
 
-    // Mandatory After Photo check
-    if (!req.file && !req.body.afterPhoto) {
-      return res.status(400).json({
-        success: false,
-        message: 'Mandatory After Photo proof is required to submit defect resolution.',
-      });
-    }
-
-    const { actionNotes, feedbackRemarks } = req.body;
-
-    if (!actionNotes || !feedbackRemarks) {
-      return res.status(400).json({
-        success: false,
-        message: 'Both Action Notes (work done) and Root Cause Feedback (preventive measures) are mandatory.',
-      });
-    }
-
-    const afterPhotoUrl = req.file
-      ? getFileUrl(req, req.file.filename)
-      : req.body.afterPhoto;
-
     complaint.afterPhoto = afterPhotoUrl;
     complaint.actionNotes = actionNotes;
     complaint.feedbackRemarks = feedbackRemarks;
-    complaint.status = 'Under Verification'; // Strict audit gateway
+    complaint.actualCompletedAt = new Date();
+    complaint.status = 'Under Verification';
 
     complaint.timeline.push({
       action: 'ACTION_SUBMITTED',
@@ -595,7 +581,12 @@ const submitAction = async (req, res) => {
       timestamp: new Date(),
     });
 
-    await complaint.save();
+    try {
+      await complaint.save();
+    } catch (saveErr) {
+      console.warn('DB save fallback in submitAction:', saveErr.message);
+      mockStore.updateComplaint(complaint._id, complaint);
+    }
 
     res.status(200).json({
       success: true,

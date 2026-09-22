@@ -24,6 +24,7 @@ export const ActionTakenModal = ({ complaint, isOpen, onClose, onSuccess }) => {
   // After Photo State
   const [afterFile, setAfterFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [photoBase64, setPhotoBase64] = useState('');
   const [imageMeta, setImageMeta] = useState(null);
   const [compressing, setCompressing] = useState(false);
 
@@ -43,14 +44,21 @@ export const ActionTakenModal = ({ complaint, isOpen, onClose, onSuccess }) => {
         quality: 0.82,
       });
 
-      setAfterFile(result.file);
-      setPreviewUrl(result.previewUrl);
+      setAfterFile(result.file || file);
+      setPreviewUrl(result.previewUrl || result.base64);
+      setPhotoBase64(result.base64 || '');
       setImageMeta({
-        originalSize: result.originalSize,
-        compressedSize: result.compressedSize,
+        originalSize: result.originalSize || file.size,
+        compressedSize: result.compressedSize || file.size,
       });
     } catch (err) {
-      setError('Image compression failed: ' + err.message);
+      console.warn('Compression error, using raw file:', err);
+      setAfterFile(file);
+      const fallbackUrl = URL.createObjectURL(file);
+      setPreviewUrl(fallbackUrl);
+      const reader = new FileReader();
+      reader.onloadend = () => setPhotoBase64(reader.result);
+      reader.readAsDataURL(file);
     } finally {
       setCompressing(false);
     }
@@ -60,7 +68,7 @@ export const ActionTakenModal = ({ complaint, isOpen, onClose, onSuccess }) => {
     e.preventDefault();
     setError(null);
 
-    if (!afterFile) {
+    if (!afterFile && !photoBase64) {
       setError('Mandatory After Photo proof is required to submit defect resolution.');
       return;
     }
@@ -80,7 +88,12 @@ export const ActionTakenModal = ({ complaint, isOpen, onClose, onSuccess }) => {
     try {
       setSubmitting(true);
       const formData = new FormData();
-      formData.append('afterPhoto', afterFile);
+      if (afterFile) {
+        formData.append('afterPhoto', afterFile);
+      }
+      if (photoBase64) {
+        formData.append('afterPhotoBase64', photoBase64);
+      }
       formData.append('actionNotes', actionNotes.trim());
       formData.append('feedbackRemarks', feedbackRemarks.trim());
 
@@ -187,6 +200,9 @@ export const ActionTakenModal = ({ complaint, isOpen, onClose, onSuccess }) => {
               ref={fileInputRef}
               accept="image/*"
               capture="environment"
+              onClick={(e) => {
+                e.target.value = null;
+              }}
               onChange={handlePhotoCapture}
               className="hidden"
               id="camera-after-photo"
