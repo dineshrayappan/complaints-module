@@ -6,6 +6,7 @@ const dotenv = require('dotenv');
 // Load environment variables
 dotenv.config();
 
+const mongoose = require('mongoose');
 const { connectDB } = require('./config/db');
 const { seedData } = require('./scripts/seed');
 const User = require('./models/User');

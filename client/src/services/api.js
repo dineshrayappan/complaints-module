@@ -2,10 +2,7 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
-  timeout: 10000, // 10s safety timeout to prevent hanging requests
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  timeout: 60000, // 60s timeout for mobile camera photo uploads
 });
 
 // Attach JWT token automatically to every outgoing request
@@ -18,7 +15,15 @@ api.interceptors.request.use(
     // CRITICAL: When data is FormData, remove Content-Type so browser / axios
     // automatically populates multipart/form-data with the required boundary string
     if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
-      delete config.headers['Content-Type'];
+      if (config.headers) {
+        if (typeof config.headers.delete === 'function') {
+          config.headers.delete('Content-Type');
+          config.headers.delete('content-type');
+        } else {
+          delete config.headers['Content-Type'];
+          delete config.headers['content-type'];
+        }
+      }
     }
     return config;
   },

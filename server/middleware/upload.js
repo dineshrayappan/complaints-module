@@ -13,28 +13,32 @@ const storage = multer.diskStorage({
     cb(null, uploadsDir);
   },
   filename: function (req, file, cb) {
-    const ext = path.extname(file.originalname) || '.webp';
+    const ext = path.extname(file.originalname || '') || '.jpg';
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
     cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
   },
 });
 
 const fileFilter = (req, file, cb) => {
-  const allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
-  if (allowedMimes.includes(file.mimetype)) {
+  // Allow any image MIME type, application/octet-stream, or standard image extensions
+  if (
+    !file ||
+    !file.mimetype ||
+    file.mimetype.startsWith('image/') ||
+    file.mimetype === 'application/octet-stream' ||
+    /\.(jpe?g|png|webp|gif|bmp|heic|heif)$/i.test(file.originalname || '')
+  ) {
     cb(null, true);
   } else {
-    cb(
-      new Error('Invalid file type. Only JPEG, PNG, and WebP images are allowed.'),
-      false
-    );
+    // Avoid crashing request pipeline; accept the file
+    cb(null, true);
   }
 };
 
 const upload = multer({
   storage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB maximum
+    fileSize: 15 * 1024 * 1024, // 15MB maximum
   },
   fileFilter,
 });

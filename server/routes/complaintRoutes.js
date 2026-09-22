@@ -15,6 +15,39 @@ const {
 const { verifyToken, requireRole } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 
+// Safe Multer upload handlers that catch errors and allow base64 fallback
+const safeUploadBeforePhoto = (req, res, next) => {
+  upload.single('beforePhoto')(req, res, (err) => {
+    if (err) {
+      console.warn('[Multer:uploadBeforePhoto] Warning:', err.message);
+      if (req.body && (req.body.beforePhoto || req.body.beforePhotoUrl || req.body.beforePhotoBase64)) {
+        return next();
+      }
+      return res.status(400).json({
+        success: false,
+        message: `Photo upload error: ${err.message}`,
+      });
+    }
+    next();
+  });
+};
+
+const safeUploadAfterPhoto = (req, res, next) => {
+  upload.single('afterPhoto')(req, res, (err) => {
+    if (err) {
+      console.warn('[Multer:uploadAfterPhoto] Warning:', err.message);
+      if (req.body && (req.body.afterPhoto || req.body.afterPhotoUrl || req.body.afterPhotoBase64)) {
+        return next();
+      }
+      return res.status(400).json({
+        success: false,
+        message: `Photo upload error: ${err.message}`,
+      });
+    }
+    next();
+  });
+};
+
 // Admin executive oversight & monitoring endpoint (must be declared before :id)
 router.get('/admin/oversight', verifyToken, requireRole(['ADMIN', 'AUDITOR']), getAdminOversightStats);
 
@@ -30,7 +63,7 @@ router.post(
   '/',
   verifyToken,
   requireRole(['AUDITOR', 'ADMIN']),
-  upload.single('beforePhoto'),
+  safeUploadBeforePhoto,
   createComplaint
 );
 
@@ -50,7 +83,7 @@ router.post(
   '/:id/submit-action',
   verifyToken,
   requireRole(['ACTION_PERSON', 'SUPERVISOR']),
-  upload.single('afterPhoto'),
+  safeUploadAfterPhoto,
   submitAction
 );
 

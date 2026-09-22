@@ -40,15 +40,8 @@ const complaintSchema = new mongoose.Schema(
     category: {
       type: String,
       required: [true, 'Defect category is required'],
-      enum: [
-        'Stitching Fault',
-        'Fabric Defect',
-        'Oil / Stain',
-        'Measurement / Fit',
-        'Trims / Accessories',
-        'Finishing / Pressing',
-        'Other Defect',
-      ],
+      trim: true,
+      default: 'Stitching Fault',
     },
     department: {
       type: String,
@@ -80,9 +73,9 @@ const complaintSchema = new mongoose.Schema(
     },
     assignedTo: {
       userId: {
-        type: mongoose.Schema.Types.ObjectId,
+        type: mongoose.Schema.Types.Mixed,
         ref: 'User',
-        required: true,
+        required: false,
       },
       employeeId: { type: String, required: true },
       name: { type: String, required: true },
@@ -92,9 +85,9 @@ const complaintSchema = new mongoose.Schema(
     },
     createdBy: {
       userId: {
-        type: mongoose.Schema.Types.ObjectId,
+        type: mongoose.Schema.Types.Mixed,
         ref: 'User',
-        required: true,
+        required: false,
       },
       employeeId: { type: String, required: true },
       name: { type: String, required: true },

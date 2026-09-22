@@ -179,6 +179,7 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
 
   // Photo State
   const [beforeFile, setBeforeFile] = useState(null);
+  const [photoBase64, setPhotoBase64] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [imageMeta, setImageMeta] = useState(null);
   const [compressing, setCompressing] = useState(false);
@@ -233,14 +234,19 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
         quality: 0.82,
       });
 
-      setBeforeFile(result.file);
+      setBeforeFile(result.file || file);
       setPreviewUrl(result.previewUrl);
+      setPhotoBase64(result.dataUrl);
       setImageMeta({
-        originalSize: result.originalSize,
-        compressedSize: result.compressedSize,
+        originalSize: result.originalSize || file.size,
+        compressedSize: result.compressedSize || file.size,
       });
     } catch (err) {
-      setError('Image compression failed: ' + err.message);
+      console.warn('Compression error fallback:', err);
+      setBeforeFile(file);
+      try {
+        setPreviewUrl(URL.createObjectURL(file));
+      } catch (e) {}
     } finally {
       setCompressing(false);
     }
@@ -301,14 +307,21 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
     try {
       setSubmitting(true);
       const formData = new FormData();
-      formData.append('beforePhoto', beforeFile);
-      formData.append('category', category);
-      formData.append('department', selectedSupervisor?.department || 'Sewing');
-      formData.append('location', location.trim());
-      formData.append('priority', priority);
+      if (beforeFile) {
+        formData.append('beforePhoto', beforeFile);
+      }
+      if (photoBase64) {
+        formData.append('beforePhotoBase64', photoBase64);
+      } else if (previewUrl && previewUrl.startsWith('data:')) {
+        formData.append('beforePhotoBase64', previewUrl);
+      }
+      formData.append('category', category || 'Stitching Fault');
+      formData.append('department', selectedSupervisor?.department || 'Sewing Line 1');
+      formData.append('location', location.trim() || 'Floor 1');
+      formData.append('priority', priority || 'HIGH');
       formData.append('description', description.trim());
       formData.append('assignedToUserId', assignedId);
-      formData.append('deadlineHours', deadlineHours.toString());
+      formData.append('deadlineHours', (deadlineHours || 16).toString());
 
       const res = await complaintService.createComplaint(formData);
       if (res.data.success) {
@@ -384,6 +397,9 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
               accept="image/*"
               capture="environment"
               onChange={handlePhotoCapture}
+              onClick={(e) => {
+                e.target.value = null;
+              }}
               className="hidden"
               id="camera-before-photo"
             />

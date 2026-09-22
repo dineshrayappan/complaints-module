@@ -8,102 +8,167 @@ export const compressImage = (
   file,
   { maxWidth = 1600, maxHeight = 1600, quality = 0.82 } = {}
 ) => {
-  return new Promise((resolve, reject) => {
-    if (!file || !file.type.startsWith('image/')) {
-      return reject(new Error('Selected file is not an image.'));
+  return new Promise((resolve) => {
+    if (!file) {
+      return resolve({
+        file: null,
+        previewUrl: null,
+        dataUrl: null,
+        originalSize: 0,
+        compressedSize: 0,
+      });
+    }
+
+    // If not an image or File API unavailable, fallback gracefully to raw file
+    if (!file.type || !file.type.startsWith('image/')) {
+      let previewUrl = null;
+      try {
+        previewUrl = URL.createObjectURL(file);
+      } catch (e) {
+        // ignore
+      }
+      return resolve({
+        file,
+        previewUrl,
+        dataUrl: null,
+        originalSize: file.size || 0,
+        compressedSize: file.size || 0,
+      });
     }
 
     const reader = new FileReader();
     reader.readAsDataURL(file);
 
     reader.onload = (event) => {
+      const base64Data = event.target.result;
       const img = new Image();
-      img.src = event.target.result;
+      img.src = base64Data;
 
       img.onload = () => {
-        let { width, height } = img;
+        try {
+          let { width, height } = img;
 
-        // Calculate scaled dimensions keeping aspect ratio
-        if (width > height) {
-          if (width > maxWidth) {
-            height = Math.round((height * maxWidth) / width);
-            width = maxWidth;
-          }
-        } else {
-          if (height > maxHeight) {
-            width = Math.round((width * maxHeight) / height);
-            height = maxHeight;
-          }
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          return reject(new Error('Canvas 2D context unavailable.'));
-        }
-
-        // Apply smooth resampling
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // Prefer modern image/webp, fallback gracefully to image/jpeg
-        const outputFormat = 'image/webp';
-        
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) {
-              // Fallback to jpeg if WebP conversion fails
-              canvas.toBlob(
-                (fallbackBlob) => {
-                  if (!fallbackBlob) {
-                    return reject(new Error('Canvas image compression failed.'));
-                  }
-                  const compressedFile = new File(
-                    [fallbackBlob],
-                    file.name.replace(/\.[^/.]+$/, '.jpg'),
-                    { type: 'image/jpeg', lastModified: Date.now() }
-                  );
-                  const previewUrl = URL.createObjectURL(fallbackBlob);
-                  resolve({
-                    file: compressedFile,
-                    previewUrl,
-                    originalSize: file.size,
-                    compressedSize: fallbackBlob.size,
-                  });
-                },
-                'image/jpeg',
-                quality
-              );
-              return;
+          // Calculate scaled dimensions keeping aspect ratio
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
             }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
 
-            const compressedFile = new File(
-              [blob],
-              file.name.replace(/\.[^/.]+$/, '.webp'),
-              { type: outputFormat, lastModified: Date.now() }
-            );
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
 
-            const previewUrl = URL.createObjectURL(blob);
-            resolve({
-              file: compressedFile,
-              previewUrl,
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            let previewUrl = null;
+            try {
+              previewUrl = URL.createObjectURL(file);
+            } catch (e) {}
+            return resolve({
+              file,
+              previewUrl: previewUrl || base64Data,
+              dataUrl: base64Data,
               originalSize: file.size,
-              compressedSize: blob.size,
+              compressedSize: file.size,
             });
-          },
-          outputFormat,
-          quality
-        );
+          }
+
+          // Apply smooth resampling
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, width, height);
+
+          let dataUrl = null;
+          try {
+            dataUrl = canvas.toDataURL('image/jpeg', quality);
+          } catch (e) {
+            dataUrl = base64Data;
+          }
+
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                let previewUrl = null;
+                try {
+                  previewUrl = URL.createObjectURL(file);
+                } catch (e) {}
+                return resolve({
+                  file,
+                  previewUrl: previewUrl || dataUrl || base64Data,
+                  dataUrl: dataUrl || base64Data,
+                  originalSize: file.size,
+                  compressedSize: file.size,
+                });
+              }
+
+              const compressedFile = new File(
+                [blob],
+                (file.name || 'audit-defect-photo').replace(/\.[^/.]+$/, '.jpg'),
+                { type: 'image/jpeg', lastModified: Date.now() }
+              );
+
+              const previewUrl = URL.createObjectURL(blob);
+              resolve({
+                file: compressedFile,
+                previewUrl,
+                dataUrl: dataUrl || base64Data,
+                originalSize: file.size,
+                compressedSize: blob.size,
+              });
+            },
+            'image/jpeg',
+            quality
+          );
+        } catch (canvasErr) {
+          let previewUrl = null;
+          try {
+            previewUrl = URL.createObjectURL(file);
+          } catch (e) {}
+          resolve({
+            file,
+            previewUrl: previewUrl || base64Data,
+            dataUrl: base64Data,
+            originalSize: file.size,
+            compressedSize: file.size,
+          });
+        }
       };
 
-      img.onerror = (err) => reject(new Error('Failed to load image for compression.'));
+      img.onerror = () => {
+        let previewUrl = null;
+        try {
+          previewUrl = URL.createObjectURL(file);
+        } catch (e) {}
+        resolve({
+          file,
+          previewUrl: previewUrl || base64Data,
+          dataUrl: base64Data,
+          originalSize: file.size,
+          compressedSize: file.size,
+        });
+      };
     };
 
-    reader.onerror = (err) => reject(new Error('Failed to read image file.'));
+    reader.onerror = () => {
+      let previewUrl = null;
+      try {
+        previewUrl = URL.createObjectURL(file);
+      } catch (e) {}
+      resolve({
+        file,
+        previewUrl,
+        dataUrl: null,
+        originalSize: file.size,
+        compressedSize: file.size,
+      });
+    };
   });
 };
 

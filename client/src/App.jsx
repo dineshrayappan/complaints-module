@@ -138,7 +138,16 @@ export const App = () => {
 
   // On ticket created
   const handleNewComplaintSuccess = (newTicket) => {
-    showToast(`Defect ${newTicket.complaintId} logged & 12–24h SLA activated!`);
+    showToast(`Defect ${newTicket?.complaintId || 'Ticket'} logged & 12–24h SLA activated!`);
+    if (newTicket) {
+      setComplaints((prev) => [
+        newTicket,
+        ...prev.filter(
+          (c) => c._id !== newTicket._id && c.complaintId !== newTicket.complaintId
+        ),
+      ]);
+    }
+    setActiveTab('all');
     loadData();
   };
 
