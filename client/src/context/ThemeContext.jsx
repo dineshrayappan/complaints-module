@@ -3,17 +3,19 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 const ThemeContext = createContext(null);
 
 export const ThemeProvider = ({ children }) => {
-  // Default to clean daylight mode for maximum neatness & clarity
+  // Default to clean daylight light mode
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('garment_qms_theme') || 'light';
+    return 'light';
   });
 
   useEffect(() => {
     const root = document.documentElement;
     if (theme === 'dark') {
       root.classList.add('dark');
+      root.classList.remove('light');
     } else {
       root.classList.remove('dark');
+      root.classList.add('light');
     }
     localStorage.setItem('garment_qms_theme', theme);
   }, [theme]);
