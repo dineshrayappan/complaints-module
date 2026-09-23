@@ -16,7 +16,6 @@ import {
   Moon,
   AlertCircle,
   CheckCircle2,
-  Sparkles,
   Phone,
   Briefcase,
   Mail,
@@ -27,7 +26,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
 export const LoginPage = () => {
-  const { login, register, demoUsers, switchUser } = useAuth();
+  const { login, register } = useAuth();
   const { isDark, toggleTheme } = useTheme();
 
   // Active portal: 'ADMIN', 'AUDITOR', or 'SUPERVISOR'
@@ -57,13 +56,6 @@ export const LoginPage = () => {
   });
   const [regLoading, setRegLoading] = useState(false);
   const [regError, setRegError] = useState('');
-
-  // Filter demo users by role
-  const adminUsers = demoUsers.filter((u) => u.role === 'ADMIN');
-  const auditorUsers = demoUsers.filter((u) => u.role === 'AUDITOR');
-  const supervisorUsers = demoUsers.filter(
-    (u) => u.role === 'ACTION_PERSON' || u.role === 'SUPERVISOR'
-  );
 
   const handlePortalSwitch = (portal) => {
     setActivePortal(portal);
@@ -97,38 +89,6 @@ export const LoginPage = () => {
       setLoading(false);
     } else {
       setSuccessMessage('Authentication successful. Loading workspace...');
-    }
-  };
-
-  const handleQuickDemoLogin = async (userObj) => {
-    setErrorMessage('');
-    setSuccessMessage('');
-    setLoading(true);
-    try {
-      const res = await switchUser(userObj._id);
-      if (res && !res.success) {
-        setErrorMessage(res.message || 'Failed to sign in with selected profile.');
-        setLoading(false);
-      }
-    } catch (err) {
-      setErrorMessage('Failed to sign in with demo profile.');
-      setLoading(false);
-    }
-  };
-
-  // Direct login for default admin if not yet loaded in demoUsers list
-  const handleQuickAdminDefault = async () => {
-    setErrorMessage('');
-    setSuccessMessage('');
-    setLoading(true);
-    const result = await login('ADM-001', 'Admin@123', 'ADMIN');
-    if (!result.success) {
-      // Try with email
-      const fallbackResult = await login('admin@factory.com', 'Admin@123', 'ADMIN');
-      if (!fallbackResult.success) {
-        setErrorMessage(fallbackResult.message);
-        setLoading(false);
-      }
     }
   };
 
@@ -443,144 +403,6 @@ export const LoginPage = () => {
                 )}
               </button>
             </form>
-
-            {/* ONE-CLICK INSTANT DEMO LOGINS */}
-            <div className="mt-7 pt-6 border-t border-slate-200/80 dark:border-slate-800">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  Instant 1-Click {activePortal === 'ADMIN' ? 'Admin' : activePortal === 'AUDITOR' ? 'Auditor' : 'Supervisor'} Profile:
-                </span>
-                <span className="text-[10px] text-slate-400 font-mono">Quick Access</span>
-              </div>
-
-              {activePortal === 'ADMIN' ? (
-                <div className="space-y-2">
-                  {adminUsers.length > 0 ? (
-                    adminUsers.map((adm) => (
-                      <button
-                        key={adm._id}
-                        type="button"
-                        onClick={() => handleQuickDemoLogin(adm)}
-                        disabled={loading}
-                        className="w-full text-left p-3 rounded-xl border border-amber-200 dark:border-amber-950/80 bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-100/60 dark:hover:bg-amber-900/30 transition-all flex items-center justify-between group shadow-2xs cursor-pointer"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-amber-500 to-rose-500 text-white flex items-center justify-center font-bold text-xs shadow-xs">
-                            <Crown className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                              <span>{adm.name}</span>
-                              <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 text-[10px] font-mono font-semibold">
-                                {adm.employeeId}
-                              </span>
-                            </div>
-                            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                              {adm.designation} • {adm.department}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400 group-hover:translate-x-1 transition-transform">
-                          <span>Access</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </div>
-                      </button>
-                    ))
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleQuickAdminDefault}
-                      disabled={loading}
-                      className="w-full text-left p-3 rounded-xl border border-amber-200 dark:border-amber-950/80 bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-100/60 dark:hover:bg-amber-900/30 transition-all flex items-center justify-between group shadow-2xs cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-amber-500 to-rose-500 text-white flex items-center justify-center font-bold text-xs shadow-xs">
-                          <Crown className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            <span>Anil Mehta</span>
-                            <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 text-[10px] font-mono font-semibold">
-                              ADM-001
-                            </span>
-                          </div>
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                            General Operations Director • Plant Operations & Executive Oversight
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400 group-hover:translate-x-1 transition-transform">
-                        <span>Access</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </div>
-                    </button>
-                  )}
-                </div>
-              ) : activePortal === 'AUDITOR' ? (
-                <div className="space-y-2">
-                  {auditorUsers.map((aud) => (
-                    <button
-                      key={aud._id}
-                      type="button"
-                      onClick={() => handleQuickDemoLogin(aud)}
-                      disabled={loading}
-                      className="w-full text-left p-3 rounded-xl border border-indigo-100 dark:border-indigo-950/80 bg-indigo-50/50 dark:bg-indigo-950/20 hover:bg-indigo-100/60 dark:hover:bg-indigo-900/30 transition-all flex items-center justify-between group shadow-2xs cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
-                          {aud.name.charAt(0)}
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            <span>{aud.name}</span>
-                            <span className="px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 text-[10px] font-mono font-semibold">
-                              {aud.employeeId}
-                            </span>
-                          </div>
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                            {aud.designation} • {aud.department}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 group-hover:translate-x-1 transition-transform">
-                        <span>Access</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1 no-scrollbar">
-                  {supervisorUsers.map((sup) => (
-                    <button
-                      key={sup._id}
-                      type="button"
-                      onClick={() => handleQuickDemoLogin(sup)}
-                      disabled={loading}
-                      className="text-left p-2.5 rounded-xl border border-emerald-100 dark:border-emerald-950/80 bg-emerald-50/50 dark:bg-emerald-950/20 hover:bg-emerald-100/60 dark:hover:bg-emerald-900/30 transition-all flex items-center justify-between group shadow-2xs cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2.5 overflow-hidden">
-                        <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
-                          {sup.name.charAt(0)}
-                        </div>
-                        <div className="truncate">
-                          <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
-                            <span className="truncate">{sup.name}</span>
-                          </div>
-                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">
-                            {sup.department}
-                          </div>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 shrink-0">
-                        {sup.employeeId}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
         </div>
       </main>
