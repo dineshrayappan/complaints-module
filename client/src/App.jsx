@@ -11,6 +11,7 @@ import {
 import { useAuth } from './context/AuthContext';
 import { useTheme } from './context/ThemeContext';
 import { complaintService } from './services/api';
+import { supabase } from './services/supabase';
 import Header from './components/Header';
 import KpiMetrics from './components/KpiMetrics';
 import ComplaintFilters from './components/ComplaintFilters';
@@ -32,6 +33,7 @@ export const App = () => {
   const [complaints, setComplaints] = useState([]);
   const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
 
   // Filter States
@@ -53,11 +55,15 @@ export const App = () => {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // Load complaints and metrics
-  const loadData = useCallback(async () => {
+  // Load complaints and metrics with silent background refresh capability
+  const loadData = useCallback(async (showSpinner = false) => {
     if (!user) return;
     try {
-      setLoading(true);
+      if (showSpinner) {
+        setLoading(true);
+      } else {
+        setIsRefreshing(true);
+      }
 
       const params = {
         tab: activeTab,
@@ -71,31 +77,92 @@ export const App = () => {
         complaintService.getKpiStats(),
       ]);
 
-      if (complaintsRes.data.success) {
+      if (complaintsRes.data?.success) {
         setComplaints(complaintsRes.data.complaints);
       }
 
-      if (metricsRes.data.success) {
+      if (metricsRes.data?.success) {
         setMetrics(metricsRes.data.metrics);
       }
     } catch (err) {
       console.error('Error fetching complaints data:', err);
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
+      setIsRefreshing(false);
     }
   }, [user, activeTab, categoryFilter, priorityFilter, searchTerm]);
 
+  // Initial load
   useEffect(() => {
-    loadData();
+    loadData(true);
   }, [loadData]);
+
+  // Periodic Auto-Refresh: Poll every 4 seconds silently so changes appear instantly across all users & devices
+  useEffect(() => {
+    if (!user) return;
+
+    const interval = setInterval(() => {
+      loadData(false);
+    }, 4000);
+
+    const handleFocus = () => {
+      loadData(false);
+    };
+
+    window.addEventListener('focus', handleFocus);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadData(false);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [loadData, user]);
+
+  // Real-time Push: Subscribe to Supabase database changes for sub-second instant updates
+  useEffect(() => {
+    if (!supabase || !user) return;
+
+    try {
+      const channel = supabase
+        .channel('complaints-live-feed')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'complaints' },
+          (payload) => {
+            console.log('⚡ [Realtime] Live database mutation detected:', payload.eventType);
+            loadData(false);
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    } catch (err) {
+      console.warn('[Realtime] Subscription notice:', err.message);
+    }
+  }, [loadData, user]);
 
   // Handle Start Progress (Line Supervisor)
   const handleStartProgress = async (complaint) => {
     try {
       const res = await complaintService.markInProgress(complaint._id);
-      if (res.data.success) {
+      if (res.data?.success) {
         showToast(`Ticket ${complaint.complaintId} marked In Progress`);
-        loadData();
+        setComplaints((prev) =>
+          prev.map((c) =>
+            (c._id || c.id) === (complaint._id || complaint.id) || c.complaintId === complaint.complaintId
+              ? { ...c, status: 'In Progress' }
+              : c
+          )
+        );
+        loadData(false);
       }
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to update status');
@@ -116,9 +183,9 @@ export const App = () => {
       setIsDetailModalOpen(true);
       return;
     }
-    const targetId = complaintOrId._id || complaintOrId.complaintId || complaintOrId;
+    const targetId = complaintOrId._id || complaintOrId.id || complaintOrId.complaintId || complaintOrId;
     const localMatch = complaints.find(
-      (c) => c._id === targetId || c.complaintId === targetId
+      (c) => (c._id || c.id) === targetId || c.complaintId === targetId
     );
     if (localMatch) {
       setSelectedComplaint(localMatch);
@@ -126,7 +193,7 @@ export const App = () => {
     } else {
       try {
         const res = await complaintService.getComplaintById(targetId);
-        if (res.data.success) {
+        if (res.data?.success) {
           setSelectedComplaint(res.data.complaint);
           setIsDetailModalOpen(true);
         }
@@ -136,58 +203,87 @@ export const App = () => {
     }
   };
 
-  // On ticket created
+  // On ticket created: Optimistic instant display + reset filters + background sync
   const handleNewComplaintSuccess = (newTicket) => {
-    showToast(`Defect ${newTicket?.complaintId || 'Ticket'} logged & 12–24h SLA activated!`);
-    if (newTicket) {
-      setComplaints((prev) => [
-        newTicket,
-        ...prev.filter(
-          (c) => c._id !== newTicket._id && c.complaintId !== newTicket.complaintId
-        ),
-      ]);
-    }
+    showToast(`Defect ${newTicket?.complaintId || 'Ticket'} logged & live synced!`);
+
+    // Reset filters so the new ticket is immediately visible
+    setCategoryFilter('');
+    setPriorityFilter('');
+    setSearchTerm('');
     setActiveTab('all');
-    loadData();
+
+    if (newTicket) {
+      const ticketId = newTicket._id || newTicket.id;
+      setComplaints((prev) => {
+        const exists = prev.some(
+          (c) => (c._id || c.id) === ticketId || c.complaintId === newTicket.complaintId
+        );
+        if (exists) {
+          return prev.map((c) =>
+            (c._id || c.id) === ticketId || c.complaintId === newTicket.complaintId
+              ? { ...c, ...newTicket }
+              : c
+          );
+        }
+        return [newTicket, ...prev];
+      });
+    }
+
+    // Immediate background refresh for server sync and metrics
+    setTimeout(() => {
+      complaintService.getComplaints({ tab: 'all' }).then((res) => {
+        if (res.data?.success) {
+          setComplaints(res.data.complaints);
+        }
+      });
+      complaintService.getKpiStats().then((res) => {
+        if (res.data?.success) {
+          setMetrics(res.data.metrics);
+        }
+      });
+    }, 150);
   };
 
-  // On action submitted
+  // On action submitted: Optimistic update + silent refresh
   const handleActionSuccess = (updatedTicket) => {
     showToast(`Proof for ${updatedTicket?.complaintId || 'Ticket'} submitted for Audit Verification!`);
     setActiveTab('all');
     if (updatedTicket) {
+      const ticketId = updatedTicket._id || updatedTicket.id;
       setComplaints((prev) =>
         prev.map((c) =>
-          c._id === updatedTicket._id || c.complaintId === updatedTicket.complaintId
+          (c._id || c.id) === ticketId || c.complaintId === updatedTicket.complaintId
             ? { ...c, ...updatedTicket }
             : c
         )
       );
       if (
         selectedComplaint &&
-        (selectedComplaint._id === updatedTicket._id ||
+        ((selectedComplaint._id || selectedComplaint.id) === ticketId ||
           selectedComplaint.complaintId === updatedTicket.complaintId)
       ) {
         setSelectedComplaint(updatedTicket);
       }
     }
-    loadData();
+    loadData(false);
   };
 
   // On ticket update from detail modal
   const handleComplaintUpdated = (updatedTicket) => {
     if (updatedTicket) {
+      const ticketId = updatedTicket._id || updatedTicket.id;
       setSelectedComplaint(updatedTicket);
       setComplaints((prev) =>
         prev.map((c) =>
-          c._id === updatedTicket._id || c.complaintId === updatedTicket.complaintId
+          (c._id || c.id) === ticketId || c.complaintId === updatedTicket.complaintId
             ? { ...c, ...updatedTicket }
             : c
         )
       );
       showToast(`Ticket ${updatedTicket.complaintId} updated successfully.`);
     }
-    loadData();
+    loadData(false);
   };
 
   // Render dedicated Login Page when not authenticated
@@ -206,7 +302,11 @@ export const App = () => {
       )}
 
       {/* Top Navigation Header */}
-      <Header onOpenNewComplaint={() => setIsNewModalOpen(true)} />
+      <Header
+        onOpenNewComplaint={() => setIsNewModalOpen(true)}
+        onRefresh={() => loadData(false)}
+        isRefreshing={isRefreshing}
+      />
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">

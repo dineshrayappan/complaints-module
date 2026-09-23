@@ -20,29 +20,82 @@ import {
   Search,
 } from 'lucide-react';
 import { complaintService } from '../services/api';
+import { supabase } from '../services/supabase';
 
 export const AdminOversightDashboard = ({ onViewComplaint }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [activityFilter, setActivityFilter] = useState('ALL'); // 'ALL', 'AUDITOR', 'SUPERVISOR', 'WARNINGS'
   const [searchQuery, setSearchQuery] = useState('');
 
-  const loadOversightData = async () => {
+  const loadOversightData = async (showSpinner = false) => {
     try {
-      setLoading(true);
+      if (showSpinner) {
+        setLoading(true);
+      } else {
+        setIsRefreshing(true);
+      }
       const res = await complaintService.getAdminOversight();
-      if (res.data.success) {
+      if (res.data?.success) {
         setData(res.data);
       }
     } catch (err) {
       console.error('Failed to load admin oversight data:', err);
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
-    loadOversightData();
+    loadOversightData(true);
+
+    const interval = setInterval(() => {
+      loadOversightData(false);
+    }, 4000);
+
+    const handleFocus = () => {
+      loadOversightData(false);
+    };
+
+    window.addEventListener('focus', handleFocus);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadOversightData(false);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, []);
+
+  // Realtime push subscription for Admin Oversight
+  useEffect(() => {
+    if (!supabase) return;
+
+    try {
+      const channel = supabase
+        .channel('admin-oversight-feed')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'complaints' },
+          () => {
+            loadOversightData(false);
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    } catch (err) {
+      console.warn('[Realtime] Oversight subscription notice:', err.message);
+    }
   }, []);
 
   if (loading && !data) {
@@ -110,12 +163,12 @@ export const AdminOversightDashboard = ({ onViewComplaint }) => {
             Telemetry: {new Date(data?.timestamp || Date.now()).toLocaleTimeString()}
           </span>
           <button
-            onClick={loadOversightData}
-            disabled={loading}
+            onClick={() => loadOversightData(false)}
+            disabled={isRefreshing || loading}
             className="flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold shadow-2xs transition-colors cursor-pointer shrink-0"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>{isRefreshing ? 'Syncing...' : 'Refresh'}</span>
           </button>
         </div>
       </div>

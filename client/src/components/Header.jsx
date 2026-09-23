@@ -9,11 +9,12 @@ import {
   ShieldCheck,
   Wrench,
   Crown,
+  RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
-export const Header = ({ onOpenNewComplaint }) => {
+export const Header = ({ onOpenNewComplaint, onRefresh, isRefreshing }) => {
   const { user, isAdmin, isAuditor, isSupervisor, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
 
@@ -47,6 +48,24 @@ export const Header = ({ onOpenNewComplaint }) => {
 
           {/* Right Actions: Theme Toggle, User Profile, Sign Out, & Log Defect Button */}
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            {/* Live Auto-Sync / Instant Refresh Button */}
+            {onRefresh && (
+              <button
+                onClick={onRefresh}
+                title="Instant Data Refresh (Real-time auto-sync is active)"
+                className="p-2 sm:p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
+              >
+                <RefreshCw
+                  className={`w-4 h-4 text-indigo-600 dark:text-cyan-400 ${
+                    isRefreshing ? 'animate-spin' : ''
+                  }`}
+                />
+                <span className="hidden md:inline text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                  {isRefreshing ? 'Syncing...' : 'Live Sync'}
+                </span>
+              </button>
+            )}
+
             {/* Theme Toggle (Daylight Clean vs Night Shift) */}
             <button
               onClick={toggleTheme}
