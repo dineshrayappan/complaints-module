@@ -55,11 +55,15 @@ export const App = () => {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
+  // Prevent jarring full-screen loading spinner on background updates / tab changes
+  const initialLoadedRef = useRef(false);
+
   // Load complaints and metrics with silent background refresh capability
   const loadData = useCallback(async (showSpinner = false) => {
     if (!user) return;
+    const isExplicitSpinner = showSpinner === true;
     try {
-      if (showSpinner) {
+      if (isExplicitSpinner && !initialLoadedRef.current) {
         setLoading(true);
       } else {
         setIsRefreshing(true);
@@ -78,7 +82,17 @@ export const App = () => {
       ]);
 
       if (complaintsRes.data?.success) {
-        setComplaints(complaintsRes.data.complaints);
+        const incoming = complaintsRes.data.complaints || [];
+        setComplaints((prev) => {
+          const incomingIds = new Set(
+            incoming.map((c) => String(c._id || c.id || c.complaintId))
+          );
+          // Protect any recently created optimistic ticket that might still be propagating to database
+          const optimisticPending = prev.filter(
+            (c) => c._isOptimistic && !incomingIds.has(String(c._id || c.id || c.complaintId))
+          );
+          return [...optimisticPending, ...incoming];
+        });
       }
 
       if (metricsRes.data?.success) {
@@ -87,14 +101,15 @@ export const App = () => {
     } catch (err) {
       console.error('Error fetching complaints data:', err);
     } finally {
-      if (showSpinner) setLoading(false);
+      initialLoadedRef.current = true;
+      setLoading(false);
       setIsRefreshing(false);
     }
   }, [user, activeTab, categoryFilter, priorityFilter, searchTerm]);
 
   // Initial load
   useEffect(() => {
-    loadData(true);
+    loadData(!initialLoadedRef.current);
   }, [loadData]);
 
   // Periodic Auto-Refresh: Poll every 4 seconds silently so changes appear instantly across all users & devices
@@ -215,34 +230,21 @@ export const App = () => {
 
     if (newTicket) {
       const ticketId = newTicket._id || newTicket.id;
+      const optimisticTicket = { ...newTicket, _isOptimistic: true };
       setComplaints((prev) => {
-        const exists = prev.some(
-          (c) => (c._id || c.id) === ticketId || c.complaintId === newTicket.complaintId
+        const withoutCurrent = prev.filter(
+          (c) => (c._id || c.id) !== ticketId && c.complaintId !== newTicket.complaintId
         );
-        if (exists) {
-          return prev.map((c) =>
-            (c._id || c.id) === ticketId || c.complaintId === newTicket.complaintId
-              ? { ...c, ...newTicket }
-              : c
-          );
-        }
-        return [newTicket, ...prev];
+        return [optimisticTicket, ...withoutCurrent];
       });
     }
 
-    // Immediate background refresh for server sync and metrics
-    setTimeout(() => {
-      complaintService.getComplaints({ tab: 'all' }).then((res) => {
-        if (res.data?.success) {
-          setComplaints(res.data.complaints);
-        }
-      });
-      complaintService.getKpiStats().then((res) => {
-        if (res.data?.success) {
-          setMetrics(res.data.metrics);
-        }
-      });
-    }, 150);
+    // Refresh KPI metrics quietly in background
+    complaintService.getKpiStats().then((res) => {
+      if (res.data?.success) {
+        setMetrics(res.data.metrics);
+      }
+    }).catch(() => {});
   };
 
   // On action submitted: Optimistic update + silent refresh
@@ -422,8 +424,8 @@ export const App = () => {
               onCategoryChange={setCategoryFilter}
               priorityFilter={priorityFilter}
               onPriorityChange={setPriorityFilter}
-              onRefresh={loadData}
-              loading={loading}
+              onRefresh={() => loadData(false)}
+              loading={isRefreshing}
               counts={metrics}
             />
 
