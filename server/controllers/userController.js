@@ -1,6 +1,24 @@
-const mongoose = require('mongoose');
-const User = require('../models/User');
+const bcrypt = require('bcryptjs');
+const { supabase, isSupabaseConfigured } = require('../config/supabase');
 const mockStore = require('../config/mockStore');
+
+const formatUser = (u) => {
+  if (!u) return null;
+  return {
+    _id: u.id || u._id,
+    id: u.id || u._id,
+    employeeId: u.employeeId,
+    name: u.name,
+    email: u.email,
+    role: u.role === 'SUPERVISOR' ? 'ACTION_PERSON' : u.role,
+    department: u.department,
+    designation: u.designation,
+    mobileNumber: u.mobileNumber,
+    isActive: typeof u.isActive !== 'undefined' ? u.isActive : true,
+    createdAt: u.createdAt,
+    updatedAt: u.updatedAt,
+  };
+};
 
 // @desc    Get Master Contact List of Line In-Charges for assignment
 // @route   GET /api/users/line-supervisors
@@ -9,40 +27,50 @@ const getLineSupervisors = async (req, res) => {
   try {
     const mockSupervisors = mockStore
       .getUsers()
-      .filter((u) => u.role === 'ACTION_PERSON' && u.isActive);
+      .filter((u) => u.role === 'ACTION_PERSON' && u.isActive)
+      .map(formatUser);
 
-    if (mongoose.connection.readyState !== 1) {
-      return res.status(200).json({
-        success: true,
-        count: mockSupervisors.length,
-        supervisors: mockSupervisors,
-      });
-    }
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, name, employeeId, department, designation, mobileNumber, email, role, isActive')
+          .eq('role', 'ACTION_PERSON')
+          .eq('isActive', true)
+          .order('department', { ascending: true })
+          .order('name', { ascending: true });
 
-    let supervisors = await User.find({
-      role: 'ACTION_PERSON',
-      isActive: true,
-    })
-      .select('name employeeId department designation mobileNumber email')
-      .sort({ department: 1, name: 1 })
-      .lean();
+        if (!error && data && data.length > 0) {
+          let supervisors = data.map(formatUser);
 
-    // Ensure all 10 standard dummy supervisors are available
-    if (supervisors.length < mockSupervisors.length) {
-      const existingEmployeeIds = new Set(supervisors.map((s) => s.employeeId));
-      const missing = mockSupervisors.filter((m) => !existingEmployeeIds.has(m.employeeId));
-      supervisors = [...supervisors, ...missing];
+          // Supplement with mockSupervisors if some defaults are missing
+          if (supervisors.length < mockSupervisors.length) {
+            const existingEmpIds = new Set(supervisors.map((s) => s.employeeId));
+            const missing = mockSupervisors.filter((m) => !existingEmpIds.has(m.employeeId));
+            supervisors = [...supervisors, ...missing];
+          }
+
+          return res.status(200).json({
+            success: true,
+            count: supervisors.length,
+            supervisors,
+          });
+        }
+      } catch (dbErr) {
+        console.warn('[UserController:getLineSupervisors] Supabase query notice:', dbErr.message);
+      }
     }
 
     res.status(200).json({
       success: true,
-      count: supervisors.length,
-      supervisors,
+      count: mockSupervisors.length,
+      supervisors: mockSupervisors,
     });
   } catch (error) {
     const supervisors = mockStore
       .getUsers()
-      .filter((u) => u.role === 'ACTION_PERSON' && u.isActive);
+      .filter((u) => u.role === 'ACTION_PERSON' && u.isActive)
+      .map(formatUser);
     res.status(200).json({
       success: true,
       count: supervisors.length,
@@ -58,76 +86,78 @@ const getAllUsers = async (req, res) => {
   try {
     const { role, department, search, isActive } = req.query;
 
-    if (mongoose.connection.readyState !== 1) {
-      let users = mockStore.getUsers();
-      if (role) {
-        if (role === 'SUPERVISOR') {
-          users = users.filter((u) => u.role === 'ACTION_PERSON' || u.role === 'SUPERVISOR');
-        } else {
-          users = users.filter((u) => u.role === role);
+    if (isSupabaseConfigured && supabase) {
+      try {
+        let query = supabase.from('users').select('*');
+
+        if (role) {
+          if (role === 'SUPERVISOR') {
+            query = query.in('role', ['ACTION_PERSON', 'SUPERVISOR']);
+          } else {
+            query = query.eq('role', role);
+          }
         }
+
+        if (department) {
+          query = query.eq('department', department);
+        }
+
+        if (typeof isActive !== 'undefined') {
+          query = query.eq('isActive', isActive === 'true');
+        }
+
+        if (search) {
+          const s = `%${search}%`;
+          query = query.or(`name.ilike.${s},employeeId.ilike.${s},email.ilike.${s},department.ilike.${s},designation.ilike.${s}`);
+        }
+
+        const { data, error } = await query.order('role', { ascending: true }).order('name', { ascending: true });
+
+        if (!error && data && data.length > 0) {
+          const users = data.map(formatUser);
+          return res.status(200).json({
+            success: true,
+            count: users.length,
+            users,
+          });
+        }
+      } catch (dbErr) {
+        console.warn('[UserController:getAllUsers] Supabase notice:', dbErr.message);
       }
-      if (department) {
-        users = users.filter((u) => u.department === department);
-      }
-      if (typeof isActive !== 'undefined') {
-        users = users.filter((u) => Boolean(u.isActive) === (isActive === 'true'));
-      }
-      if (search) {
-        const q = search.toLowerCase();
-        users = users.filter(
-          (u) =>
-            u.name?.toLowerCase().includes(q) ||
-            u.employeeId?.toLowerCase().includes(q) ||
-            u.email?.toLowerCase().includes(q) ||
-            u.department?.toLowerCase().includes(q)
-        );
-      }
-      return res.status(200).json({
-        success: true,
-        count: users.length,
-        users,
-      });
     }
 
-    const filter = {};
-
+    // Fallback store filtering
+    let users = mockStore.getUsers();
     if (role) {
       if (role === 'SUPERVISOR') {
-        filter.role = { $in: ['ACTION_PERSON', 'SUPERVISOR'] };
+        users = users.filter((u) => u.role === 'ACTION_PERSON' || u.role === 'SUPERVISOR');
       } else {
-        filter.role = role;
+        users = users.filter((u) => u.role === role);
       }
     }
-
     if (department) {
-      filter.department = department;
+      users = users.filter((u) => u.department === department);
     }
-
     if (typeof isActive !== 'undefined') {
-      filter.isActive = isActive === 'true';
+      users = users.filter((u) => Boolean(u.isActive) === (isActive === 'true'));
     }
-
     if (search) {
-      const regex = new RegExp(search, 'i');
-      filter.$or = [
-        { name: regex },
-        { employeeId: regex },
-        { email: regex },
-        { department: regex },
-        { designation: regex },
-      ];
+      const q = search.toLowerCase();
+      users = users.filter(
+        (u) =>
+          u.name?.toLowerCase().includes(q) ||
+          u.employeeId?.toLowerCase().includes(q) ||
+          u.email?.toLowerCase().includes(q) ||
+          u.department?.toLowerCase().includes(q)
+      );
     }
-
-    const users = await User.find(filter).sort({ role: 1, name: 1 });
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       count: users.length,
-      users,
+      users: users.map(formatUser),
     });
   } catch (error) {
-    const users = mockStore.getUsers();
+    const users = mockStore.getUsers().map(formatUser);
     res.status(200).json({
       success: true,
       count: users.length,
@@ -152,7 +182,6 @@ const createUser = async (req, res) => {
       mobileNumber,
     } = req.body;
 
-    // Validation
     if (!employeeId || !name || !email || !password || !role || !department || !designation || !mobileNumber) {
       return res.status(400).json({
         success: false,
@@ -168,50 +197,72 @@ const createUser = async (req, res) => {
     }
 
     const normalizedRole = role === 'SUPERVISOR' ? 'ACTION_PERSON' : role;
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
-    if (mongoose.connection.readyState !== 1) {
-      const newUser = mockStore.createUser({
-        employeeId: employeeId.trim().toUpperCase(),
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        password,
-        role: normalizedRole,
-        department: department.trim(),
-        designation: designation.trim(),
-        mobileNumber: mobileNumber.trim(),
-        isActive: true,
-      });
+    if (isSupabaseConfigured && supabase) {
+      try {
+        // Check duplicate employeeId
+        const { data: existingEmp } = await supabase
+          .from('users')
+          .select('id, employeeId, name')
+          .ilike('employeeId', employeeId.trim())
+          .limit(1);
 
-      return res.status(201).json({
-        success: true,
-        message: `User '${newUser.name}' (${newUser.employeeId}) created successfully.`,
-        user: newUser,
-      });
+        if (existingEmp && existingEmp.length > 0) {
+          return res.status(400).json({
+            success: false,
+            message: `Employee ID '${employeeId.toUpperCase()}' is already registered to ${existingEmp[0].name}.`,
+          });
+        }
+
+        // Check duplicate email
+        const { data: existingEmail } = await supabase
+          .from('users')
+          .select('id, email')
+          .ilike('email', email.trim())
+          .limit(1);
+
+        if (existingEmail && existingEmail.length > 0) {
+          return res.status(400).json({
+            success: false,
+            message: `Email address '${email.toLowerCase()}' is already registered in the system.`,
+          });
+        }
+
+        const { data: inserted, error: insertErr } = await supabase
+          .from('users')
+          .insert([
+            {
+              employeeId: employeeId.trim().toUpperCase(),
+              name: name.trim(),
+              email: email.trim().toLowerCase(),
+              password: hashedPassword,
+              role: normalizedRole,
+              department: department.trim(),
+              designation: designation.trim(),
+              mobileNumber: mobileNumber.trim(),
+              isActive: true,
+            },
+          ])
+          .select()
+          .single();
+
+        if (insertErr) {
+          throw insertErr;
+        }
+
+        return res.status(201).json({
+          success: true,
+          message: `User '${inserted.name}' (${inserted.employeeId}) created successfully.`,
+          user: formatUser(inserted),
+        });
+      } catch (dbErr) {
+        console.warn('[UserController:createUser] Supabase insert notice:', dbErr.message);
+      }
     }
 
-    // Check duplicate employeeId
-    const existingEmpId = await User.findOne({
-      employeeId: employeeId.trim().toUpperCase(),
-    });
-    if (existingEmpId) {
-      return res.status(400).json({
-        success: false,
-        message: `Employee ID '${employeeId.toUpperCase()}' is already registered to ${existingEmpId.name}.`,
-      });
-    }
-
-    // Check duplicate email
-    const existingEmail = await User.findOne({
-      email: email.trim().toLowerCase(),
-    });
-    if (existingEmail) {
-      return res.status(400).json({
-        success: false,
-        message: `Email address '${email.toLowerCase()}' is already registered in the system.`,
-      });
-    }
-
-    const newUser = new User({
+    const newUser = mockStore.createUser({
       employeeId: employeeId.trim().toUpperCase(),
       name: name.trim(),
       email: email.trim().toLowerCase(),
@@ -223,12 +274,10 @@ const createUser = async (req, res) => {
       isActive: true,
     });
 
-    await newUser.save();
-
     res.status(201).json({
       success: true,
       message: `User '${newUser.name}' (${newUser.employeeId}) created successfully.`,
-      user: newUser,
+      user: formatUser(newUser),
     });
   } catch (error) {
     console.error('[UserController] Create user error:', error);
@@ -244,24 +293,7 @@ const createUser = async (req, res) => {
 // @access  Private (Admin Only)
 const updateUser = async (req, res) => {
   try {
-    if (mongoose.connection.readyState !== 1) {
-      const updated = mockStore.updateUser(req.params.id, req.body);
-      return res.status(200).json({
-        success: true,
-        message: 'User updated successfully.',
-        user: updated,
-      });
-    }
-
-    const user = await User.findById(req.params.id);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User account not found.',
-      });
-    }
-
+    const userId = req.params.id;
     const {
       name,
       email,
@@ -272,36 +304,68 @@ const updateUser = async (req, res) => {
       isActive,
     } = req.body;
 
-    if (name) user.name = name.trim();
-    if (department) user.department = department.trim();
-    if (designation) user.designation = designation.trim();
-    if (mobileNumber) user.mobileNumber = mobileNumber.trim();
-    if (typeof isActive !== 'undefined') user.isActive = Boolean(isActive);
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const updatePayload = {
+          updatedAt: new Date().toISOString(),
+        };
 
-    if (role) {
-      user.role = role === 'SUPERVISOR' ? 'ACTION_PERSON' : role;
-    }
+        if (name) updatePayload.name = name.trim();
+        if (department) updatePayload.department = department.trim();
+        if (designation) updatePayload.designation = designation.trim();
+        if (mobileNumber) updatePayload.mobileNumber = mobileNumber.trim();
+        if (typeof isActive !== 'undefined') updatePayload.isActive = Boolean(isActive);
+        if (role) updatePayload.role = role === 'SUPERVISOR' ? 'ACTION_PERSON' : role;
 
-    if (email && email.toLowerCase() !== user.email) {
-      const emailConflict = await User.findOne({
-        email: email.trim().toLowerCase(),
-        _id: { $ne: user._id },
-      });
-      if (emailConflict) {
-        return res.status(400).json({
-          success: false,
-          message: `Email '${email}' is already in use by another account.`,
-        });
+        if (email) {
+          // Check email conflict
+          const { data: conflict } = await supabase
+            .from('users')
+            .select('id')
+            .ilike('email', email.trim())
+            .neq('id', userId)
+            .limit(1);
+
+          if (conflict && conflict.length > 0) {
+            return res.status(400).json({
+              success: false,
+              message: `Email '${email}' is already in use by another account.`,
+            });
+          }
+          updatePayload.email = email.trim().toLowerCase();
+        }
+
+        const { data: updated, error } = await supabase
+          .from('users')
+          .update(updatePayload)
+          .eq('id', userId)
+          .select()
+          .maybeSingle();
+
+        if (!error && updated) {
+          return res.status(200).json({
+            success: true,
+            message: `User '${updated.name}' updated successfully.`,
+            user: formatUser(updated),
+          });
+        }
+      } catch (dbErr) {
+        console.warn('[UserController:updateUser] Supabase notice:', dbErr.message);
       }
-      user.email = email.trim().toLowerCase();
     }
 
-    await user.save();
+    const updated = mockStore.updateUser(userId, req.body);
+    if (!updated) {
+      return res.status(404).json({
+        success: false,
+        message: 'User account not found.',
+      });
+    }
 
     res.status(200).json({
       success: true,
-      message: `User '${user.name}' updated successfully.`,
-      user,
+      message: 'User updated successfully.',
+      user: formatUser(updated),
     });
   } catch (error) {
     console.error('[UserController] Update user error:', error);
@@ -317,6 +381,7 @@ const updateUser = async (req, res) => {
 // @access  Private (Admin Only)
 const resetUserPassword = async (req, res) => {
   try {
+    const userId = req.params.id;
     const { newPassword } = req.body;
 
     if (!newPassword || newPassword.length < 6) {
@@ -326,37 +391,45 @@ const resetUserPassword = async (req, res) => {
       });
     }
 
-    if (mongoose.connection.readyState !== 1) {
-      const updated = mockStore.updateUser(req.params.id, { password: newPassword });
-      return res.status(200).json({
-        success: true,
-        message: `Password for '${updated?.name || 'User'}' updated successfully.`,
-        user: updated,
-      });
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: updated, error } = await supabase
+          .from('users')
+          .update({
+            password: hashedPassword,
+            updatedAt: new Date().toISOString(),
+          })
+          .eq('id', userId)
+          .select('id, employeeId, name, email, role')
+          .maybeSingle();
+
+        if (!error && updated) {
+          return res.status(200).json({
+            success: true,
+            message: `Password for '${updated.name}' (${updated.employeeId}) has been successfully updated.`,
+            user: formatUser(updated),
+          });
+        }
+      } catch (dbErr) {
+        console.warn('[UserController:resetPassword] Supabase notice:', dbErr.message);
+      }
     }
 
-    const user = await User.findById(req.params.id);
-
-    if (!user) {
+    const updated = mockStore.updateUser(userId, { password: newPassword });
+    if (!updated) {
       return res.status(404).json({
         success: false,
         message: 'User account not found.',
       });
     }
 
-    user.password = newPassword;
-    await user.save(); // triggers pre('save') bcrypt hash
-
     res.status(200).json({
       success: true,
-      message: `Password for '${user.name}' (${user.employeeId}) has been successfully updated.`,
-      user: {
-        _id: user._id,
-        employeeId: user.employeeId,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
+      message: `Password for '${updated.name}' updated successfully.`,
+      user: formatUser(updated),
     });
   } catch (error) {
     console.error('[UserController] Reset password error:', error);
@@ -372,19 +445,50 @@ const resetUserPassword = async (req, res) => {
 // @access  Private (Admin Only)
 const toggleUserStatus = async (req, res) => {
   try {
-    if (mongoose.connection.readyState !== 1) {
-      const user = mockStore.findUserById(req.params.id);
-      const updated = mockStore.updateUser(req.params.id, { isActive: !user?.isActive });
-      return res.status(200).json({
-        success: true,
-        message: `User '${updated?.name}' status updated.`,
-        isActive: updated?.isActive,
-        user: updated,
+    const userId = req.params.id;
+
+    if (req.user && (req.user.id === userId || req.user._id === userId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'You cannot deactivate your own administrative account.',
       });
     }
 
-    const user = await User.findById(req.params.id);
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: current } = await supabase
+          .from('users')
+          .select('id, name, isActive')
+          .eq('id', userId)
+          .maybeSingle();
 
+        if (current) {
+          const nextState = !current.isActive;
+          const { data: updated, error } = await supabase
+            .from('users')
+            .update({
+              isActive: nextState,
+              updatedAt: new Date().toISOString(),
+            })
+            .eq('id', userId)
+            .select()
+            .maybeSingle();
+
+          if (!error && updated) {
+            return res.status(200).json({
+              success: true,
+              message: `User '${updated.name}' has been ${updated.isActive ? 'activated' : 'deactivated'}.`,
+              isActive: updated.isActive,
+              user: formatUser(updated),
+            });
+          }
+        }
+      } catch (dbErr) {
+        console.warn('[UserController:toggleStatus] Supabase notice:', dbErr.message);
+      }
+    }
+
+    const user = mockStore.findUserById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -392,22 +496,12 @@ const toggleUserStatus = async (req, res) => {
       });
     }
 
-    // Protect active admin from deactivating themselves
-    if (req.user && req.user._id.toString() === user._id.toString()) {
-      return res.status(400).json({
-        success: false,
-        message: 'You cannot deactivate your own administrative account.',
-      });
-    }
-
-    user.isActive = !user.isActive;
-    await user.save();
-
+    const updated = mockStore.updateUser(userId, { isActive: !user.isActive });
     res.status(200).json({
       success: true,
-      message: `User '${user.name}' has been ${user.isActive ? 'activated' : 'deactivated'}.`,
-      isActive: user.isActive,
-      user,
+      message: `User '${updated.name}' status updated.`,
+      isActive: updated.isActive,
+      user: formatUser(updated),
     });
   } catch (error) {
     console.error('[UserController] Toggle status error:', error);

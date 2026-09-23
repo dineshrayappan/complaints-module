@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
-const mongoose = require('mongoose');
-const User = require('../models/User');
+const bcrypt = require('bcryptjs');
+const { supabase, isSupabaseConfigured } = require('../config/supabase');
 const mockStore = require('../config/mockStore');
 
 const generateToken = (id) => {
@@ -11,6 +11,32 @@ const generateToken = (id) => {
       expiresIn: process.env.JWT_EXPIRES_IN || '7d',
     }
   );
+};
+
+// Verify role passwords helper
+const checkRolePassword = (userRole, inputPassword) => {
+  if (inputPassword === 'Password123!') return true;
+  if (userRole === 'ADMIN' && (inputPassword === 'Admin@123' || inputPassword === 'admin123')) return true;
+  if (userRole === 'AUDITOR' && (inputPassword === 'Auditor@123' || inputPassword === 'auditor123')) return true;
+  if ((userRole === 'ACTION_PERSON' || userRole === 'SUPERVISOR') && (inputPassword === 'Supervisor@123' || inputPassword === 'supervisor123')) return true;
+  return false;
+};
+
+// Formats a user row for consistent API response
+const formatUserResponse = (user) => {
+  if (!user) return null;
+  return {
+    _id: user.id || user._id,
+    id: user.id || user._id,
+    employeeId: user.employeeId,
+    name: user.name,
+    email: user.email,
+    role: user.role === 'SUPERVISOR' ? 'ACTION_PERSON' : user.role,
+    department: user.department,
+    designation: user.designation,
+    mobileNumber: user.mobileNumber,
+    isActive: typeof user.isActive !== 'undefined' ? user.isActive : true,
+  };
 };
 
 // @desc    Sign in user with email or employeeId & password
@@ -34,116 +60,102 @@ const login = async (req, res) => {
     else if (lowerId === 'auditor') mappedIdentifier = 'AUD-001';
     else if (lowerId === 'supervisor') mappedIdentifier = 'SUP-101';
 
-    // Verify role passwords helper
-    const checkRolePassword = (userRole, inputPassword) => {
-      if (inputPassword === 'Password123!') return true;
-      if (userRole === 'ADMIN' && (inputPassword === 'Admin@123' || inputPassword === 'admin123')) return true;
-      if (userRole === 'AUDITOR' && (inputPassword === 'Auditor@123' || inputPassword === 'auditor123')) return true;
-      if ((userRole === 'ACTION_PERSON' || userRole === 'SUPERVISOR') && (inputPassword === 'Supervisor@123' || inputPassword === 'supervisor123')) return true;
-      return false;
-    };
+    // 1. If Supabase is configured, attempt authentication from PostgreSQL
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: users, error } = await supabase
+          .from('users')
+          .select('*')
+          .or(
+            `email.ilike.${mappedIdentifier},employeeId.ilike.${mappedIdentifier},email.ilike.${queryIdentifier},employeeId.ilike.${queryIdentifier}`
+          )
+          .limit(1);
 
-    // Fallback store when MongoDB is not connected
-    if (mongoose.connection.readyState !== 1) {
-      const user = mockStore.findUserByIdentifier(mappedIdentifier) || mockStore.findUserByIdentifier(queryIdentifier);
-      const isRolePwdMatch = user && checkRolePassword(user.role, password);
-      if (!user || (!isRolePwdMatch && user.password !== password)) {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid credentials. User not found or incorrect password.',
-        });
+        if (!error && users && users.length > 0) {
+          const user = users[0];
+
+          // Check password: role preset match or bcrypt compare
+          let isMatch = checkRolePassword(user.role, password);
+          if (!isMatch && user.password) {
+            if (user.password.startsWith('$2a$') || user.password.startsWith('$2b$')) {
+              isMatch = await bcrypt.compare(password, user.password);
+            } else {
+              isMatch = user.password === password;
+            }
+          }
+
+          if (!isMatch) {
+            return res.status(401).json({
+              success: false,
+              message: 'Invalid credentials. Incorrect password.',
+            });
+          }
+
+          if (user.isActive === false) {
+            return res.status(403).json({
+              success: false,
+              message: 'This account has been deactivated.',
+            });
+          }
+
+          // Role portal validation
+          if (expectedRole) {
+            const isAdminPortal = expectedRole === 'ADMIN';
+            const isAuditorPortal = expectedRole === 'AUDITOR';
+            const isSupervisorPortal = expectedRole === 'SUPERVISOR' || expectedRole === 'ACTION_PERSON';
+
+            if (isAdminPortal && user.role !== 'ADMIN') {
+              return res.status(400).json({
+                success: false,
+                message: `This account (${user.name}) does not have Executive Administrator privileges. Please switch to the ${user.role === 'AUDITOR' ? 'Auditor' : 'Supervisor'} Login portal.`,
+              });
+            }
+
+            if (isAuditorPortal && user.role !== 'AUDITOR') {
+              return res.status(400).json({
+                success: false,
+                message: `This account (${user.name}) is registered as a ${user.role === 'ADMIN' ? 'System Administrator' : 'Line Supervisor'}. Please switch to the corresponding login tab.`,
+              });
+            }
+
+            if (isSupervisorPortal && user.role !== 'ACTION_PERSON' && user.role !== 'SUPERVISOR') {
+              return res.status(400).json({
+                success: false,
+                message: `This account (${user.name}) is registered as a ${user.role === 'ADMIN' ? 'System Administrator' : 'Internal Auditor'}. Please switch to the corresponding login tab.`,
+              });
+            }
+          }
+
+          const token = generateToken(user.id);
+          return res.status(200).json({
+            success: true,
+            token,
+            user: formatUserResponse(user),
+          });
+        }
+      } catch (dbErr) {
+        console.warn('[AuthController:login] Supabase lookup error, trying fallback:', dbErr.message);
       }
-      const token = generateToken(user._id);
-      return res.status(200).json({
-        success: true,
-        token,
-        user: {
-          _id: user._id,
-          employeeId: user.employeeId,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          department: user.department,
-          designation: user.designation,
-          mobileNumber: user.mobileNumber,
-        },
-      });
     }
 
-    const user = await User.findOne({
-      $or: [
-        { email: mappedIdentifier.toLowerCase() },
-        { employeeId: mappedIdentifier.toUpperCase() },
-        { email: queryIdentifier.toLowerCase() },
-        { employeeId: queryIdentifier.toUpperCase() },
-      ],
-    }).select('+password');
+    // 2. Resilient In-Memory Fallback
+    const fallbackUser =
+      mockStore.findUserByIdentifier(mappedIdentifier) ||
+      mockStore.findUserByIdentifier(queryIdentifier);
 
-    if (!user) {
+    const isRolePwdMatch = fallbackUser && checkRolePassword(fallbackUser.role, password);
+    if (!fallbackUser || (!isRolePwdMatch && fallbackUser.password !== password)) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials. User not found.',
+        message: 'Invalid credentials. User not found or incorrect password.',
       });
     }
 
-    const isMatch = checkRolePassword(user.role, password) || (await user.matchPassword(password));
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials. Incorrect password.',
-      });
-    }
-
-    if (!user.isActive) {
-      return res.status(403).json({
-        success: false,
-        message: 'This account has been deactivated.',
-      });
-    }
-
-    // Optional Role Validation for separate portals
-    if (expectedRole) {
-      const isAdminPortal = expectedRole === 'ADMIN';
-      const isAuditorPortal = expectedRole === 'AUDITOR';
-      const isSupervisorPortal = expectedRole === 'SUPERVISOR' || expectedRole === 'ACTION_PERSON';
-
-      if (isAdminPortal && user.role !== 'ADMIN') {
-        return res.status(400).json({
-          success: false,
-          message: `This account (${user.name}) does not have Executive Administrator privileges. Please switch to the ${user.role === 'AUDITOR' ? 'Auditor' : 'Supervisor'} Login portal.`,
-        });
-      }
-
-      if (isAuditorPortal && user.role !== 'AUDITOR') {
-        return res.status(400).json({
-          success: false,
-          message: `This account (${user.name}) is registered as a ${user.role === 'ADMIN' ? 'System Administrator' : 'Line Supervisor'}. Please switch to the corresponding login tab.`,
-        });
-      }
-
-      if (isSupervisorPortal && user.role !== 'ACTION_PERSON' && user.role !== 'SUPERVISOR') {
-        return res.status(400).json({
-          success: false,
-          message: `This account (${user.name}) is registered as a ${user.role === 'ADMIN' ? 'System Administrator' : 'Internal Auditor'}. Please switch to the corresponding login tab.`,
-        });
-      }
-    }
-
-    const token = generateToken(user._id);
-
-    res.status(200).json({
+    const token = generateToken(fallbackUser._id);
+    return res.status(200).json({
       success: true,
       token,
-      user: {
-        _id: user._id,
-        employeeId: user.employeeId,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        department: user.department,
-        designation: user.designation,
-        mobileNumber: user.mobileNumber,
-      },
+      user: formatUserResponse(fallbackUser),
     });
   } catch (error) {
     console.error('[AuthController:login] Error:', error);
@@ -192,45 +204,64 @@ const register = async (req, res) => {
       normalizedRole = 'AUDITOR';
     }
 
-    if (mongoose.connection.readyState !== 1) {
-      const newUser = mockStore.createUser({
-        employeeId: employeeId.toUpperCase().trim(),
-        name: name.trim(),
-        email: email.toLowerCase().trim(),
-        password,
-        role: normalizedRole,
-        department: department.trim(),
-        designation: designation.trim(),
-        mobileNumber: mobileNumber.trim(),
-      });
-      const token = generateToken(newUser._id);
-      return res.status(201).json({
-        success: true,
-        message: `Account registered successfully as ${normalizedRole === 'AUDITOR' ? 'Quality Auditor' : 'Line Supervisor'}.`,
-        token,
-        user: newUser,
-      });
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        // Check for existing employeeId or email
+        const { data: existing } = await supabase
+          .from('users')
+          .select('id, employeeId, email')
+          .or(`email.ilike.${email.trim()},employeeId.ilike.${employeeId.trim()}`)
+          .limit(1);
+
+        if (existing && existing.length > 0) {
+          const isEmailMatch = existing[0].email.toLowerCase() === email.trim().toLowerCase();
+          return res.status(400).json({
+            success: false,
+            message: isEmailMatch
+              ? 'An account with this email address already exists.'
+              : 'An account with this Employee ID already exists.',
+          });
+        }
+
+        const { data: inserted, error: insertErr } = await supabase
+          .from('users')
+          .insert([
+            {
+              employeeId: employeeId.toUpperCase().trim(),
+              name: name.trim(),
+              email: email.toLowerCase().trim(),
+              password: hashedPassword,
+              role: normalizedRole,
+              department: department.trim(),
+              designation: designation.trim(),
+              mobileNumber: mobileNumber.trim(),
+              isActive: true,
+            },
+          ])
+          .select()
+          .single();
+
+        if (insertErr) {
+          console.warn('[AuthController:register] Supabase insert failed:', insertErr.message);
+        } else if (inserted) {
+          const token = generateToken(inserted.id);
+          return res.status(201).json({
+            success: true,
+            message: `Account registered successfully as ${normalizedRole === 'AUDITOR' ? 'Quality Auditor' : 'Line Supervisor'}.`,
+            token,
+            user: formatUserResponse(inserted),
+          });
+        }
+      } catch (dbErr) {
+        console.warn('[AuthController:register] DB error, using fallback:', dbErr.message);
+      }
     }
 
-    // Check if employeeId or email already exists
-    const existing = await User.findOne({
-      $or: [
-        { email: email.toLowerCase().trim() },
-        { employeeId: employeeId.toUpperCase().trim() },
-      ],
-    });
-
-    if (existing) {
-      const isEmail = existing.email === email.toLowerCase().trim();
-      return res.status(400).json({
-        success: false,
-        message: isEmail
-          ? 'An account with this email address already exists.'
-          : 'An account with this Employee ID already exists.',
-      });
-    }
-
-    const newUser = await User.create({
+    // Fallback store
+    const newUser = mockStore.createUser({
       employeeId: employeeId.toUpperCase().trim(),
       name: name.trim(),
       email: email.toLowerCase().trim(),
@@ -239,25 +270,14 @@ const register = async (req, res) => {
       department: department.trim(),
       designation: designation.trim(),
       mobileNumber: mobileNumber.trim(),
-      isActive: true,
     });
 
     const token = generateToken(newUser._id);
-
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: `Account registered successfully as ${normalizedRole === 'AUDITOR' ? 'Quality Auditor' : 'Line Supervisor'}.`,
       token,
-      user: {
-        _id: newUser._id,
-        employeeId: newUser.employeeId,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role,
-        department: newUser.department,
-        designation: newUser.designation,
-        mobileNumber: newUser.mobileNumber,
-      },
+      user: formatUserResponse(newUser),
     });
   } catch (error) {
     console.error('[AuthController:register] Error:', error);
@@ -274,18 +294,31 @@ const register = async (req, res) => {
 // @access  Private
 const getMe = async (req, res) => {
   try {
-    if (mongoose.connection.readyState !== 1) {
-      const user = mockStore.findUserById(req.user?._id || req.user?.id);
-      return res.status(200).json({
-        success: true,
-        user: user || req.user,
-      });
+    const userId = req.user?.id || req.user?._id;
+
+    if (isSupabaseConfigured && supabase && userId) {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, employeeId, name, email, role, department, designation, mobileNumber, isActive')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (!error && data) {
+          return res.status(200).json({
+            success: true,
+            user: formatUserResponse(data),
+          });
+        }
+      } catch (e) {
+        // continue to fallback
+      }
     }
 
-    const user = await User.findById(req.user._id);
+    const fallbackUser = mockStore.findUserById(userId) || req.user;
     res.status(200).json({
       success: true,
-      user,
+      user: formatUserResponse(fallbackUser),
     });
   } catch (error) {
     res.status(500).json({
@@ -301,39 +334,34 @@ const getMe = async (req, res) => {
 // @access  Public
 const getDemoUsers = async (req, res) => {
   try {
-    if (mongoose.connection.readyState !== 1) {
-      return res.status(200).json({
-        success: true,
-        users: mockStore.getUsers(),
-      });
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: users, error } = await supabase
+          .from('users')
+          .select('id, employeeId, name, email, role, department, designation, mobileNumber, isActive')
+          .eq('isActive', true)
+          .order('role', { ascending: true })
+          .order('employeeId', { ascending: true });
+
+        if (!error && users && users.length > 0) {
+          return res.status(200).json({
+            success: true,
+            users: users.map(formatUserResponse),
+          });
+        }
+      } catch (dbErr) {
+        console.warn('[AuthController:getDemoUsers] Supabase notice:', dbErr.message);
+      }
     }
 
-    // Ensure default Admin user exists in database
-    let admin = await User.findOne({ role: 'ADMIN' });
-    if (!admin) {
-      await User.create({
-        employeeId: 'ADM-001',
-        name: 'Anil Mehta',
-        email: 'admin@factory.com',
-        password: 'Password123!',
-        role: 'ADMIN',
-        department: 'Plant Operations & Executive Oversight',
-        designation: 'General Operations Director',
-        mobileNumber: '+91 98000 11223',
-        isActive: true,
-      });
-    }
-
-    const users = await User.find({ isActive: true }).sort({ role: 1, employeeId: 1 });
     res.status(200).json({
       success: true,
-      users,
+      users: mockStore.getUsers().map(formatUserResponse),
     });
   } catch (error) {
-    console.warn('[AuthController:getDemoUsers] Using fallback store due to DB error:', error.message);
     res.status(200).json({
       success: true,
-      users: mockStore.getUsers(),
+      users: mockStore.getUsers().map(formatUserResponse),
     });
   }
 };
@@ -345,44 +373,42 @@ const switchDemoUser = async (req, res) => {
   try {
     const { userId } = req.body;
 
-    if (mongoose.connection.readyState !== 1) {
-      const user = mockStore.findUserById(userId);
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: 'Demo user not found.',
-        });
+    if (isSupabaseConfigured && supabase && userId) {
+      try {
+        const { data: user, error } = await supabase
+          .from('users')
+          .select('id, employeeId, name, email, role, department, designation, mobileNumber, isActive')
+          .or(`id.eq.${userId},employeeId.eq.${userId}`)
+          .maybeSingle();
+
+        if (!error && user) {
+          const token = generateToken(user.id);
+          return res.status(200).json({
+            success: true,
+            token,
+            user: formatUserResponse(user),
+          });
+        }
+      } catch (dbErr) {
+        // fallback to mockStore below
       }
-      const token = generateToken(user._id);
+    }
+
+    const fallbackUser = mockStore.findUserById(userId) || mockStore.getUsers().find((u) => u.employeeId === userId);
+    if (fallbackUser) {
+      const token = generateToken(fallbackUser._id);
       return res.status(200).json({
         success: true,
         token,
-        user,
+        user: formatUserResponse(fallbackUser),
       });
     }
 
-    const user = await User.findById(userId);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'Demo user not found.',
-      });
-    }
-
-    const token = generateToken(user._id);
-
-    res.status(200).json({
-      success: true,
-      token,
-      user,
+    res.status(404).json({
+      success: false,
+      message: 'Demo user not found.',
     });
   } catch (error) {
-    const fallbackUser = mockStore.findUserById(req.body.userId);
-    if (fallbackUser) {
-      const token = generateToken(fallbackUser._id);
-      return res.status(200).json({ success: true, token, user: fallbackUser });
-    }
     res.status(500).json({
       success: false,
       message: 'Error switching demo user.',

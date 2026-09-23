@@ -1,5 +1,4 @@
-// In-Memory Resilient Fallback Data Store
-// Automatically utilized whenever MongoDB is disconnected or in serverless environments without MONGODB_URI
+// Automatically utilized whenever Supabase credentials are unset or during offline development
 
 const initialUsers = [
   {

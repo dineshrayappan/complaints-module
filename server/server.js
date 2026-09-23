@@ -6,10 +6,8 @@ const dotenv = require('dotenv');
 // Load environment variables
 dotenv.config();
 
-const mongoose = require('mongoose');
-const { connectDB } = require('./config/db');
+const { supabase, isSupabaseConfigured, testConnection } = require('./config/supabase');
 const { seedData } = require('./scripts/seed');
-const User = require('./models/User');
 
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
@@ -40,19 +38,19 @@ const ensureDBConnected = async () => {
   if (!dbPromise) {
     dbPromise = (async () => {
       try {
-        await connectDB();
-        // Only query Mongoose if connected (readyState === 1) to prevent buffering timeout
-        if (mongoose.connection.readyState === 1) {
-          const userCount = await User.countDocuments();
-          if (userCount === 0) {
-            console.log('🌱 [Server] Empty database detected. Seeding factory users and sample tickets...');
-            await seedData();
+        if (isSupabaseConfigured && supabase) {
+          const connected = await testConnection();
+          if (connected) {
+            console.log('⚡ [Server] Supabase PostgreSQL operational.');
+          } else {
+            console.log('⚡ [Server] Supabase ping returned non-fatal notice. Operating with resilient fallback.');
           }
         } else {
-          console.log('⚡ [Server] Running in resilient fallback mode (Mongoose not connected).');
+          console.log('⚡ [Server] Supabase not yet configured in .env. Resilient in-memory store active.');
         }
+        await seedData();
       } catch (err) {
-        console.warn('⚠️ [Server] Database check notice:', err.message);
+        console.warn('⚠️ [Server] Database initialization notice:', err.message);
       }
     })();
   }
@@ -64,11 +62,12 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
     system: 'Textile & Garment QMS Complaints System',
+    database: isSupabaseConfigured ? 'Supabase (PostgreSQL)' : 'In-Memory Resilient Store',
     timestamp: new Date().toISOString(),
   });
 });
 
-// Ensure DB is ready on incoming API requests (essential for Vercel serverless)
+// Ensure DB is ready on incoming API requests
 app.use('/api', async (req, res, next) => {
   try {
     await ensureDBConnected();
@@ -96,15 +95,6 @@ app.use((err, req, res, next) => {
     });
   }
 
-  // Mongoose validation error
-  if (err.name === 'ValidationError') {
-    const messages = Object.values(err.errors).map((e) => e.message);
-    return res.status(400).json({
-      success: false,
-      message: messages.join(', '),
-    });
-  }
-
   res.status(err.status || 500).json({
     success: false,
     message: err.message || 'Internal Server Error',
@@ -113,8 +103,8 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-// Start standalone server only when executed directly (not in Vercel serverless)
-if (require.main === module || !process.env.VERCEL) {
+// Start standalone server only when executed directly (not when required as module or in serverless)
+if (require.main === module) {
   ensureDBConnected()
     .then(() => {
       app.listen(PORT, () => {
@@ -122,6 +112,7 @@ if (require.main === module || !process.env.VERCEL) {
         console.log(`🧵 GARMENT QMS SERVER ONLINE ON PORT ${PORT}`);
         console.log(`📍 REST API: http://localhost:${PORT}/api`);
         console.log(`📸 Proof Uploads: http://localhost:${PORT}/uploads`);
+        console.log(`🗄️ Database: ${isSupabaseConfigured ? 'Supabase PostgreSQL' : 'Resilient In-Memory Mode'}`);
         console.log(`=======================================================`);
       });
     })

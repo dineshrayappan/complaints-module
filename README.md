@@ -40,7 +40,7 @@ An enterprise-grade, closed-loop Quality Management & Defect Rectification Platf
 ## 🏗️ Architecture & Technology Stack
 
 - **Frontend**: React 18, Vite, Tailwind CSS, Lucide Icons, Axios, HTML5 Canvas WebP compression.
-- **Backend**: Node.js, Express.js, MongoDB / Mongoose, JWT Authentication, Multer file uploads, BcryptJS.
+- **Backend**: Node.js, Express.js, Supabase (PostgreSQL), JWT Authentication, Multer file uploads, BcryptJS.
 - **Real-time SLA**: Dynamic 12–24h SLA countdown engine with automated breach tracking.
 
 ---
@@ -49,7 +49,7 @@ An enterprise-grade, closed-loop Quality Management & Defect Rectification Platf
 
 ### Prerequisites
 - Node.js (v18 or higher recommended)
-- MongoDB (running locally or a remote MongoDB URI)
+- Supabase Project (PostgreSQL) or zero-setup in-memory fallback
 
 ### Installation
 ```bash
@@ -66,7 +66,7 @@ Copy `.env.example` in the `server` folder:
 ```bash
 cp server/.env.example server/.env
 ```
-Configure your MongoDB connection string and JWT secret if needed.
+Configure your Supabase URL, anon key, and JWT secret if needed.
 
 ### Running Locally
 ```bash

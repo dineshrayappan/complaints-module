@@ -1,6 +1,5 @@
 const jwt = require('jsonwebtoken');
-const mongoose = require('mongoose');
-const User = require('../models/User');
+const { supabase, isSupabaseConfigured } = require('../config/supabase');
 const mockStore = require('../config/mockStore');
 
 const verifyToken = async (req, res, next) => {
@@ -33,25 +32,32 @@ const verifyToken = async (req, res, next) => {
 
       let user = null;
 
-      // Try database lookup if MongoDB is connected and ID is valid ObjectId
-      if (mongoose.connection.readyState === 1 && mongoose.Types.ObjectId.isValid(decoded.id)) {
-        user = await User.findById(decoded.id).select('-password');
+      // Try Supabase lookup if configured
+      if (isSupabaseConfigured && supabase) {
+        try {
+          const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .or(`id.eq.${decoded.id},employeeId.eq.${decoded.id},email.eq.${decoded.id}`)
+            .limit(1)
+            .maybeSingle();
+
+          if (!error && data) {
+            user = { ...data, _id: data.id };
+            delete user.password;
+          }
+        } catch (dbErr) {
+          console.warn('[AuthMiddleware] Supabase query notice:', dbErr.message);
+        }
       }
 
-      // Try mockStore lookup by ID or employeeId
+      // Fallback to mockStore
       if (!user) {
         user =
           mockStore.findUserById(decoded.id) ||
           mockStore.getUsers().find(
-            (u) => u.employeeId === decoded.id || u._id === decoded.id || u.email === decoded.id
+            (u) => u.employeeId === decoded.id || u._id === decoded.id || u.id === decoded.id || u.email === decoded.id
           );
-      }
-
-      // Try secondary database lookup by employeeId or email
-      if (!user && mongoose.connection.readyState === 1) {
-        user = await User.findOne({
-          $or: [{ employeeId: decoded.id }, { email: decoded.id }],
-        }).select('-password');
       }
 
       if (!user) {
