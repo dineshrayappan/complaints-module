@@ -30,40 +30,12 @@ export const LoginPage = () => {
   const { login, register, demoUsers, switchUser } = useAuth();
   const { isDark, toggleTheme } = useTheme();
 
-  // Portal Credentials Definition
-  const PORTAL_CREDENTIALS = {
-    ADMIN: {
-      id: 'ADM-001',
-      alias: 'admin',
-      password: 'Admin@123',
-      name: 'Anil Mehta',
-      roleTitle: 'Executive Administrator',
-      department: 'Plant Operations & Executive Oversight',
-    },
-    AUDITOR: {
-      id: 'AUD-001',
-      alias: 'auditor',
-      password: 'Auditor@123',
-      name: 'Priya Sharma',
-      roleTitle: 'Senior Quality Auditor',
-      department: 'Central Quality Audit',
-    },
-    SUPERVISOR: {
-      id: 'SUP-101',
-      alias: 'supervisor',
-      password: 'Supervisor@123',
-      name: 'Mohammad Arif',
-      roleTitle: 'Line 1 In-Charge (Supervisor)',
-      department: 'Sewing Line 1',
-    },
-  };
-
   // Active portal: 'ADMIN', 'AUDITOR', or 'SUPERVISOR'
   const [activePortal, setActivePortal] = useState('ADMIN');
   
-  // Separate Credentials initialized with Admin
-  const [identifier, setIdentifier] = useState('ADM-001');
-  const [password, setPassword] = useState('Admin@123');
+  // Credentials state (empty by default for user privacy and security)
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   
   // UI state
@@ -78,7 +50,7 @@ export const LoginPage = () => {
     name: '',
     employeeId: '',
     email: '',
-    password: 'Password123!',
+    password: '',
     department: 'Plant Operations & Executive Oversight',
     designation: 'Operations Director',
     mobileNumber: '+91 98000 11223',
@@ -97,11 +69,8 @@ export const LoginPage = () => {
     setActivePortal(portal);
     setErrorMessage('');
     setSuccessMessage('');
-    const creds = PORTAL_CREDENTIALS[portal];
-    if (creds) {
-      setIdentifier(creds.id);
-      setPassword(creds.password);
-    }
+    setIdentifier('');
+    setPassword('');
   };
 
   const handleLoginSubmit = async (e) => {
@@ -368,38 +337,6 @@ export const LoginPage = () => {
               </div>
             </div>
 
-            {/* Dedicated Separate Credentials Card for Active Portal */}
-            <div className="p-3.5 mb-5 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 shadow-xs">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-indigo-500 dark:text-cyan-400" />
-                  {activePortal === 'ADMIN'
-                    ? 'Admin Portal Credentials'
-                    : activePortal === 'AUDITOR'
-                    ? 'Auditor Portal Credentials'
-                    : 'Supervisor Portal Credentials'}:
-                </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                  Pre-Filled & Ready
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">User ID / Username</span>
-                  <div className="font-mono font-bold text-slate-900 dark:text-white flex items-center justify-between mt-0.5">
-                    <span>{PORTAL_CREDENTIALS[activePortal]?.id}</span>
-                    <span className="text-[10px] font-normal text-slate-400">('{PORTAL_CREDENTIALS[activePortal]?.alias}')</span>
-                  </div>
-                </div>
-                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Password</span>
-                  <div className="font-mono font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-between mt-0.5">
-                    <span>{PORTAL_CREDENTIALS[activePortal]?.password}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Notification Messages */}
             {errorMessage && (
               <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 dark:bg-rose-950/50 dark:border-rose-900 dark:text-rose-200 text-xs flex items-center gap-2">
@@ -436,10 +373,10 @@ export const LoginPage = () => {
                     onChange={(e) => setIdentifier(e.target.value)}
                     placeholder={
                       activePortal === 'ADMIN'
-                        ? 'e.g. ADM-001, admin, or admin@factory.com'
+                        ? 'Enter Admin ID, username, or email'
                         : activePortal === 'AUDITOR'
-                        ? 'e.g. AUD-001, auditor, or auditor@factory.com'
-                        : 'e.g. SUP-101, supervisor, or arif@factory.com'
+                        ? 'Enter Auditor ID, username, or email'
+                        : 'Enter Supervisor ID, username, or email'
                     }
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 text-slate-900 dark:text-white text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-cyan-500 transition-all shadow-xs"
                     required
@@ -452,9 +389,6 @@ export const LoginPage = () => {
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                     Password
                   </label>
-                  <span className="text-[11px] text-slate-400 font-mono">
-                    Password: <strong className="text-emerald-600 dark:text-emerald-400 font-mono">{PORTAL_CREDENTIALS[activePortal]?.password}</strong>
-                  </span>
                 </div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
