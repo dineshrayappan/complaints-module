@@ -254,13 +254,30 @@ export const AuthProvider = ({ children }) => {
 
     // 2. Offline / Serverless cold-start demo fallback
     const idTrim = (identifier || '').trim().toLowerCase();
+    let targetEmp = idTrim;
+    if (idTrim === 'admin') targetEmp = 'adm-001';
+    else if (idTrim === 'auditor') targetEmp = 'aud-001';
+    else if (idTrim === 'dinesh') targetEmp = 'aud-002';
+    else if (idTrim === 'supervisor' || idTrim === 'arif') targetEmp = 'sup-101';
+
     const matched = demoUsers.find(
       (u) =>
-        u.employeeId.toLowerCase() === idTrim ||
-        u.email.toLowerCase() === idTrim
+        u.employeeId.toLowerCase() === targetEmp ||
+        u.email.toLowerCase() === idTrim ||
+        u.employeeId.toLowerCase() === idTrim
     );
 
-    if (matched && password === 'Password123!') {
+    const validFallbackPasswords = [
+      'admin123',
+      'auditor123',
+      'supervisor123',
+      'Password123!',
+      'Admin@123',
+      'Auditor@123',
+      'Supervisor@123',
+    ];
+
+    if (matched && validFallbackPasswords.includes(password)) {
       const mockToken = `mock-token-${matched.role}-${Date.now()}`;
       localStorage.setItem('garment_qms_token', mockToken);
       setToken(mockToken);

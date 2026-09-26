@@ -11,7 +11,7 @@ const initialUsers = [
     designation: 'General Operations Director',
     mobileNumber: '+91 98000 11223',
     isActive: true,
-    password: 'Admin@123',
+    password: 'admin123',
   },
   {
     _id: '6ab21322cd50706ee2a84631',
@@ -23,7 +23,7 @@ const initialUsers = [
     designation: 'Chief QA & Compliance Auditor',
     mobileNumber: '+91 98765 43210',
     isActive: true,
-    password: 'Auditor@123',
+    password: 'auditor123',
   },
   {
     _id: '6ab21322cd50706ee2a84632',
@@ -35,7 +35,7 @@ const initialUsers = [
     designation: 'Internal Quality Auditor',
     mobileNumber: '+91 98111 55667',
     isActive: true,
-    password: 'Auditor@123',
+    password: 'auditor123',
   },
   {
     _id: '6ab21322cd50706ee2a84637',
@@ -47,7 +47,7 @@ const initialUsers = [
     designation: 'Line 1 In-Charge',
     mobileNumber: '+91 98111 22334',
     isActive: true,
-    password: 'Supervisor@123',
+    password: 'supervisor123',
   },
   {
     _id: '6ab21322cd50706ee2a84638',
@@ -59,7 +59,7 @@ const initialUsers = [
     designation: 'Line 2 In-Charge',
     mobileNumber: '+91 98222 33445',
     isActive: true,
-    password: 'Password123!',
+    password: 'supervisor123',
   },
   {
     _id: '6ab21322cd50706ee2a84639',
@@ -71,7 +71,7 @@ const initialUsers = [
     designation: 'Cutting Section Head',
     mobileNumber: '+91 98333 44556',
     isActive: true,
-    password: 'Password123!',
+    password: 'supervisor123',
   },
   {
     _id: '6ab21322cd50706ee2a84640',
@@ -83,7 +83,7 @@ const initialUsers = [
     designation: 'Finishing Floor Manager',
     mobileNumber: '+91 98444 55667',
     isActive: true,
-    password: 'Password123!',
+    password: 'supervisor123',
   },
   {
     _id: '6ab21322cd50706ee2a84641',
@@ -95,7 +95,7 @@ const initialUsers = [
     designation: 'Line 3 Supervisor',
     mobileNumber: '+91 98555 66778',
     isActive: true,
-    password: 'Password123!',
+    password: 'supervisor123',
   },
   {
     _id: '6ab21322cd50706ee2a84642',
@@ -107,7 +107,7 @@ const initialUsers = [
     designation: 'Line 4 Supervisor',
     mobileNumber: '+91 98666 77889',
     isActive: true,
-    password: 'Password123!',
+    password: 'supervisor123',
   },
   {
     _id: '6ab21322cd50706ee2a84643',
@@ -119,7 +119,7 @@ const initialUsers = [
     designation: 'Embroidery Unit Master',
     mobileNumber: '+91 98777 88990',
     isActive: true,
-    password: 'Password123!',
+    password: 'supervisor123',
   },
   {
     _id: '6ab21322cd50706ee2a84644',
@@ -131,7 +131,7 @@ const initialUsers = [
     designation: 'Washing Lab In-Charge',
     mobileNumber: '+91 98888 99001',
     isActive: true,
-    password: 'Password123!',
+    password: 'supervisor123',
   },
   {
     _id: '6ab21322cd50706ee2a84645',
@@ -143,7 +143,7 @@ const initialUsers = [
     designation: 'Buttoning & Snap Rivet Master',
     mobileNumber: '+91 98999 00112',
     isActive: true,
-    password: 'Password123!',
+    password: 'supervisor123',
   },
   {
     _id: '6ab21322cd50706ee2a84646',
@@ -155,7 +155,7 @@ const initialUsers = [
     designation: 'Final QC & Audit Coordinator',
     mobileNumber: '+91 98012 34567',
     isActive: true,
-    password: 'Password123!',
+    password: 'supervisor123',
   },
 ];
 
@@ -391,7 +391,8 @@ module.exports = {
     const term = (identifier || '').trim().toLowerCase();
     if (term === 'admin') return mockUsers.find((u) => u.role === 'ADMIN');
     if (term === 'auditor') return mockUsers.find((u) => u.role === 'AUDITOR');
-    if (term === 'supervisor') return mockUsers.find((u) => u.role === 'ACTION_PERSON' || u.role === 'SUPERVISOR');
+    if (term === 'dinesh') return mockUsers.find((u) => u.employeeId === 'AUD-002' || u.email.toLowerCase().includes('dinesh'));
+    if (term === 'supervisor' || term === 'arif') return mockUsers.find((u) => u.employeeId === 'SUP-101' || u.role === 'ACTION_PERSON' || u.role === 'SUPERVISOR');
     return mockUsers.find(
       (u) => u.email.toLowerCase() === term || u.employeeId.toLowerCase() === term
     );

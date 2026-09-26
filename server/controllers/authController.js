@@ -16,9 +16,9 @@ const generateToken = (id) => {
 // Verify role passwords helper
 const checkRolePassword = (userRole, inputPassword) => {
   if (inputPassword === 'Password123!') return true;
-  if (userRole === 'ADMIN' && (inputPassword === 'Admin@123' || inputPassword === 'admin123')) return true;
-  if (userRole === 'AUDITOR' && (inputPassword === 'Auditor@123' || inputPassword === 'auditor123')) return true;
-  if ((userRole === 'ACTION_PERSON' || userRole === 'SUPERVISOR') && (inputPassword === 'Supervisor@123' || inputPassword === 'supervisor123')) return true;
+  if (userRole === 'ADMIN' && (inputPassword === 'admin123' || inputPassword === 'Admin@123' || inputPassword === 'admin')) return true;
+  if (userRole === 'AUDITOR' && (inputPassword === 'auditor123' || inputPassword === 'Auditor@123' || inputPassword === 'auditor')) return true;
+  if ((userRole === 'ACTION_PERSON' || userRole === 'SUPERVISOR') && (inputPassword === 'supervisor123' || inputPassword === 'Supervisor@123' || inputPassword === 'supervisor')) return true;
   return false;
 };
 
@@ -58,7 +58,8 @@ const login = async (req, res) => {
     const lowerId = queryIdentifier.toLowerCase();
     if (lowerId === 'admin') mappedIdentifier = 'ADM-001';
     else if (lowerId === 'auditor') mappedIdentifier = 'AUD-001';
-    else if (lowerId === 'supervisor') mappedIdentifier = 'SUP-101';
+    else if (lowerId === 'dinesh') mappedIdentifier = 'AUD-002';
+    else if (lowerId === 'supervisor' || lowerId === 'arif') mappedIdentifier = 'SUP-101';
 
     // 1. If Supabase is configured, attempt authentication from PostgreSQL
     if (isSupabaseConfigured && supabase) {

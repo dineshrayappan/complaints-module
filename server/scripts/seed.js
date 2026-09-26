@@ -111,7 +111,9 @@ const seedData = async () => {
     console.log('[Seed] Seeding Supabase PostgreSQL database...');
 
     const salt = await bcrypt.genSalt(10);
-    const defaultPassword = await bcrypt.hash('Password123!', salt);
+    const adminPassword = await bcrypt.hash('admin123', salt);
+    const auditorPassword = await bcrypt.hash('auditor123', salt);
+    const supervisorPassword = await bcrypt.hash('supervisor123', salt);
 
     const initialUsers = [
       {
@@ -119,7 +121,7 @@ const seedData = async () => {
         employeeId: 'ADM-001',
         name: 'Anil Mehta',
         email: 'admin@factory.com',
-        password: defaultPassword,
+        password: adminPassword,
         role: 'ADMIN',
         department: 'Plant Operations & Executive Oversight',
         designation: 'General Operations Director',
@@ -131,7 +133,7 @@ const seedData = async () => {
         employeeId: 'AUD-001',
         name: 'Rajesh Kumar',
         email: 'auditor@factory.com',
-        password: defaultPassword,
+        password: auditorPassword,
         role: 'AUDITOR',
         department: 'Central Quality Audit',
         designation: 'Chief QA & Compliance Auditor',
@@ -143,7 +145,7 @@ const seedData = async () => {
         employeeId: 'AUD-002',
         name: 'Dinesh Rayappan',
         email: 'dinesh@factory.com',
-        password: defaultPassword,
+        password: auditorPassword,
         role: 'AUDITOR',
         department: 'Central Quality Audit',
         designation: 'Internal Quality Auditor',
@@ -155,7 +157,7 @@ const seedData = async () => {
         employeeId: 'SUP-101',
         name: 'Mohammad Arif',
         email: 'arif@factory.com',
-        password: defaultPassword,
+        password: supervisorPassword,
         role: 'ACTION_PERSON',
         department: 'Sewing Line 1',
         designation: 'Line 1 In-Charge',
@@ -167,7 +169,7 @@ const seedData = async () => {
         employeeId: 'SUP-102',
         name: 'Priya Sharma',
         email: 'priya@factory.com',
-        password: defaultPassword,
+        password: supervisorPassword,
         role: 'ACTION_PERSON',
         department: 'Sewing Line 2',
         designation: 'Line 2 In-Charge',
@@ -179,7 +181,7 @@ const seedData = async () => {
         employeeId: 'SUP-103',
         name: 'Kamal Hasan',
         email: 'kamal@factory.com',
-        password: defaultPassword,
+        password: supervisorPassword,
         role: 'ACTION_PERSON',
         department: 'Spreading & Cutting',
         designation: 'Cutting Section Head',
@@ -191,7 +193,7 @@ const seedData = async () => {
         employeeId: 'SUP-104',
         name: 'Sunita Roy',
         email: 'sunita@factory.com',
-        password: defaultPassword,
+        password: supervisorPassword,
         role: 'ACTION_PERSON',
         department: 'Finishing & Packing',
         designation: 'Finishing Floor Manager',
