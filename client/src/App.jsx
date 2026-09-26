@@ -29,8 +29,17 @@ export const App = () => {
   const { user, isAdmin, isAuditor, isActionPerson } = useAuth();
   const { isDark } = useTheme();
 
-  // Data State
-  const [complaints, setComplaints] = useState([]);
+  // Data State with persistent local hydration to keep supervisor tasks & photos visible across logins
+  const [complaints, setComplaints] = useState(() => {
+    try {
+      const cached = localStorage.getItem('garment_qms_cached_complaints');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
   const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -58,14 +67,14 @@ export const App = () => {
   // Prevent jarring full-screen loading spinner on background updates / tab changes
   const initialLoadedRef = useRef(false);
 
-  // Load complaints and metrics with silent background refresh capability
-  const loadData = useCallback(async (showSpinner = false) => {
+  // Load complaints and metrics with silent background refresh capability (avoids UI glitch/flicker)
+  const loadData = useCallback(async (showSpinner = false, isManual = false) => {
     if (!user) return;
     const isExplicitSpinner = showSpinner === true;
     try {
       if (isExplicitSpinner && !initialLoadedRef.current) {
         setLoading(true);
-      } else {
+      } else if (isManual) {
         setIsRefreshing(true);
       }
 
@@ -91,7 +100,14 @@ export const App = () => {
           const optimisticPending = prev.filter(
             (c) => c._isOptimistic && !incomingIds.has(String(c._id || c.id || c.complaintId))
           );
-          return [...optimisticPending, ...incoming];
+          const combined = [...optimisticPending, ...incoming];
+          try {
+            // Persist latest complaints in localStorage so supervisor tasks & photos remain saved and visible even after logging back in
+            localStorage.setItem('garment_qms_cached_complaints', JSON.stringify(combined.slice(0, 50)));
+          } catch (storageErr) {
+            // Ignore quota errors
+          }
+          return combined;
         });
       }
 
@@ -103,31 +119,33 @@ export const App = () => {
     } finally {
       initialLoadedRef.current = true;
       setLoading(false);
-      setIsRefreshing(false);
+      if (isManual) {
+        setTimeout(() => setIsRefreshing(false), 500);
+      }
     }
   }, [user, activeTab, categoryFilter, priorityFilter, searchTerm]);
 
   // Initial load
   useEffect(() => {
-    loadData(!initialLoadedRef.current);
+    loadData(!initialLoadedRef.current, false);
   }, [loadData]);
 
-  // Periodic Auto-Refresh: Poll every 4 seconds silently so changes appear instantly across all users & devices
+  // Periodic Auto-Refresh: Poll silently in background so changes sync continuously without flickering
   useEffect(() => {
     if (!user) return;
 
     const interval = setInterval(() => {
-      loadData(false);
+      loadData(false, false);
     }, 4000);
 
     const handleFocus = () => {
-      loadData(false);
+      loadData(false, false);
     };
 
     window.addEventListener('focus', handleFocus);
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        loadData(false);
+        loadData(false, false);
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
@@ -306,7 +324,7 @@ export const App = () => {
       {/* Top Navigation Header */}
       <Header
         onOpenNewComplaint={() => setIsNewModalOpen(true)}
-        onRefresh={() => loadData(false)}
+        onRefresh={() => loadData(false, true)}
         isRefreshing={isRefreshing}
       />
 
@@ -424,7 +442,7 @@ export const App = () => {
               onCategoryChange={setCategoryFilter}
               priorityFilter={priorityFilter}
               onPriorityChange={setPriorityFilter}
-              onRefresh={() => loadData(false)}
+              onRefresh={() => loadData(false, true)}
               loading={isRefreshing}
               counts={metrics}
             />

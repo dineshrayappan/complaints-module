@@ -4,9 +4,10 @@ const bcrypt = require('bcryptjs');
 const { supabase, isSupabaseConfigured } = require('../config/supabase');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+
 // Helper to generate a realistic defect sample image (SVG)
 const ensureSampleImages = () => {
-  const uploadsDir = path.join(__dirname, '..', 'uploads');
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
   }
@@ -209,6 +210,16 @@ const seedData = async () => {
       console.log('✅ [Seed] Factory Users successfully seeded in Supabase.');
     }
 
+    const getSampleDataUrl = (filename) => {
+      const filePath = path.join(uploadsDir, filename);
+      if (fs.existsSync(filePath)) {
+        try {
+          return `data:image/svg+xml;base64,${fs.readFileSync(filePath).toString('base64')}`;
+        } catch (e) {}
+      }
+      return `/uploads/${filename}`;
+    };
+
     const now = new Date();
     const sampleComplaints = [
       {
@@ -219,7 +230,7 @@ const seedData = async () => {
         location: 'Machine #14 - Overlock',
         priority: 'CRITICAL',
         description: 'Severe skipped stitches and seam slippage identified on collar band seam of 100% cotton pique polo shirts (Order #PO-8821).',
-        beforePhoto: '/uploads/sample-before-stitch.svg',
+        beforePhoto: getSampleDataUrl('sample-before-stitch.svg'),
         afterPhoto: null,
         assignedTo: {
           userId: 'usr-sup-101',
@@ -259,7 +270,7 @@ const seedData = async () => {
         location: 'Machine #08 - Single Needle Lockstitch',
         priority: 'HIGH',
         description: 'Needle bar oil leak causing dark spots on right sleeve cuff panels across 18 bundled garments.',
-        beforePhoto: '/uploads/sample-before-oil.svg',
+        beforePhoto: getSampleDataUrl('sample-before-oil.svg'),
         afterPhoto: null,
         assignedTo: {
           userId: 'usr-sup-102',
@@ -299,11 +310,20 @@ const seedData = async () => {
       },
     ];
 
-    const { error: cmpErr } = await supabase.from('complaints').upsert(sampleComplaints, { onConflict: 'complaintId' });
-    if (cmpErr) {
-      console.warn('⚠️ [Seed] Complaints upsert notice:', cmpErr.message);
+    // Safely check if complaints already exist to NEVER wipe out supervisor submissions or photos
+    const { count: existingCount, error: countErr } = await supabase
+      .from('complaints')
+      .select('*', { count: 'exact', head: true });
+
+    if (!countErr && typeof existingCount === 'number' && existingCount > 0) {
+      console.log(`✅ [Seed] Supabase already contains ${existingCount} active complaints. Preserving existing complaints, photos & supervisor actions.`);
     } else {
-      console.log('✅ [Seed] Sample complaints successfully seeded in Supabase.');
+      const { error: cmpErr } = await supabase.from('complaints').insert(sampleComplaints);
+      if (cmpErr) {
+        console.warn('⚠️ [Seed] Complaints insert notice:', cmpErr.message);
+      } else {
+        console.log('✅ [Seed] Initial sample complaints successfully seeded in Supabase.');
+      }
     }
   } catch (err) {
     console.error('❌ [Seed] Error during seeding:', err.message);
