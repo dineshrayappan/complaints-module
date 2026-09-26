@@ -7,6 +7,7 @@ import {
   Play,
   CheckCheck,
   User,
+  Trash2,
 } from 'lucide-react';
 import CountdownBadge from './CountdownBadge';
 import { useAuth } from '../context/AuthContext';
@@ -21,6 +22,7 @@ export const ComplaintCard = ({
   onViewDetails,
   onStartProgress,
   onSubmitAction,
+  onDeleteComplaint,
 }) => {
   const { isAuditor, isActionPerson, isAdmin, user } = useAuth();
 
@@ -251,6 +253,20 @@ export const ComplaintCard = ({
           >
             <CheckCheck className="w-3.5 h-3.5" />
             <span>Verify Defect</span>
+          </button>
+        )}
+
+        {/* Delete Action for Auditor or Admin */}
+        {(isAuditor || isAdmin) && onDeleteComplaint && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDeleteComplaint(complaint);
+            }}
+            title="Delete Defect Log"
+            className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 transition-colors shrink-0 cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         )}
       </div>

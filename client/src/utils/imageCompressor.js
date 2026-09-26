@@ -6,7 +6,7 @@
 
 export const compressImage = (
   file,
-  { maxWidth = 1600, maxHeight = 1600, quality = 0.82 } = {}
+  { maxWidth = 1024, maxHeight = 1024, quality = 0.75 } = {}
 ) => {
   return new Promise((resolve) => {
     if (!file) {

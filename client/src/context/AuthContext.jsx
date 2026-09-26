@@ -278,6 +278,33 @@ export const AuthProvider = ({ children }) => {
     ];
 
     if (matched && validFallbackPasswords.includes(password)) {
+      if (expectedRole) {
+        const isAdminPortal = expectedRole === 'ADMIN';
+        const isAuditorPortal = expectedRole === 'AUDITOR';
+        const isSupervisorPortal = expectedRole === 'SUPERVISOR' || expectedRole === 'ACTION_PERSON';
+
+        if (isAdminPortal && matched.role !== 'ADMIN') {
+          return {
+            success: false,
+            message: `Access Denied: Account (${matched.name}) is registered as ${matched.role === 'AUDITOR' ? 'Internal Auditor' : 'Line Supervisor'}. You cannot log in through the Administrator portal. Please switch to the ${matched.role === 'AUDITOR' ? 'Auditor' : 'Supervisor'} Login tab.`,
+          };
+        }
+
+        if (isAuditorPortal && matched.role !== 'AUDITOR') {
+          return {
+            success: false,
+            message: `Access Denied: Account (${matched.name}) is registered as ${matched.role === 'ADMIN' ? 'System Administrator' : 'Line Supervisor'}. You cannot log in through the Auditor portal. Please switch to the corresponding login tab.`,
+          };
+        }
+
+        if (isSupervisorPortal && matched.role !== 'ACTION_PERSON' && matched.role !== 'SUPERVISOR') {
+          return {
+            success: false,
+            message: `Access Denied: Account (${matched.name}) is registered as ${matched.role === 'ADMIN' ? 'System Administrator' : 'Internal Auditor'}. You cannot log in through the Supervisor portal. Please switch to the corresponding login tab.`,
+          };
+        }
+      }
+
       const mockToken = `mock-token-${matched.role}-${Date.now()}`;
       localStorage.setItem('garment_qms_token', mockToken);
       setToken(mockToken);

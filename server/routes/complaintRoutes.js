@@ -11,6 +11,7 @@ const {
   getKpiStats,
   getAdminOversightStats,
   reassignComplaint,
+  deleteComplaint,
 } = require('../controllers/complaintController');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -97,5 +98,13 @@ router.post(
 
 // Direct timeline remarks / communication thread
 router.post('/:id/timeline', verifyToken, addTimelineComment);
+
+// Delete Defect Log (AUDITOR or ADMIN strictly enforced)
+router.delete(
+  '/:id',
+  verifyToken,
+  requireRole(['AUDITOR', 'ADMIN']),
+  deleteComplaint
+);
 
 module.exports = router;

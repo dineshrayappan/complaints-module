@@ -299,6 +299,8 @@ const createComplaint = async (req, res) => {
           .single();
 
         if (!insertErr && inserted) {
+          // Immediately sync to mockStore so in-memory store and Supabase stay identical
+          mockStore.createComplaint({ ...inserted, _id: inserted.id, complaintId: inserted.complaintId });
           return res.status(201).json({
             success: true,
             message: `Complaint ${inserted.complaintId} created and assigned successfully.`,
@@ -394,10 +396,23 @@ const getComplaints = async (req, res) => {
         const { data, error } = await query.order('createdAt', { ascending: false });
 
         if (!error && data) {
+          // Sync any new mockStore tickets that might have been created during a transient Supabase latency
+          const supabaseIds = new Set(data.map((d) => String(d.id || d.complaintId)));
+          const mockTickets = mockStore.getComplaints(req.query, req.user);
+          const unsyncedFromMock = mockTickets.filter(
+            (m) => !supabaseIds.has(String(m._id || m.id)) && !supabaseIds.has(String(m.complaintId))
+          );
+
+          // Bidirectional sync: keep mockStore updated with Supabase records
+          data.forEach((t) => {
+            mockStore.createComplaint({ ...t, _id: t.id, complaintId: t.complaintId });
+          });
+
+          const combined = [...unsyncedFromMock, ...data];
           return res.status(200).json({
             success: true,
-            count: data.length,
-            complaints: data.map(formatComplaintOutput),
+            count: combined.length,
+            complaints: combined.map(formatComplaintOutput),
           });
         }
       } catch (dbErr) {
@@ -1400,6 +1415,43 @@ const reassignComplaint = async (req, res) => {
   }
 };
 
+// @desc    Delete complaint / defect log
+// @route   DELETE /api/complaints/:id
+// @access  Private (Auditor or Admin)
+const deleteComplaint = async (req, res) => {
+  try {
+    const paramId = req.params.id;
+
+    // Delete from Supabase if configured
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase
+          .from('complaints')
+          .delete()
+          .or(`id.eq.${paramId},complaintId.eq.${paramId}`);
+      } catch (err) {
+        console.warn('[ComplaintController:deleteComplaint] Supabase delete warning:', err.message);
+      }
+    }
+
+    // Delete from in-memory mock store
+    mockStore.deleteComplaint(paramId);
+
+    return res.status(200).json({
+      success: true,
+      message: `Defect log ${paramId} deleted successfully.`,
+      id: paramId,
+    });
+  } catch (error) {
+    console.error('[ComplaintController:deleteComplaint] Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete complaint log.',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createComplaint,
   getComplaints,
@@ -1411,4 +1463,5 @@ module.exports = {
   getKpiStats,
   getAdminOversightStats,
   reassignComplaint,
+  deleteComplaint,
 };

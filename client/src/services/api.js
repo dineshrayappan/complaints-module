@@ -83,6 +83,7 @@ export const complaintService = {
     api.post(`/complaints/${id}/verify`, payload),
   addTimelineComment: (id, comment) =>
     api.post(`/complaints/${id}/timeline`, { comment }),
+  deleteComplaint: (id) => api.delete(`/complaints/${id}`),
   getAdminOversight: () => api.get('/complaints/admin/oversight'),
 };
 

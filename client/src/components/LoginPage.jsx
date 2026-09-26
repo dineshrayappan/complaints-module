@@ -26,7 +26,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
 export const LoginPage = () => {
-  const { login, register } = useAuth();
+  const { login, register, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
 
   // Active portal: 'ADMIN', 'AUDITOR', or 'SUPERVISOR'
@@ -87,9 +87,34 @@ export const LoginPage = () => {
     if (!result.success) {
       setErrorMessage(result.message);
       setLoading(false);
-    } else {
-      setSuccessMessage('Authentication successful. Loading workspace...');
+      return;
     }
+
+    // Role safety verification: Ensure the authenticated account belongs to the active portal tab
+    if (result.user) {
+      const role = result.user.role;
+      const isAdminPortal = activePortal === 'ADMIN';
+      const isAuditorPortal = activePortal === 'AUDITOR';
+      const isSupervisorPortal = activePortal === 'SUPERVISOR';
+
+      const roleMatchesPortal =
+        (isAdminPortal && role === 'ADMIN') ||
+        (isAuditorPortal && role === 'AUDITOR') ||
+        (isSupervisorPortal && (role === 'SUPERVISOR' || role === 'ACTION_PERSON'));
+
+      if (!roleMatchesPortal) {
+        if (logout) await logout();
+        setErrorMessage(
+          `Access Denied: Account (${result.user.name}) is registered as ${
+            role === 'ADMIN' ? 'System Administrator' : role === 'AUDITOR' ? 'Internal Auditor' : 'Line Supervisor'
+          }. You cannot log in through the ${activePortal} tab. Please switch to the designated login tab.`
+        );
+        setLoading(false);
+        return;
+      }
+    }
+
+    setSuccessMessage('Authentication successful. Loading workspace...');
   };
 
   const handleRegisterSubmit = async (e) => {

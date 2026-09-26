@@ -322,8 +322,7 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
         formData.append('beforePhotoBase64', photoBase64);
       } else if (previewUrl && previewUrl.startsWith('data:')) {
         formData.append('beforePhotoBase64', previewUrl);
-      }
-      if (beforeFile) {
+      } else if (beforeFile) {
         formData.append('beforePhoto', beforeFile);
       }
 

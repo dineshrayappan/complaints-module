@@ -17,6 +17,7 @@ import {
   UserCheck,
   Play,
   Camera,
+  Trash2,
 } from 'lucide-react';
 import CountdownBadge from './CountdownBadge';
 import { formatAbsoluteTime } from '../utils/timer';
@@ -36,6 +37,7 @@ export const ComplaintDetailModal = ({
   onUpdateComplaint,
   onStartProgress,
   onSubmitAction,
+  onDeleteComplaint,
 }) => {
   const { user, isAuditor, isAdmin, demoUsers } = useAuth();
   const [commentText, setCommentText] = useState('');
@@ -733,8 +735,20 @@ export const ComplaintDetailModal = ({
 
         {/* Modal Footer */}
         <div className="px-6 py-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-          <div className="font-mono text-[11px]">
-            Garment QMS Ref: {complaint.complaintId}
+          <div className="flex items-center gap-3">
+            <div className="font-mono text-[11px]">
+              Garment QMS Ref: {complaint.complaintId}
+            </div>
+            {(isAuditor || isAdmin) && onDeleteComplaint && (
+              <button
+                type="button"
+                onClick={() => onDeleteComplaint(complaint)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/80 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-900 font-semibold text-xs transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete Log</span>
+              </button>
+            )}
           </div>
           <button
             onClick={onClose}

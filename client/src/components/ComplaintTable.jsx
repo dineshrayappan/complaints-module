@@ -1,5 +1,4 @@
-import React from 'react';
-import { Eye, Camera, CheckCheck, Play, Phone } from 'lucide-react';
+import { Eye, Camera, CheckCheck, Play, Phone, Trash2 } from 'lucide-react';
 import CountdownBadge from './CountdownBadge';
 import { useAuth } from '../context/AuthContext';
 
@@ -13,6 +12,7 @@ export const ComplaintTable = ({
   onViewDetails,
   onStartProgress,
   onSubmitAction,
+  onDeleteComplaint,
 }) => {
   const { isAuditor, isActionPerson, isAdmin, user } = useAuth();
 
@@ -209,6 +209,16 @@ export const ComplaintTable = ({
                     >
                       <Eye className="w-3.5 h-3.5" />
                     </button>
+
+                    {(isAuditor || isAdmin) && onDeleteComplaint && (
+                      <button
+                        onClick={() => onDeleteComplaint(c)}
+                        className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50"
+                        title="Delete Defect Log"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>

@@ -462,11 +462,11 @@ module.exports = {
     mockComplaints.find((c) => c._id === id || c.complaintId === id),
   createComplaint: (data) => {
     const newTicket = {
-      _id: `cmp-${Date.now()}`,
-      complaintId: `CMP-${Math.floor(10000 + Math.random() * 90000)}`,
+      _id: data._id || data.id || `cmp-${Date.now()}`,
+      complaintId: data.complaintId || `CMP-${Math.floor(10000 + Math.random() * 90000)}`,
       ...data,
-      status: 'Assigned',
-      timeline: [
+      status: data.status || 'Assigned',
+      timeline: data.timeline || [
         {
           action: 'CREATED',
           performedBy: data.createdBy,
@@ -474,9 +474,16 @@ module.exports = {
           timestamp: new Date(),
         },
       ],
-      createdAt: new Date(),
+      createdAt: data.createdAt || new Date(),
     };
-    mockComplaints.unshift(newTicket);
+    const existingIdx = mockComplaints.findIndex(
+      (c) => c._id === newTicket._id || c.complaintId === newTicket.complaintId
+    );
+    if (existingIdx !== -1) {
+      mockComplaints[existingIdx] = { ...mockComplaints[existingIdx], ...newTicket };
+    } else {
+      mockComplaints.unshift(newTicket);
+    }
     return newTicket;
   },
   updateComplaint: (id, updates) => {
@@ -484,6 +491,20 @@ module.exports = {
     if (idx !== -1) {
       mockComplaints[idx] = { ...mockComplaints[idx], ...updates };
       return mockComplaints[idx];
+    }
+    return null;
+  },
+  deleteComplaint: (id) => {
+    const paramStr = String(id);
+    const idx = mockComplaints.findIndex(
+      (c) =>
+        String(c._id) === paramStr ||
+        String(c.id) === paramStr ||
+        c.complaintId === paramStr
+    );
+    if (idx !== -1) {
+      const removed = mockComplaints.splice(idx, 1)[0];
+      return removed;
     }
     return null;
   },

@@ -25,6 +25,26 @@ import AdminOversightDashboard from './components/AdminOversightDashboard';
 import AdminUserManagement from './components/AdminUserManagement';
 import { Crown, BarChart3, Users } from 'lucide-react';
 
+// Safe localStorage caching helper to prevent QuotaExceededError while preserving offline state
+const safePersistCache = (items) => {
+  try {
+    const sanitized = (items || []).slice(0, 30).map((item) => {
+      let beforePhoto = item.beforePhoto;
+      let afterPhoto = item.afterPhoto;
+      if (beforePhoto && beforePhoto.length > 200000) {
+        beforePhoto = beforePhoto.substring(0, 100) + '...[offline-cached]';
+      }
+      if (afterPhoto && afterPhoto.length > 200000) {
+        afterPhoto = afterPhoto.substring(0, 100) + '...[offline-cached]';
+      }
+      return { ...item, beforePhoto, afterPhoto };
+    });
+    localStorage.setItem('garment_qms_cached_complaints', JSON.stringify(sanitized));
+  } catch (err) {
+    console.warn('Could not persist complaints cache:', err);
+  }
+};
+
 export const App = () => {
   const { user, isAdmin, isAuditor, isActionPerson } = useAuth();
   const { isDark } = useTheme();
@@ -101,13 +121,9 @@ export const App = () => {
             (c) => c._isOptimistic && !incomingIds.has(String(c._id || c.id || c.complaintId))
           );
           const combined = [...optimisticPending, ...incoming];
-          try {
-            // Persist full complaints cache only when on 'all' tab with no filters to avoid corrupting cache
-            if (activeTab === 'all' && !categoryFilter && !priorityFilter && !searchTerm) {
-              localStorage.setItem('garment_qms_cached_complaints', JSON.stringify(combined.slice(0, 50)));
-            }
-          } catch (storageErr) {
-            // Ignore quota errors
+          // Persist full complaints cache safely only when on 'all' tab with no filters
+          if (activeTab === 'all' && !categoryFilter && !priorityFilter && !searchTerm) {
+            safePersistCache(combined);
           }
           return combined;
         });
@@ -203,16 +219,55 @@ export const App = () => {
         const withoutCurrent = prev.filter(
           (c) => (c._id || c.id) !== ticketId && c.complaintId !== newTicket.complaintId
         );
-        return [optimisticTicket, ...withoutCurrent];
+        const nextList = [optimisticTicket, ...withoutCurrent];
+        safePersistCache(nextList);
+        return nextList;
       });
     }
 
-    // Refresh KPI metrics quietly in background
-    complaintService.getKpiStats().then((res) => {
+    // Refresh KPI metrics and fetch fresh complaints from server immediately
+    loadData(false);
+  };
+
+  // Delete defect log (Auditor & Admin)
+  const handleDeleteComplaint = async (complaint) => {
+    if (!complaint) return;
+    const cid = complaint.complaintId || complaint._id || complaint.id;
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete defect log [${cid}]? This will remove all associated rework photos and records.`
+    );
+    if (!confirmDelete) return;
+
+    try {
+      const targetId = complaint._id || complaint.id || complaint.complaintId;
+      const res = await complaintService.deleteComplaint(targetId);
       if (res.data?.success) {
-        setMetrics(res.data.metrics);
+        showToast(`Defect log ${cid} deleted successfully.`);
+        setComplaints((prev) => {
+          const filtered = prev.filter(
+            (c) =>
+              (c._id || c.id) !== targetId &&
+              c.complaintId !== cid &&
+              c.complaintId !== complaint.complaintId
+          );
+          safePersistCache(filtered);
+          return filtered;
+        });
+
+        if (
+          selectedComplaint &&
+          ((selectedComplaint._id || selectedComplaint.id) === targetId ||
+            selectedComplaint.complaintId === cid)
+        ) {
+          setIsDetailModalOpen(false);
+          setSelectedComplaint(null);
+        }
+
+        loadData(false);
       }
-    }).catch(() => {});
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete defect log.');
+    }
   };
 
   // On action submitted: Optimistic update + silent refresh
@@ -459,11 +514,12 @@ export const App = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {complaints.map((c) => (
                   <ComplaintCard
-                    key={c._id}
+                    key={c._id || c.id || c.complaintId}
                     complaint={c}
                     onViewDetails={handleOpenDetailModal}
                     onStartProgress={handleStartProgress}
                     onSubmitAction={handleOpenActionModal}
+                    onDeleteComplaint={handleDeleteComplaint}
                   />
                 ))}
               </div>
@@ -473,6 +529,7 @@ export const App = () => {
                 onViewDetails={handleOpenDetailModal}
                 onStartProgress={handleStartProgress}
                 onSubmitAction={handleOpenActionModal}
+                onDeleteComplaint={handleDeleteComplaint}
               />
             )}
           </>
@@ -515,6 +572,7 @@ export const App = () => {
         onUpdateComplaint={handleComplaintUpdated}
         onStartProgress={handleStartProgress}
         onSubmitAction={handleOpenActionModal}
+        onDeleteComplaint={handleDeleteComplaint}
       />
     </div>
   );

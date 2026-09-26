@@ -152,6 +152,34 @@ const login = async (req, res) => {
       });
     }
 
+    // Role portal validation for fallback authentication
+    if (expectedRole) {
+      const isAdminPortal = expectedRole === 'ADMIN';
+      const isAuditorPortal = expectedRole === 'AUDITOR';
+      const isSupervisorPortal = expectedRole === 'SUPERVISOR' || expectedRole === 'ACTION_PERSON';
+
+      if (isAdminPortal && fallbackUser.role !== 'ADMIN') {
+        return res.status(400).json({
+          success: false,
+          message: `Access Denied: Account (${fallbackUser.name}) is registered as ${fallbackUser.role === 'AUDITOR' ? 'Internal Auditor' : 'Line Supervisor'}. You cannot log in through the Administrator portal. Please switch to the ${fallbackUser.role === 'AUDITOR' ? 'Auditor' : 'Supervisor'} Login tab.`,
+        });
+      }
+
+      if (isAuditorPortal && fallbackUser.role !== 'AUDITOR') {
+        return res.status(400).json({
+          success: false,
+          message: `Access Denied: Account (${fallbackUser.name}) is registered as ${fallbackUser.role === 'ADMIN' ? 'System Administrator' : 'Line Supervisor'}. You cannot log in through the Auditor portal. Please switch to the corresponding login tab.`,
+        });
+      }
+
+      if (isSupervisorPortal && fallbackUser.role !== 'ACTION_PERSON' && fallbackUser.role !== 'SUPERVISOR') {
+        return res.status(400).json({
+          success: false,
+          message: `Access Denied: Account (${fallbackUser.name}) is registered as ${fallbackUser.role === 'ADMIN' ? 'System Administrator' : 'Internal Auditor'}. You cannot log in through the Supervisor portal. Please switch to the corresponding login tab.`,
+        });
+      }
+    }
+
     const token = generateToken(fallbackUser._id);
     return res.status(200).json({
       success: true,
