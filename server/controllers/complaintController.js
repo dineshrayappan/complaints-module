@@ -454,6 +454,7 @@ const getComplaintById = async (req, res) => {
           .maybeSingle();
 
         if (!error && data) {
+          mockStore.createComplaint({ ...data, _id: data.id, complaintId: data.complaintId });
           return res.status(200).json({
             success: true,
             complaint: formatComplaintOutput(data),
@@ -533,6 +534,11 @@ const markInProgress = async (req, res) => {
             .single();
 
           if (!error && updated) {
+            mockStore.updateComplaint(current.id, {
+              status: 'In Progress',
+              timeline: updated.timeline,
+              updatedAt: now.toISOString(),
+            });
             return res.status(200).json({
               success: true,
               message: `Complaint ${updated.complaintId} marked In Progress.`,
@@ -675,6 +681,15 @@ const submitAction = async (req, res) => {
             .single();
 
           if (!error && updated) {
+            mockStore.updateComplaint(current.id, {
+              afterPhoto: afterPhotoUrl,
+              actionNotes,
+              feedbackRemarks,
+              actualCompletedAt: now.toISOString(),
+              status: 'Under Verification',
+              timeline: updated.timeline,
+              updatedAt: now.toISOString(),
+            });
             return res.status(200).json({
               success: true,
               message: `Resolution for ${updated.complaintId} submitted for audit verification.`,
@@ -812,6 +827,7 @@ const verifyComplaint = async (req, res) => {
             .single();
 
           if (!error && updated) {
+            mockStore.updateComplaint(current.id, updatePayload);
             return res.status(200).json({
               success: true,
               message: `Complaint ${updated.complaintId} has been ${decision === 'APPROVE' ? 'Approved & Closed' : 'Rejected & Returned to line'}.`,
@@ -924,10 +940,12 @@ const addTimelineComment = async (req, res) => {
             .single();
 
           if (!error && updated) {
+            mockStore.updateComplaint(current.id, { timeline: updated.timeline, updatedAt: now.toISOString() });
             return res.status(200).json({
               success: true,
               message: 'Remark recorded in ticket audit trail.',
               timeline: updated.timeline,
+              complaint: formatComplaintOutput(updated),
             });
           }
         }
@@ -960,6 +978,7 @@ const addTimelineComment = async (req, res) => {
       success: true,
       message: 'Remark recorded in ticket audit trail.',
       timeline: complaint.timeline,
+      complaint: formatComplaintOutput(complaint),
     });
   } catch (error) {
     res.status(500).json({
@@ -1364,6 +1383,11 @@ const reassignComplaint = async (req, res) => {
             .single();
 
           if (!error && updated) {
+            mockStore.updateComplaint(current.id, {
+              assignedTo,
+              timeline: updated.timeline,
+              updatedAt: now.toISOString(),
+            });
             return res.status(200).json({
               success: true,
               message: `Task successfully assigned to ${supervisor.name} (${supervisor.department}).`,

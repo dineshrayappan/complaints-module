@@ -25,21 +25,25 @@ import AdminOversightDashboard from './components/AdminOversightDashboard';
 import AdminUserManagement from './components/AdminUserManagement';
 import { Crown, BarChart3, Users } from 'lucide-react';
 
-// Safe localStorage caching helper to prevent QuotaExceededError while preserving offline state
+// Safe localStorage caching helper to prevent QuotaExceededError while preserving clean offline state
 const safePersistCache = (items) => {
   try {
-    const sanitized = (items || []).slice(0, 30).map((item) => {
-      let beforePhoto = item.beforePhoto;
-      let afterPhoto = item.afterPhoto;
-      if (beforePhoto && beforePhoto.length > 200000) {
-        beforePhoto = beforePhoto.substring(0, 100) + '...[offline-cached]';
-      }
-      if (afterPhoto && afterPhoto.length > 200000) {
-        afterPhoto = afterPhoto.substring(0, 100) + '...[offline-cached]';
-      }
-      return { ...item, beforePhoto, afterPhoto };
-    });
-    localStorage.setItem('garment_qms_cached_complaints', JSON.stringify(sanitized));
+    const list = (items || []).slice(0, 30);
+    try {
+      localStorage.setItem('garment_qms_cached_complaints', JSON.stringify(list));
+    } catch (quotaErr) {
+      // If quota exceeded, retain records without heavy base64 strings (never corrupt with broken prefixes)
+      const lean = list.slice(0, 20).map((item) => {
+        const isBeforeBase64 = item.beforePhoto?.startsWith('data:image/');
+        const isAfterBase64 = item.afterPhoto?.startsWith('data:image/');
+        return {
+          ...item,
+          beforePhoto: isBeforeBase64 ? null : item.beforePhoto,
+          afterPhoto: isAfterBase64 ? null : item.afterPhoto,
+        };
+      });
+      localStorage.setItem('garment_qms_cached_complaints', JSON.stringify(lean));
+    }
   } catch (err) {
     console.warn('Could not persist complaints cache:', err);
   }
@@ -151,13 +155,15 @@ export const App = () => {
   // Handle Start Progress (Line Supervisor)
   const handleStartProgress = async (complaint) => {
     try {
-      const res = await complaintService.markInProgress(complaint._id);
+      const targetId = complaint._id || complaint.id || complaint.complaintId;
+      const res = await complaintService.markInProgress(targetId);
       if (res.data?.success) {
         showToast(`Ticket ${complaint.complaintId} marked In Progress`);
+        const updatedTicket = res.data.complaint || { ...complaint, status: 'In Progress' };
         setComplaints((prev) =>
           prev.map((c) =>
             (c._id || c.id) === (complaint._id || complaint.id) || c.complaintId === complaint.complaintId
-              ? { ...c, status: 'In Progress' }
+              ? updatedTicket
               : c
           )
         );
@@ -174,30 +180,48 @@ export const App = () => {
     setIsActionModalOpen(true);
   };
 
-  // Open Detail modal
+  // Open Detail modal: Display immediately for fast UX, and fetch fresh details in background
   const handleOpenDetailModal = async (complaintOrId) => {
     if (!complaintOrId) return;
-    if (complaintOrId.description) {
-      setSelectedComplaint(complaintOrId);
-      setIsDetailModalOpen(true);
-      return;
-    }
-    const targetId = complaintOrId._id || complaintOrId.id || complaintOrId.complaintId || complaintOrId;
-    const localMatch = complaints.find(
-      (c) => (c._id || c.id) === targetId || c.complaintId === targetId
-    );
-    if (localMatch) {
-      setSelectedComplaint(localMatch);
-      setIsDetailModalOpen(true);
+
+    let targetId = '';
+    let initialObj = null;
+
+    if (typeof complaintOrId === 'object') {
+      targetId = complaintOrId._id || complaintOrId.id || complaintOrId.complaintId;
+      initialObj = complaintOrId;
     } else {
+      targetId = complaintOrId;
+      initialObj = complaints.find(
+        (c) => (c._id || c.id) === targetId || c.complaintId === targetId
+      );
+    }
+
+    if (initialObj) {
+      setSelectedComplaint(initialObj);
+      setIsDetailModalOpen(true);
+    }
+
+    // Always fetch latest authoritative data (timeline remarks, reworked photos, actions) from backend
+    if (targetId) {
       try {
         const res = await complaintService.getComplaintById(targetId);
-        if (res.data?.success) {
-          setSelectedComplaint(res.data.complaint);
-          setIsDetailModalOpen(true);
+        if (res.data?.success && res.data.complaint) {
+          const fresh = res.data.complaint;
+          setSelectedComplaint(fresh);
+          if (!initialObj) {
+            setIsDetailModalOpen(true);
+          }
+          setComplaints((prev) =>
+            prev.map((c) =>
+              (c._id || c.id) === (fresh._id || fresh.id) || c.complaintId === fresh.complaintId
+                ? fresh
+                : c
+            )
+          );
         }
       } catch (err) {
-        console.error('Failed to load complaint for modal:', err);
+        console.warn('Could not fetch background fresh complaint details:', err);
       }
     }
   };

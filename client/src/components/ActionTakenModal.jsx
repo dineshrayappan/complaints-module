@@ -100,7 +100,8 @@ export const ActionTakenModal = ({ complaint, isOpen, onClose, onSuccess }) => {
         formData.append('afterPhoto', afterFile);
       }
 
-      const res = await complaintService.submitAction(complaint._id, formData);
+      const targetId = complaint._id || complaint.id || complaint.complaintId;
+      const res = await complaintService.submitAction(targetId, formData);
       if (res.data.success) {
         onSuccess(res.data.complaint);
         onClose();

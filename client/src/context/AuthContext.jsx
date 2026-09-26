@@ -350,6 +350,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('garment_qms_token');
+    localStorage.removeItem('garment_qms_cached_complaints');
     setToken(null);
     setUser(null);
   };

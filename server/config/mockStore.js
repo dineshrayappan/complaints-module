@@ -458,8 +458,12 @@ module.exports = {
     }
     return result;
   },
-  getComplaintById: (id) =>
-    mockComplaints.find((c) => c._id === id || c.complaintId === id),
+  getComplaintById: (id) => {
+    const s = String(id);
+    return mockComplaints.find(
+      (c) => String(c._id) === s || String(c.id) === s || String(c.complaintId) === s
+    );
+  },
   createComplaint: (data) => {
     const newTicket = {
       _id: data._id || data.id || `cmp-${Date.now()}`,
@@ -477,7 +481,10 @@ module.exports = {
       createdAt: data.createdAt || new Date(),
     };
     const existingIdx = mockComplaints.findIndex(
-      (c) => c._id === newTicket._id || c.complaintId === newTicket.complaintId
+      (c) =>
+        String(c._id) === String(newTicket._id) ||
+        String(c.id) === String(newTicket._id) ||
+        c.complaintId === newTicket.complaintId
     );
     if (existingIdx !== -1) {
       mockComplaints[existingIdx] = { ...mockComplaints[existingIdx], ...newTicket };
@@ -487,7 +494,10 @@ module.exports = {
     return newTicket;
   },
   updateComplaint: (id, updates) => {
-    const idx = mockComplaints.findIndex((c) => c._id === id || c.complaintId === id);
+    const s = String(id);
+    const idx = mockComplaints.findIndex(
+      (c) => String(c._id) === s || String(c.id) === s || String(c.complaintId) === s
+    );
     if (idx !== -1) {
       mockComplaints[idx] = { ...mockComplaints[idx], ...updates };
       return mockComplaints[idx];

@@ -99,8 +99,9 @@ export const ComplaintDetailModal = ({
     try {
       setReassigning(true);
       setError(null);
+      const targetId = complaint._id || complaint.id || complaint.complaintId;
       const res = await complaintService.reassignComplaint(
-        complaint._id,
+        targetId,
         selectedSupervisorId,
         reassignNotes.trim()
       );
@@ -127,15 +128,28 @@ export const ComplaintDetailModal = ({
     try {
       setSubmittingComment(true);
       setError(null);
+      const targetId = complaint._id || complaint.id || complaint.complaintId;
       const res = await complaintService.addTimelineComment(
-        complaint._id,
+        targetId,
         commentText.trim()
       );
       if (res.data.success) {
-        onUpdateComplaint({
-          ...complaint,
-          timeline: res.data.timeline,
-        });
+        if (res.data.complaint) {
+          onUpdateComplaint(res.data.complaint);
+        } else {
+          onUpdateComplaint({
+            ...complaint,
+            timeline: res.data.timeline || [
+              ...(complaint.timeline || []),
+              {
+                action: 'COMMENT_ADDED',
+                performedBy: { name: 'Me' },
+                notes: commentText.trim(),
+                timestamp: new Date().toISOString(),
+              },
+            ],
+          });
+        }
         setCommentText('');
       }
     } catch (err) {
@@ -155,7 +169,8 @@ export const ComplaintDetailModal = ({
     try {
       setVerifying(true);
       setError(null);
-      const res = await complaintService.verifyComplaint(complaint._id, {
+      const targetId = complaint._id || complaint.id || complaint.complaintId;
+      const res = await complaintService.verifyComplaint(targetId, {
         decision,
         rejectionReason: rejectionReason.trim(),
       });
