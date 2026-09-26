@@ -50,52 +50,6 @@ export const AdminOversightDashboard = ({ onViewComplaint }) => {
 
   useEffect(() => {
     loadOversightData(true);
-
-    const interval = setInterval(() => {
-      loadOversightData(false);
-    }, 4000);
-
-    const handleFocus = () => {
-      loadOversightData(false);
-    };
-
-    window.addEventListener('focus', handleFocus);
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        loadOversightData(false);
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleVisibility);
-    };
-  }, []);
-
-  // Realtime push subscription for Admin Oversight
-  useEffect(() => {
-    if (!supabase) return;
-
-    try {
-      const channel = supabase
-        .channel('admin-oversight-feed')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'complaints' },
-          () => {
-            loadOversightData(false);
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    } catch (err) {
-      console.warn('[Realtime] Oversight subscription notice:', err.message);
-    }
   }, []);
 
   if (loading && !data) {
@@ -168,7 +122,7 @@ export const AdminOversightDashboard = ({ onViewComplaint }) => {
             className="flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold shadow-2xs transition-colors cursor-pointer shrink-0"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-            <span>{isRefreshing ? 'Syncing...' : 'Refresh'}</span>
+            <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
           </button>
         </div>
       </div>

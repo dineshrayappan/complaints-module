@@ -102,8 +102,10 @@ export const App = () => {
           );
           const combined = [...optimisticPending, ...incoming];
           try {
-            // Persist latest complaints in localStorage so supervisor tasks & photos remain saved and visible even after logging back in
-            localStorage.setItem('garment_qms_cached_complaints', JSON.stringify(combined.slice(0, 50)));
+            // Persist full complaints cache only when on 'all' tab with no filters to avoid corrupting cache
+            if (activeTab === 'all' && !categoryFilter && !priorityFilter && !searchTerm) {
+              localStorage.setItem('garment_qms_cached_complaints', JSON.stringify(combined.slice(0, 50)));
+            }
           } catch (storageErr) {
             // Ignore quota errors
           }
@@ -120,67 +122,15 @@ export const App = () => {
       initialLoadedRef.current = true;
       setLoading(false);
       if (isManual) {
-        setTimeout(() => setIsRefreshing(false), 500);
+        setTimeout(() => setIsRefreshing(false), 400);
       }
     }
   }, [user, activeTab, categoryFilter, priorityFilter, searchTerm]);
 
-  // Initial load
+  // Load records on initial component mount or page refresh
   useEffect(() => {
     loadData(!initialLoadedRef.current, false);
   }, [loadData]);
-
-  // Periodic Auto-Refresh: Poll silently in background so changes sync continuously without flickering
-  useEffect(() => {
-    if (!user) return;
-
-    const interval = setInterval(() => {
-      loadData(false, false);
-    }, 4000);
-
-    const handleFocus = () => {
-      loadData(false, false);
-    };
-
-    window.addEventListener('focus', handleFocus);
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        loadData(false, false);
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleVisibility);
-    };
-  }, [loadData, user]);
-
-  // Real-time Push: Subscribe to Supabase database changes for sub-second instant updates
-  useEffect(() => {
-    if (!supabase || !user) return;
-
-    try {
-      const channel = supabase
-        .channel('complaints-live-feed')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'complaints' },
-          (payload) => {
-            console.log('⚡ [Realtime] Live database mutation detected:', payload.eventType);
-            loadData(false);
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    } catch (err) {
-      console.warn('[Realtime] Subscription notice:', err.message);
-    }
-  }, [loadData, user]);
 
   // Handle Start Progress (Line Supervisor)
   const handleStartProgress = async (complaint) => {
@@ -236,9 +186,9 @@ export const App = () => {
     }
   };
 
-  // On ticket created: Optimistic instant display + reset filters + background sync
+  // On ticket created: Optimistic instant display + reset filters
   const handleNewComplaintSuccess = (newTicket) => {
-    showToast(`Defect ${newTicket?.complaintId || 'Ticket'} logged & live synced!`);
+    showToast(`Defect ${newTicket?.complaintId || 'Ticket'} logged and saved successfully!`);
 
     // Reset filters so the new ticket is immediately visible
     setCategoryFilter('');
@@ -333,10 +283,7 @@ export const App = () => {
         {/* Active Persona Banner */}
         <div className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 text-xs mb-3.5 sm:mb-4 shadow-xs transition-colors">
           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-            <span className="flex h-2.5 w-2.5 relative shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-            </span>
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0 shadow-xs" />
             <span className="text-slate-600 dark:text-slate-300 truncate">
               Active Persona:{' '}
               <strong className="text-slate-900 dark:text-white font-bold">{user?.name}</strong>{' '}

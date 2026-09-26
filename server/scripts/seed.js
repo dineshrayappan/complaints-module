@@ -261,6 +261,7 @@ const seedData = async () => {
           },
         ],
         createdAt: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+        updatedAt: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(),
       },
       {
         id: 'cmp-002',
@@ -307,23 +308,178 @@ const seedData = async () => {
           },
         ],
         createdAt: new Date(now.getTime() - 9.5 * 60 * 60 * 1000).toISOString(),
+        updatedAt: new Date(now.getTime() - 4 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        id: 'cmp-003',
+        complaintId: 'CMP-10494',
+        category: 'Fabric Defect',
+        department: 'Spreading & Cutting',
+        location: 'Cutting Table #3 - Automatic Knife',
+        priority: 'MEDIUM',
+        description: 'Micro tears and knit fabric runs caused by dull straight-knife blade during ply trimming.',
+        beforePhoto: getSampleDataUrl('sample-before-cut.svg'),
+        afterPhoto: getSampleDataUrl('sample-after-cut.svg'),
+        assignedTo: {
+          userId: 'usr-sup-103',
+          employeeId: 'SUP-103',
+          name: 'Kamal Hasan',
+          department: 'Spreading & Cutting',
+          designation: 'Cutting Section Head',
+          mobileNumber: '+91 98333 44556',
+        },
+        createdBy: {
+          userId: 'usr-aud-001',
+          employeeId: 'AUD-001',
+          name: 'Rajesh Kumar',
+          role: 'AUDITOR',
+        },
+        deadlineHours: 18,
+        deadlineTimestamp: new Date(now.getTime() + 10 * 60 * 60 * 1000).toISOString(),
+        status: 'Under Verification',
+        actionNotes: 'Replaced blunt knife with new high-speed steel blade #10. Re-trimmed damaged plies with clean margin.',
+        feedbackRemarks: 'Preventive maintenance schedule updated: knife blade inspection interval reduced from 48h to 24h. Spreading operator retrained on blade tensioning.',
+        rejectionReason: '',
+        timeline: [
+          {
+            action: 'CREATED',
+            performedBy: { name: 'Rajesh Kumar', role: 'AUDITOR', employeeId: 'AUD-001' },
+            notes: 'Defect logged during random cutting inspection.',
+            timestamp: new Date(now.getTime() - 8 * 60 * 60 * 1000).toISOString(),
+          },
+          {
+            action: 'IN_PROGRESS',
+            performedBy: { name: 'Kamal Hasan', role: 'ACTION_PERSON', employeeId: 'SUP-103' },
+            notes: 'Knife replacement initiated on Cutting Table #3.',
+            timestamp: new Date(now.getTime() - 5 * 60 * 60 * 1000).toISOString(),
+          },
+          {
+            action: 'ACTION_SUBMITTED',
+            performedBy: { name: 'Kamal Hasan', role: 'ACTION_PERSON', employeeId: 'SUP-103' },
+            notes: 'Resolution submitted with After Photo proof. Awaiting audit sign-off.',
+            timestamp: new Date(now.getTime() - 1 * 60 * 60 * 1000).toISOString(),
+          },
+        ],
+        createdAt: new Date(now.getTime() - 8 * 60 * 60 * 1000).toISOString(),
+        updatedAt: new Date(now.getTime() - 1 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        id: 'cmp-004',
+        complaintId: 'CMP-10488',
+        category: 'Measurement / Fit',
+        department: 'Sewing Line 1',
+        location: 'Machine #22 - Waistband Folder',
+        priority: 'CRITICAL',
+        description: 'Waistband width tolerance deviation (+2.8cm over specification) detected on ladies chino trousers.',
+        beforePhoto: getSampleDataUrl('sample-before-stitch.svg'),
+        afterPhoto: null,
+        assignedTo: {
+          userId: 'usr-sup-101',
+          employeeId: 'SUP-101',
+          name: 'Mohammad Arif',
+          department: 'Sewing Line 1',
+          designation: 'Line 1 In-Charge',
+          mobileNumber: '+91 98111 22334',
+        },
+        createdBy: {
+          userId: 'usr-aud-001',
+          employeeId: 'AUD-001',
+          name: 'Rajesh Kumar',
+          role: 'AUDITOR',
+        },
+        deadlineHours: 12,
+        deadlineTimestamp: new Date(now.getTime() - 5.5 * 60 * 60 * 1000).toISOString(),
+        status: 'In Progress',
+        actionNotes: '',
+        feedbackRemarks: '',
+        rejectionReason: '',
+        timeline: [
+          {
+            action: 'CREATED',
+            performedBy: { name: 'Rajesh Kumar', role: 'AUDITOR', employeeId: 'AUD-001' },
+            notes: 'CRITICAL: Spec sheet discrepancy logged. 12h resolution SLA assigned.',
+            timestamp: new Date(now.getTime() - 17.5 * 60 * 60 * 1000).toISOString(),
+          },
+          {
+            action: 'IN_PROGRESS',
+            performedBy: { name: 'Mohammad Arif', role: 'ACTION_PERSON', employeeId: 'SUP-101' },
+            notes: 'Attachment folder angle being recalibrated by tooling engineer.',
+            timestamp: new Date(now.getTime() - 12 * 60 * 60 * 1000).toISOString(),
+          },
+        ],
+        createdAt: new Date(now.getTime() - 17.5 * 60 * 60 * 1000).toISOString(),
+        updatedAt: new Date(now.getTime() - 12 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        id: 'cmp-005',
+        complaintId: 'CMP-10475',
+        category: 'Finishing / Pressing',
+        department: 'Finishing & Packing',
+        location: 'Steam Press Table #2',
+        priority: 'LOW',
+        description: 'Excessive iron shine gloss on dark navy twill jackets from worn Teflon iron shoe.',
+        beforePhoto: getSampleDataUrl('sample-before-oil.svg'),
+        afterPhoto: getSampleDataUrl('sample-after-oil.svg'),
+        assignedTo: {
+          userId: 'usr-sup-104',
+          employeeId: 'SUP-104',
+          name: 'Sunita Roy',
+          department: 'Finishing & Packing',
+          designation: 'Finishing Floor Manager',
+          mobileNumber: '+91 98444 55667',
+        },
+        createdBy: {
+          userId: 'usr-aud-001',
+          employeeId: 'AUD-001',
+          name: 'Rajesh Kumar',
+          role: 'AUDITOR',
+        },
+        deadlineHours: 16,
+        deadlineTimestamp: new Date(now.getTime() - 10 * 60 * 60 * 1000).toISOString(),
+        actualCompletedAt: new Date(now.getTime() - 12 * 60 * 60 * 1000).toISOString(),
+        status: 'Closed',
+        actionNotes: 'Replaced worn Teflon shoe with silicone non-shine diffuser shoe. Hand-steamed 24 jackets to restore matte nap.',
+        feedbackRemarks: 'Preventive checklist item added: weekly iron shoe wear inspection on all 8 pressing stations.',
+        rejectionReason: '',
+        timeline: [
+          {
+            action: 'CREATED',
+            performedBy: { name: 'Rajesh Kumar', role: 'AUDITOR', employeeId: 'AUD-001' },
+            notes: 'Defect logged at finishing press line.',
+            timestamp: new Date(now.getTime() - 28 * 60 * 60 * 1000).toISOString(),
+          },
+          {
+            action: 'ACTION_SUBMITTED',
+            performedBy: { name: 'Sunita Roy', role: 'ACTION_PERSON', employeeId: 'SUP-104' },
+            notes: 'Corrective action submitted with After Photo proof.',
+            timestamp: new Date(now.getTime() - 14 * 60 * 60 * 1000).toISOString(),
+          },
+          {
+            action: 'CLOSED',
+            performedBy: { name: 'Rajesh Kumar', role: 'AUDITOR', employeeId: 'AUD-001' },
+            notes: 'Audit verified Before/After photos and approved closure of ticket.',
+            timestamp: new Date(now.getTime() - 12 * 60 * 60 * 1000).toISOString(),
+          },
+        ],
+        createdAt: new Date(now.getTime() - 28 * 60 * 60 * 1000).toISOString(),
+        updatedAt: new Date(now.getTime() - 12 * 60 * 60 * 1000).toISOString(),
       },
     ];
 
-    // Safely check if complaints already exist to NEVER wipe out supervisor submissions or photos
-    const { count: existingCount, error: countErr } = await supabase
-      .from('complaints')
-      .select('*', { count: 'exact', head: true });
+    // Safely upsert complaints so missing standard tickets are populated while preserving any user records
+    const { data: existingRecords } = await supabase.from('complaints').select('id');
+    const existingIdSet = new Set((existingRecords || []).map((r) => r.id));
+    const missingComplaints = sampleComplaints.filter((c) => !existingIdSet.has(c.id));
 
-    if (!countErr && typeof existingCount === 'number' && existingCount > 0) {
-      console.log(`✅ [Seed] Supabase already contains ${existingCount} active complaints. Preserving existing complaints, photos & supervisor actions.`);
-    } else {
-      const { error: cmpErr } = await supabase.from('complaints').insert(sampleComplaints);
+    if (missingComplaints.length > 0) {
+      const { error: cmpErr } = await supabase.from('complaints').insert(missingComplaints);
       if (cmpErr) {
         console.warn('⚠️ [Seed] Complaints insert notice:', cmpErr.message);
       } else {
-        console.log('✅ [Seed] Initial sample complaints successfully seeded in Supabase.');
+        console.log(`✅ [Seed] Added ${missingComplaints.length} missing complaints to Supabase.`);
       }
+    } else {
+      console.log('✅ [Seed] All sample complaints already present in Supabase.');
     }
   } catch (err) {
     console.error('❌ [Seed] Error during seeding:', err.message);

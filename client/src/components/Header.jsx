@@ -35,8 +35,8 @@ export const Header = ({ onOpenNewComplaint, onRefresh, isRefreshing }) => {
                   TEXTILE QMS
                 </span>
                 <span className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200/70 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20 shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="hidden xs:inline">Live Cycle</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                  <span className="hidden xs:inline">Plant QMS</span>
                 </span>
               </div>
               <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-sans hidden sm:flex items-center gap-1.5 truncate">
@@ -48,27 +48,23 @@ export const Header = ({ onOpenNewComplaint, onRefresh, isRefreshing }) => {
 
           {/* Right Actions: Theme Toggle, User Profile, Sign Out, & Log Defect Button */}
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-            {/* Live Auto-Sync / Instant Refresh Status Badge */}
+            {/* Refresh Data Button */}
             {onRefresh && (
               <button
                 onClick={onRefresh}
                 type="button"
-                id="btn-live-sync"
-                title="Continuous real-time photo & defect sync is active. Click to refresh manually."
-                className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl border border-emerald-200/80 dark:border-emerald-900/60 bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/40 transition-all shadow-xs cursor-pointer flex items-center gap-2"
+                id="btn-refresh-data"
+                title="Refresh and reload all saved defect records"
+                className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shadow-xs cursor-pointer flex items-center gap-2"
               >
-                <span className="relative flex h-2 w-2 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <span className="text-[10px] sm:text-[11px] font-bold tracking-tight select-none">
-                  {isRefreshing ? 'Syncing...' : 'Live Sync'}
-                </span>
                 <RefreshCw
-                  className={`w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 transition-transform ${
+                  className={`w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400 transition-transform ${
                     isRefreshing ? 'animate-spin' : ''
                   }`}
                 />
+                <span className="text-[10px] sm:text-[11px] font-bold tracking-tight select-none">
+                  {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                </span>
               </button>
             )}
 

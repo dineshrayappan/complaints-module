@@ -966,7 +966,7 @@ const getKpiStats = async (req, res) => {
       try {
         let query = supabase.from('complaints').select('status, deadlineTimestamp, assignedTo, department');
 
-        if (req.user.role === 'ACTION_PERSON' || req.user.role === 'SUPERVISOR') {
+        if ((req.user.role === 'ACTION_PERSON' || req.user.role === 'SUPERVISOR') && (req.query.scope === 'my-line' || req.query.tab === 'my-line')) {
           const userEmpId = req.user.employeeId;
           const userId = req.user.id || req.user._id;
           const userDept = req.user.department;
