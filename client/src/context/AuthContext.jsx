@@ -6,7 +6,8 @@ const AuthContext = createContext(null);
 // Instant fallback profiles so UI is never blank even if offline or before API loads
 const DEFAULT_DEMO_USERS = [
   {
-    _id: 'default-admin-001',
+    _id: 'usr-adm-001',
+    id: 'usr-adm-001',
     employeeId: 'ADM-001',
     name: 'Anil Mehta',
     email: 'admin@factory.com',
@@ -17,10 +18,11 @@ const DEFAULT_DEMO_USERS = [
     isActive: true,
   },
   {
-    _id: 'default-aud-001',
+    _id: 'usr-aud-001',
+    id: 'usr-aud-001',
     employeeId: 'AUD-001',
-    name: 'Priya Sharma',
-    email: 'priya.sharma@factory.com',
+    name: 'Rajesh Kumar',
+    email: 'auditor@factory.com',
     role: 'AUDITOR',
     department: 'Central Quality Audit',
     designation: 'Senior QA Auditor',
@@ -28,7 +30,8 @@ const DEFAULT_DEMO_USERS = [
     isActive: true,
   },
   {
-    _id: 'default-aud-002',
+    _id: 'usr-aud-002',
+    id: 'usr-aud-002',
     employeeId: 'AUD-002',
     name: 'Dinesh Rayappan',
     email: 'dinesh@factory.com',
@@ -39,7 +42,8 @@ const DEFAULT_DEMO_USERS = [
     isActive: true,
   },
   {
-    _id: '6ab21322cd50706ee2a84637',
+    _id: 'usr-sup-101',
+    id: 'usr-sup-101',
     employeeId: 'SUP-101',
     name: 'Mohammad Arif',
     email: 'arif@factory.com',
@@ -50,7 +54,8 @@ const DEFAULT_DEMO_USERS = [
     isActive: true,
   },
   {
-    _id: '6ab21322cd50706ee2a84638',
+    _id: 'usr-sup-102',
+    id: 'usr-sup-102',
     employeeId: 'SUP-102',
     name: 'Priya Sharma',
     email: 'priya@factory.com',
@@ -61,7 +66,8 @@ const DEFAULT_DEMO_USERS = [
     isActive: true,
   },
   {
-    _id: '6ab21322cd50706ee2a84639',
+    _id: 'usr-sup-103',
+    id: 'usr-sup-103',
     employeeId: 'SUP-103',
     name: 'Kamal Hasan',
     email: 'kamal@factory.com',
@@ -72,7 +78,8 @@ const DEFAULT_DEMO_USERS = [
     isActive: true,
   },
   {
-    _id: '6ab21322cd50706ee2a84640',
+    _id: 'usr-sup-104',
+    id: 'usr-sup-104',
     employeeId: 'SUP-104',
     name: 'Sunita Roy',
     email: 'sunita@factory.com',
@@ -83,7 +90,8 @@ const DEFAULT_DEMO_USERS = [
     isActive: true,
   },
   {
-    _id: '6ab21322cd50706ee2a84641',
+    _id: 'usr-sup-105',
+    id: 'usr-sup-105',
     employeeId: 'SUP-105',
     name: 'Ramesh Patel',
     email: 'ramesh@factory.com',
@@ -94,7 +102,8 @@ const DEFAULT_DEMO_USERS = [
     isActive: true,
   },
   {
-    _id: '6ab21322cd50706ee2a84642',
+    _id: 'usr-sup-106',
+    id: 'usr-sup-106',
     employeeId: 'SUP-106',
     name: 'Kavita Deshmukh',
     email: 'kavita@factory.com',
@@ -105,7 +114,8 @@ const DEFAULT_DEMO_USERS = [
     isActive: true,
   },
   {
-    _id: '6ab21322cd50706ee2a84643',
+    _id: 'usr-sup-107',
+    id: 'usr-sup-107',
     employeeId: 'SUP-107',
     name: "Anthony D'Souza",
     email: 'anthony@factory.com',
@@ -116,7 +126,8 @@ const DEFAULT_DEMO_USERS = [
     isActive: true,
   },
   {
-    _id: '6ab21322cd50706ee2a84644',
+    _id: 'usr-sup-108',
+    id: 'usr-sup-108',
     employeeId: 'SUP-108',
     name: 'Meera Nambiar',
     email: 'meera@factory.com',
@@ -127,7 +138,8 @@ const DEFAULT_DEMO_USERS = [
     isActive: true,
   },
   {
-    _id: '6ab21322cd50706ee2a84645',
+    _id: 'usr-sup-109',
+    id: 'usr-sup-109',
     employeeId: 'SUP-109',
     name: 'Gurpreet Singh',
     email: 'gurpreet@factory.com',
@@ -138,7 +150,8 @@ const DEFAULT_DEMO_USERS = [
     isActive: true,
   },
   {
-    _id: '6ab21322cd50706ee2a84646',
+    _id: 'usr-sup-110',
+    id: 'usr-sup-110',
     employeeId: 'SUP-110',
     name: 'Lakshmi Narayanan',
     email: 'lakshmi@factory.com',

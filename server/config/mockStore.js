@@ -2,7 +2,7 @@
 
 const initialUsers = [
   {
-    _id: '6ab26b3053ceb237bcda4f74',
+    _id: 'usr-adm-001',
     employeeId: 'ADM-001',
     name: 'Anil Mehta',
     email: 'admin@factory.com',
@@ -14,7 +14,7 @@ const initialUsers = [
     password: 'admin123',
   },
   {
-    _id: '6ab21322cd50706ee2a84631',
+    _id: 'usr-aud-001',
     employeeId: 'AUD-001',
     name: 'Rajesh Kumar',
     email: 'auditor@factory.com',
@@ -26,7 +26,7 @@ const initialUsers = [
     password: 'auditor123',
   },
   {
-    _id: '6ab21322cd50706ee2a84632',
+    _id: 'usr-aud-002',
     employeeId: 'AUD-002',
     name: 'Dinesh Rayappan',
     email: 'dinesh@factory.com',
@@ -38,7 +38,7 @@ const initialUsers = [
     password: 'auditor123',
   },
   {
-    _id: '6ab21322cd50706ee2a84637',
+    _id: 'usr-sup-101',
     employeeId: 'SUP-101',
     name: 'Mohammad Arif',
     email: 'arif@factory.com',
@@ -50,7 +50,7 @@ const initialUsers = [
     password: 'supervisor123',
   },
   {
-    _id: '6ab21322cd50706ee2a84638',
+    _id: 'usr-sup-102',
     employeeId: 'SUP-102',
     name: 'Priya Sharma',
     email: 'priya@factory.com',
@@ -62,7 +62,7 @@ const initialUsers = [
     password: 'supervisor123',
   },
   {
-    _id: '6ab21322cd50706ee2a84639',
+    _id: 'usr-sup-103',
     employeeId: 'SUP-103',
     name: 'Kamal Hasan',
     email: 'kamal@factory.com',
@@ -74,7 +74,7 @@ const initialUsers = [
     password: 'supervisor123',
   },
   {
-    _id: '6ab21322cd50706ee2a84640',
+    _id: 'usr-sup-104',
     employeeId: 'SUP-104',
     name: 'Sunita Roy',
     email: 'sunita@factory.com',
@@ -86,7 +86,7 @@ const initialUsers = [
     password: 'supervisor123',
   },
   {
-    _id: '6ab21322cd50706ee2a84641',
+    _id: 'usr-sup-105',
     employeeId: 'SUP-105',
     name: 'Ramesh Patel',
     email: 'ramesh@factory.com',
@@ -98,7 +98,7 @@ const initialUsers = [
     password: 'supervisor123',
   },
   {
-    _id: '6ab21322cd50706ee2a84642',
+    _id: 'usr-sup-106',
     employeeId: 'SUP-106',
     name: 'Kavita Deshmukh',
     email: 'kavita@factory.com',
@@ -110,7 +110,7 @@ const initialUsers = [
     password: 'supervisor123',
   },
   {
-    _id: '6ab21322cd50706ee2a84643',
+    _id: 'usr-sup-107',
     employeeId: 'SUP-107',
     name: "Anthony D'Souza",
     email: 'anthony@factory.com',
@@ -122,7 +122,7 @@ const initialUsers = [
     password: 'supervisor123',
   },
   {
-    _id: '6ab21322cd50706ee2a84644',
+    _id: 'usr-sup-108',
     employeeId: 'SUP-108',
     name: 'Meera Nambiar',
     email: 'meera@factory.com',
@@ -134,7 +134,7 @@ const initialUsers = [
     password: 'supervisor123',
   },
   {
-    _id: '6ab21322cd50706ee2a84645',
+    _id: 'usr-sup-109',
     employeeId: 'SUP-109',
     name: 'Gurpreet Singh',
     email: 'gurpreet@factory.com',
@@ -146,7 +146,7 @@ const initialUsers = [
     password: 'supervisor123',
   },
   {
-    _id: '6ab21322cd50706ee2a84646',
+    _id: 'usr-sup-110',
     employeeId: 'SUP-110',
     name: 'Lakshmi Narayanan',
     email: 'lakshmi@factory.com',
@@ -171,7 +171,7 @@ const initialComplaints = [
     description: 'Severe skipped stitches and seam slippage identified on collar band seam of 100% cotton pique polo shirts (Order #PO-8821).',
     beforePhoto: '/uploads/sample-before-stitch.svg',
     assignedTo: {
-      userId: '6ab21322cd50706ee2a84637',
+      userId: 'usr-sup-101',
       employeeId: 'SUP-101',
       name: 'Mohammad Arif',
       department: 'Sewing Line 1',
@@ -179,7 +179,7 @@ const initialComplaints = [
       mobileNumber: '+91 98111 22334',
     },
     createdBy: {
-      userId: '6ab21322cd50706ee2a84631',
+      userId: 'usr-aud-001',
       employeeId: 'AUD-001',
       name: 'Rajesh Kumar',
       role: 'AUDITOR',
@@ -207,7 +207,7 @@ const initialComplaints = [
     description: 'Needle bar oil leak causing dark spots on right sleeve cuff panels across 18 bundled garments.',
     beforePhoto: '/uploads/sample-before-oil.svg',
     assignedTo: {
-      userId: '6ab21322cd50706ee2a84638',
+      userId: 'usr-sup-102',
       employeeId: 'SUP-102',
       name: 'Priya Sharma',
       department: 'Sewing Line 2',
@@ -215,7 +215,7 @@ const initialComplaints = [
       mobileNumber: '+91 98222 33445',
     },
     createdBy: {
-      userId: '6ab21322cd50706ee2a84631',
+      userId: 'usr-aud-001',
       employeeId: 'AUD-001',
       name: 'Rajesh Kumar',
       role: 'AUDITOR',
@@ -250,7 +250,7 @@ const initialComplaints = [
     beforePhoto: '/uploads/sample-before-cut.svg',
     afterPhoto: '/uploads/sample-after-cut.svg',
     assignedTo: {
-      userId: '6ab21322cd50706ee2a84639',
+      userId: 'usr-sup-103',
       employeeId: 'SUP-103',
       name: 'Kamal Hasan',
       department: 'Spreading & Cutting',
@@ -258,7 +258,7 @@ const initialComplaints = [
       mobileNumber: '+91 98333 44556',
     },
     createdBy: {
-      userId: '6ab21322cd50706ee2a84631',
+      userId: 'usr-aud-001',
       employeeId: 'AUD-001',
       name: 'Rajesh Kumar',
       role: 'AUDITOR',
@@ -300,7 +300,7 @@ const initialComplaints = [
     description: 'Waistband width tolerance deviation (+2.8cm over specification) detected on ladies chino trousers.',
     beforePhoto: '/uploads/sample-before-stitch.svg',
     assignedTo: {
-      userId: '6ab21322cd50706ee2a84637',
+      userId: 'usr-sup-101',
       employeeId: 'SUP-101',
       name: 'Mohammad Arif',
       department: 'Sewing Line 1',
@@ -308,7 +308,7 @@ const initialComplaints = [
       mobileNumber: '+91 98111 22334',
     },
     createdBy: {
-      userId: '6ab21322cd50706ee2a84631',
+      userId: 'usr-aud-001',
       employeeId: 'AUD-001',
       name: 'Rajesh Kumar',
       role: 'AUDITOR',
@@ -343,7 +343,7 @@ const initialComplaints = [
     beforePhoto: '/uploads/sample-before-oil.svg',
     afterPhoto: '/uploads/sample-after-oil.svg',
     assignedTo: {
-      userId: '6ab21322cd50706ee2a84640',
+      userId: 'usr-sup-104',
       employeeId: 'SUP-104',
       name: 'Sunita Roy',
       department: 'Finishing & Packing',
@@ -351,7 +351,7 @@ const initialComplaints = [
       mobileNumber: '+91 98444 55667',
     },
     createdBy: {
-      userId: '6ab21322cd50706ee2a84631',
+      userId: 'usr-aud-001',
       employeeId: 'AUD-001',
       name: 'Rajesh Kumar',
       role: 'AUDITOR',
@@ -517,5 +517,24 @@ module.exports = {
       return removed;
     }
     return null;
+  },
+  syncWithSupabase: (tickets) => {
+    if (Array.isArray(tickets)) {
+      mockComplaints = tickets.map((t) => ({
+        ...t,
+        _id: t.id || t._id,
+        complaintId: t.complaintId,
+      }));
+    }
+    return mockComplaints;
+  },
+  syncUsersWithSupabase: (users) => {
+    if (Array.isArray(users)) {
+      mockUsers = users.map((u) => ({
+        ...u,
+        _id: u.id || u._id,
+      }));
+    }
+    return mockUsers;
   },
 };

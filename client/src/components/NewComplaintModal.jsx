@@ -24,7 +24,8 @@ import { compressImage, formatFileSize } from '../utils/imageCompressor';
 // 10 Pre-configured Dummy Contacts with Full Production Line Details
 export const DUMMY_SUPERVISORS = [
   {
-    _id: '6ab21322cd50706ee2a84637',
+    _id: 'usr-sup-101',
+    id: 'usr-sup-101',
     employeeId: 'SUP-101',
     name: 'Mohammad Arif',
     email: 'arif@factory.com',
@@ -37,7 +38,8 @@ export const DUMMY_SUPERVISORS = [
     avatarColor: 'bg-blue-600',
   },
   {
-    _id: '6ab21322cd50706ee2a84638',
+    _id: 'usr-sup-102',
+    id: 'usr-sup-102',
     employeeId: 'SUP-102',
     name: 'Priya Sharma',
     email: 'priya@factory.com',
@@ -50,7 +52,8 @@ export const DUMMY_SUPERVISORS = [
     avatarColor: 'bg-emerald-600',
   },
   {
-    _id: '6ab21322cd50706ee2a84639',
+    _id: 'usr-sup-103',
+    id: 'usr-sup-103',
     employeeId: 'SUP-103',
     name: 'Kamal Hasan',
     email: 'kamal@factory.com',
@@ -63,7 +66,8 @@ export const DUMMY_SUPERVISORS = [
     avatarColor: 'bg-amber-600',
   },
   {
-    _id: '6ab21322cd50706ee2a84640',
+    _id: 'usr-sup-104',
+    id: 'usr-sup-104',
     employeeId: 'SUP-104',
     name: 'Sunita Roy',
     email: 'sunita@factory.com',
@@ -76,7 +80,8 @@ export const DUMMY_SUPERVISORS = [
     avatarColor: 'bg-purple-600',
   },
   {
-    _id: '6ab21322cd50706ee2a84641',
+    _id: 'usr-sup-105',
+    id: 'usr-sup-105',
     employeeId: 'SUP-105',
     name: 'Ramesh Patel',
     email: 'ramesh@factory.com',
@@ -89,7 +94,8 @@ export const DUMMY_SUPERVISORS = [
     avatarColor: 'bg-teal-600',
   },
   {
-    _id: '6ab21322cd50706ee2a84642',
+    _id: 'usr-sup-106',
+    id: 'usr-sup-106',
     employeeId: 'SUP-106',
     name: 'Kavita Deshmukh',
     email: 'kavita@factory.com',
@@ -102,7 +108,8 @@ export const DUMMY_SUPERVISORS = [
     avatarColor: 'bg-pink-600',
   },
   {
-    _id: '6ab21322cd50706ee2a84643',
+    _id: 'usr-sup-107',
+    id: 'usr-sup-107',
     employeeId: 'SUP-107',
     name: "Anthony D'Souza",
     email: 'anthony@factory.com',
@@ -115,7 +122,8 @@ export const DUMMY_SUPERVISORS = [
     avatarColor: 'bg-indigo-600',
   },
   {
-    _id: '6ab21322cd50706ee2a84644',
+    _id: 'usr-sup-108',
+    id: 'usr-sup-108',
     employeeId: 'SUP-108',
     name: 'Meera Nambiar',
     email: 'meera@factory.com',
@@ -128,7 +136,8 @@ export const DUMMY_SUPERVISORS = [
     avatarColor: 'bg-cyan-600',
   },
   {
-    _id: '6ab21322cd50706ee2a84645',
+    _id: 'usr-sup-109',
+    id: 'usr-sup-109',
     employeeId: 'SUP-109',
     name: 'Gurpreet Singh',
     email: 'gurpreet@factory.com',
@@ -141,7 +150,8 @@ export const DUMMY_SUPERVISORS = [
     avatarColor: 'bg-orange-600',
   },
   {
-    _id: '6ab21322cd50706ee2a84646',
+    _id: 'usr-sup-110',
+    id: 'usr-sup-110',
     employeeId: 'SUP-110',
     name: 'Lakshmi Narayanan',
     email: 'lakshmi@factory.com',

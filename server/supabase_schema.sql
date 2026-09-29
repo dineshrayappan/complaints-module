@@ -101,7 +101,7 @@ BEGIN
         ALTER TABLE public.complaints ADD COLUMN "deadlineHours" NUMERIC DEFAULT 16;
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='complaints' AND column_name='deadlineTimestamp') THEN
-        ALTER TABLE public.complaints ADD COLUMN "deadlineTimestamp" TIMESTAMPTZ;
+        ALTER TABLE public.complaints ADD COLUMN "deadlineTimestamp" TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '16 hours');
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='complaints' AND column_name='actualCompletedAt') THEN
         ALTER TABLE public.complaints ADD COLUMN "actualCompletedAt" TIMESTAMPTZ DEFAULT NULL;
@@ -124,6 +124,22 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='complaints' AND column_name='updatedAt') THEN
         ALTER TABLE public.complaints ADD COLUMN "updatedAt" TIMESTAMPTZ DEFAULT NOW();
     END IF;
+
+    -- Ensure robust defaults on existing columns to prevent NOT NULL constraint errors
+    ALTER TABLE public.complaints ALTER COLUMN "deadlineHours" SET DEFAULT 16;
+    ALTER TABLE public.complaints ALTER COLUMN "deadlineTimestamp" SET DEFAULT (NOW() + INTERVAL '16 hours');
+    ALTER TABLE public.complaints ALTER COLUMN "assignedTo" SET DEFAULT '{}'::jsonb;
+    ALTER TABLE public.complaints ALTER COLUMN "createdBy" SET DEFAULT '{}'::jsonb;
+    ALTER TABLE public.complaints ALTER COLUMN "timeline" SET DEFAULT '[]'::jsonb;
+    ALTER TABLE public.complaints ALTER COLUMN "category" SET DEFAULT 'Stitching Fault';
+    ALTER TABLE public.complaints ALTER COLUMN "department" SET DEFAULT 'Sewing Line 1';
+    ALTER TABLE public.complaints ALTER COLUMN "location" SET DEFAULT 'Production Floor';
+    ALTER TABLE public.complaints ALTER COLUMN "priority" SET DEFAULT 'HIGH';
+    ALTER TABLE public.complaints ALTER COLUMN "description" SET DEFAULT '';
+    ALTER TABLE public.complaints ALTER COLUMN "status" SET DEFAULT 'Assigned';
+    ALTER TABLE public.complaints ALTER COLUMN "actionNotes" SET DEFAULT '';
+    ALTER TABLE public.complaints ALTER COLUMN "feedbackRemarks" SET DEFAULT '';
+    ALTER TABLE public.complaints ALTER COLUMN "rejectionReason" SET DEFAULT '';
 END $$;
 
 -- Performance Indexes for Complaints Queries

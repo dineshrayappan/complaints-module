@@ -87,6 +87,14 @@ router.post(
   safeUploadAfterPhoto,
   submitAction
 );
+router.post(
+  '/:id/action',
+  verifyToken,
+  requireRole(['ACTION_PERSON', 'SUPERVISOR', 'ADMIN', 'AUDITOR']),
+  safeUploadAfterPhoto,
+  submitAction
+);
+
 
 // Audit Verification Gateway: Approve & Close OR Reject & Return (AUDITOR or ADMIN)
 router.post(

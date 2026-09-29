@@ -203,11 +203,19 @@ const seedData = async () => {
       },
     ];
 
-    const { error: userErr } = await supabase.from('users').upsert(initialUsers, { onConflict: 'employeeId' });
-    if (userErr) {
-      console.warn('⚠️ [Seed] Users upsert notice:', userErr.message);
+    const { count: userCount, error: countErr } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true });
+
+    if (!countErr && (userCount === 0 || userCount === null)) {
+      const { error: userErr } = await supabase.from('users').insert(initialUsers);
+      if (userErr) {
+        console.warn('⚠️ [Seed] Users insert notice:', userErr.message);
+      } else {
+        console.log('✅ [Seed] Factory Users successfully seeded in Supabase.');
+      }
     } else {
-      console.log('✅ [Seed] Factory Users successfully seeded in Supabase.');
+      console.log(`✅ [Seed] Users table already has ${userCount} records. Preserving existing user accounts.`);
     }
 
     const getSampleDataUrl = (filename) => {
@@ -466,20 +474,20 @@ const seedData = async () => {
       },
     ];
 
-    // Safely upsert complaints so missing standard tickets are populated while preserving any user records
-    const { data: existingRecords } = await supabase.from('complaints').select('id');
-    const existingIdSet = new Set((existingRecords || []).map((r) => r.id));
-    const missingComplaints = sampleComplaints.filter((c) => !existingIdSet.has(c.id));
+    // Check if complaints table is completely empty; only seed sample complaints on fresh/empty DB
+    const { count: complaintCount, error: cmpCountErr } = await supabase
+      .from('complaints')
+      .select('*', { count: 'exact', head: true });
 
-    if (missingComplaints.length > 0) {
-      const { error: cmpErr } = await supabase.from('complaints').insert(missingComplaints);
+    if (!cmpCountErr && (complaintCount === 0 || complaintCount === null)) {
+      const { error: cmpErr } = await supabase.from('complaints').insert(sampleComplaints);
       if (cmpErr) {
         console.warn('⚠️ [Seed] Complaints insert notice:', cmpErr.message);
       } else {
-        console.log(`✅ [Seed] Added ${missingComplaints.length} missing complaints to Supabase.`);
+        console.log(`✅ [Seed] Seeded ${sampleComplaints.length} initial complaints into empty Supabase.`);
       }
     } else {
-      console.log('✅ [Seed] All sample complaints already present in Supabase.');
+      console.log(`✅ [Seed] Database has ${complaintCount} existing complaints. Keeping user records intact.`);
     }
   } catch (err) {
     console.error('❌ [Seed] Error during seeding:', err.message);

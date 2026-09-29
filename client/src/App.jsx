@@ -25,12 +25,16 @@ import AdminOversightDashboard from './components/AdminOversightDashboard';
 import AdminUserManagement from './components/AdminUserManagement';
 import { Crown, BarChart3, Users } from 'lucide-react';
 
-// Safe localStorage caching helper to prevent QuotaExceededError while preserving clean offline state
-const safePersistCache = (items) => {
+// Safe localStorage caching helper namespaced by user to prevent QuotaExceededError and cross-account data leaks
+const getCacheKey = (user) => `garment_qms_cached_complaints_${user?.employeeId || user?.id || user?._id || 'guest'}`;
+
+const safePersistCache = (items, user) => {
+  if (!user) return;
   try {
+    const key = getCacheKey(user);
     const list = (items || []).slice(0, 30);
     try {
-      localStorage.setItem('garment_qms_cached_complaints', JSON.stringify(list));
+      localStorage.setItem(key, JSON.stringify(list));
     } catch (quotaErr) {
       // If quota exceeded, retain records without heavy base64 strings (never corrupt with broken prefixes)
       const lean = list.slice(0, 20).map((item) => {
@@ -42,7 +46,7 @@ const safePersistCache = (items) => {
           afterPhoto: isAfterBase64 ? null : item.afterPhoto,
         };
       });
-      localStorage.setItem('garment_qms_cached_complaints', JSON.stringify(lean));
+      localStorage.setItem(key, JSON.stringify(lean));
     }
   } catch (err) {
     console.warn('Could not persist complaints cache:', err);
@@ -53,13 +57,17 @@ export const App = () => {
   const { user, isAdmin, isAuditor, isActionPerson } = useAuth();
   const { isDark } = useTheme();
 
-  // Data State with persistent local hydration to keep supervisor tasks & photos visible across logins
+  // Data State with user-scoped hydration to keep supervisor tasks & photos visible across logins
   const [complaints, setComplaints] = useState(() => {
     try {
-      const cached = localStorage.getItem('garment_qms_cached_complaints');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      // Clear legacy non-namespaced cache to prevent cross-account pollution
+      localStorage.removeItem('garment_qms_cached_complaints');
+      if (user) {
+        const cached = localStorage.getItem(getCacheKey(user));
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
       }
     } catch (e) {}
     return [];
@@ -127,7 +135,7 @@ export const App = () => {
           const combined = [...optimisticPending, ...incoming];
           // Persist full complaints cache safely only when on 'all' tab with no filters
           if (activeTab === 'all' && !categoryFilter && !priorityFilter && !searchTerm) {
-            safePersistCache(combined);
+            safePersistCache(combined, user);
           }
           return combined;
         });
@@ -244,7 +252,7 @@ export const App = () => {
           (c) => (c._id || c.id) !== ticketId && c.complaintId !== newTicket.complaintId
         );
         const nextList = [optimisticTicket, ...withoutCurrent];
-        safePersistCache(nextList);
+        safePersistCache(nextList, user);
         return nextList;
       });
     }
@@ -274,7 +282,7 @@ export const App = () => {
               c.complaintId !== cid &&
               c.complaintId !== complaint.complaintId
           );
-          safePersistCache(filtered);
+          safePersistCache(filtered, user);
           return filtered;
         });
 
