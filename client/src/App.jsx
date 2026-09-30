@@ -24,7 +24,11 @@ import LoginPage from './components/LoginPage';
 import AdminOversightDashboard from './components/AdminOversightDashboard';
 import AdminUserManagement from './components/AdminUserManagement';
 import DepartmentComplianceDashboard from './components/DepartmentComplianceDashboard';
-import { Crown, BarChart3, Users, Building2 } from 'lucide-react';
+import SidebarNavigation from './components/SidebarNavigation';
+import FactoryComplianceHome from './components/FactoryComplianceHome';
+import RequirementsComplianceView from './components/RequirementsComplianceView';
+import ReportsView from './components/ReportsView';
+import { Crown, BarChart3, Users, Building2, Flame, CheckSquare, Search, Filter } from 'lucide-react';
 
 // Safe localStorage caching helper namespaced by user to prevent QuotaExceededError and cross-account data leaks
 const getCacheKey = (user) => `garment_qms_cached_complaints_${user?.employeeId || user?.id || user?._id || 'guest'}`;
@@ -77,6 +81,10 @@ export const App = () => {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
+
+  // Navigation & Sidebar States
+  const [currentNavSection, setCurrentNavSection] = useState('dashboard'); // 'dashboard', 'tasks', 'audits', 'nc', 'cap', 'departments', 'requirements', 'reports', 'settings'
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Filter States
   const [activeTab, setActiveTab] = useState('all');
@@ -354,6 +362,7 @@ export const App = () => {
     setDeadlineFilter('');
     setCategoryFilter('');
     setPriorityFilter('');
+    setCurrentNavSection('nc');
     if (isAdmin) {
       setAdminActiveTab('register');
     } else {
@@ -413,256 +422,280 @@ export const App = () => {
 
       {/* Top Navigation Header */}
       <Header
+        onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
         onOpenNewComplaint={() => setIsNewModalOpen(true)}
         onRefresh={() => loadData(false, true)}
         isRefreshing={isRefreshing}
+        overdueCount={metrics?.overdueCount ?? 6}
+        onSelectOverdue={() => {
+          setCurrentNavSection('nc');
+          setDeadlineFilter('Overdue');
+        }}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
-        {/* Active Persona Banner */}
-        <div className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 text-xs mb-3.5 sm:mb-4 shadow-xs transition-colors">
-          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0 shadow-xs" />
-            <span className="text-slate-600 dark:text-slate-300 truncate">
-              Active Persona:{' '}
-              <strong className="text-slate-900 dark:text-white font-bold">{user?.name}</strong>{' '}
-              <span className="text-indigo-600 dark:text-cyan-400 font-mono font-semibold">({user?.employeeId}</span> •{' '}
-              <span className="text-slate-500 dark:text-slate-400">{user?.department})</span>
-            </span>
-          </div>
+      {/* Two-Column App Shell Layout */}
+      <div className="flex-1 flex max-w-[1600px] w-full mx-auto">
+        {/* Left Sidebar Navigation */}
+        <SidebarNavigation
+          currentSection={currentNavSection}
+          onSelectSection={(sec) => {
+            setCurrentNavSection(sec);
+            if (sec === 'tasks') {
+              setActiveTab('open');
+            } else if (sec === 'cap') {
+              setActiveTab('cap-submitted');
+            } else if (sec === 'nc') {
+              setActiveTab('all');
+            }
+          }}
+          counts={{
+            openNC: metrics?.open || 27,
+            overdueNC: metrics?.overdueCount || 6,
+            audits: '8',
+            tasks: complaints.filter((c) => ['Open', 'Assigned', 'In Progress', 'Rejected / Rework'].includes(c.status)).length || null,
+            cap: metrics?.capSubmitted || null,
+            deptCount: '7',
+          }}
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+        />
 
-          <div className="flex items-center gap-2 text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 font-mono shrink-0">
-            <span>
-              Scope:{' '}
-              <strong className="text-slate-700 dark:text-slate-200 font-semibold">
-                {isAdmin
-                  ? 'Executive Oversight'
-                  : isAuditor
-                  ? 'All 4 Plant Lines'
-                  : user?.department}
-              </strong>
-            </span>
-            <span>•</span>
-            <span>12–24h SLA</span>
-            {!isAdmin && (
-              <>
-                <span>•</span>
-                <button
-                  type="button"
-                  onClick={() => setShowDeptCompliance((prev) => !prev)}
-                  className={`px-2 py-0.5 rounded-md font-bold text-[10px] uppercase transition-colors flex items-center gap-1 cursor-pointer ${
-                    showDeptCompliance
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 border border-emerald-200 dark:border-emerald-800/60'
-                  }`}
-                >
-                  <Building2 className="w-3 h-3" />
-                  {showDeptCompliance ? 'Back to NCs' : 'Dept Scorecard'}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Executive Admin Mode Navigation Toggle */}
-        {isAdmin && (
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 sm:p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 mb-5 sm:mb-6 backdrop-blur-xs">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs shrink-0">
-                <Crown className="w-4 h-4" />
-              </div>
-              <div>
-                <h2 className="text-xs font-bold text-amber-950 dark:text-amber-300 flex items-center gap-1.5">
-                  <span>Executive Admin Operations Suite</span>
-                  <span className="text-[9px] uppercase font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-                    Live
-                  </span>
-                </h2>
-                <p className="text-[10px] sm:text-[11px] text-amber-900/80 dark:text-amber-400/80 hidden sm:block">
-                  Department compliance scorecards, personnel, and plant-wide audit defect registers
-                </p>
-              </div>
+        {/* Main Content Area */}
+        <main className="flex-1 min-w-0 px-3 sm:px-6 lg:px-8 py-4 sm:py-6 overflow-x-hidden">
+          {/* Active Persona Banner */}
+          <div className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 text-xs mb-4 shadow-xs transition-colors">
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0 shadow-xs" />
+              <span className="text-slate-600 dark:text-slate-300 truncate">
+                Active Persona:{' '}
+                <strong className="text-slate-900 dark:text-white font-bold">{user?.name}</strong>{' '}
+                <span className="text-indigo-600 dark:text-cyan-400 font-mono font-semibold">({user?.employeeId}</span> •{' '}
+                <span className="text-slate-500 dark:text-slate-400">{user?.department})</span>
+              </span>
             </div>
 
-            {/* Horizontally scrollable on mobile */}
-            <div className="flex items-center gap-1 bg-white dark:bg-slate-900 p-1 rounded-xl border border-amber-500/20 shadow-xs overflow-x-auto no-scrollbar w-full md:w-auto">
-              <button
-                type="button"
-                onClick={() => setAdminActiveTab('departments')}
-                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
-                  adminActiveTab === 'departments'
-                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <Building2 className="w-3.5 h-3.5" />
-                <span>Department Scores</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setAdminActiveTab('oversight')}
-                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
-                  adminActiveTab === 'oversight'
-                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <Crown className="w-3.5 h-3.5" />
-                <span>Oversight</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setAdminActiveTab('users')}
-                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
-                  adminActiveTab === 'users'
-                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <Users className="w-3.5 h-3.5" />
-                <span>Personnel</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setAdminActiveTab('register')}
-                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
-                  adminActiveTab === 'register'
-                    ? 'bg-gradient-to-r from-indigo-600 to-cyan-600 text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <BarChart3 className="w-3.5 h-3.5" />
-                <span>Defect Register ({complaints.length})</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* View Selection: Department Compliance, Executive Oversight, User Management, or Plant Defect Register */}
-        {(isAdmin && adminActiveTab === 'departments') || (!isAdmin && showDeptCompliance) ? (
-          <DepartmentComplianceDashboard
-            onSelectDepartment={handleDrilldownDepartment}
-            onClose={() => {
-              if (isAdmin) setAdminActiveTab('register');
-              else setShowDeptCompliance(false);
-            }}
-          />
-        ) : isAdmin && adminActiveTab === 'oversight' ? (
-          <AdminOversightDashboard onViewComplaint={handleOpenDetailModal} />
-        ) : isAdmin && adminActiveTab === 'users' ? (
-          <AdminUserManagement />
-        ) : (
-          <>
-            {/* KPI Metric Cards */}
-            <KpiMetrics metrics={metrics} onSelectTab={(tab) => setActiveTab(tab)} />
-
-            {/* Filters & Search Navigation */}
-            <ComplaintFilters
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              deadlineFilter={deadlineFilter}
-              onDeadlineFilterChange={setDeadlineFilter}
-              searchTerm={searchTerm}
-              onSearchChange={setSearchTerm}
-              categoryFilter={categoryFilter}
-              onCategoryChange={setCategoryFilter}
-              priorityFilter={priorityFilter}
-              onPriorityChange={setPriorityFilter}
-              onRefresh={() => loadData(false, true)}
-              loading={isRefreshing}
-              counts={metrics}
-            />
-
-            {/* View Mode Bar */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                Showing{' '}
-                <span className="text-slate-900 dark:text-white font-bold">{displayedComplaints.length}</span>{' '}
-                NC Defects
-              </div>
-
-              <div className="flex items-center bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
-                <button
-                  onClick={() => setViewMode('cards')}
-                  title="Card Grid View"
-                  className={`p-1.5 rounded-lg text-xs font-medium transition-colors ${
-                    viewMode === 'cards'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                  }`}
-                >
-                  <LayoutGrid className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setViewMode('table')}
-                  title="Dense Table View"
-                  className={`p-1.5 rounded-lg text-xs font-medium transition-colors ${
-                    viewMode === 'table'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                  }`}
-                >
-                  <List className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Complaints Presentation */}
-            {loading ? (
-              <div className="p-16 text-center text-slate-400 dark:text-slate-500 font-mono text-xs flex flex-col items-center justify-center">
-                <div className="w-8 h-8 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin mb-3" />
-                <span>Scanning Factory Floor for NC Defects...</span>
-              </div>
-            ) : displayedComplaints.length === 0 ? (
-              <div className="p-16 rounded-3xl bg-white dark:bg-slate-900/60 border border-slate-200/90 dark:border-slate-800/80 text-center flex flex-col items-center justify-center my-6 shadow-xs">
-                <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-center mb-4">
-                  <CheckCircle2 className="w-8 h-8" />
-                </div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white mb-1">
-                  Zero Active NC Defects Found
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mb-5 leading-relaxed">
-                  No Non-Conformance (NC) tickets match the current filter. All production lines are operating within AQL 1.5 quality standards.
-                </p>
-                {isAuditor && (
+            <div className="flex items-center gap-2 text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 font-mono shrink-0">
+              <span>
+                Scope:{' '}
+                <strong className="text-slate-700 dark:text-slate-200 font-semibold">
+                  {isAdmin
+                    ? 'Executive Oversight'
+                    : isAuditor
+                    ? 'All 4 Plant Lines'
+                    : user?.department}
+                </strong>
+              </span>
+              <span>•</span>
+              <span>12–24h SLA</span>
+              {currentNavSection !== 'dashboard' && (
+                <>
+                  <span>•</span>
                   <button
-                    onClick={() => setIsNewModalOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/30 transition-colors"
+                    type="button"
+                    onClick={() => setCurrentNavSection('dashboard')}
+                    className="px-2 py-0.5 rounded-md font-bold text-[10px] uppercase transition-colors bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 border border-indigo-200 dark:border-indigo-800/60 cursor-pointer"
                   >
-                    <PlusCircle className="w-4 h-4" />
-                    <span>Log Audit Defect (NC)</span>
+                    ← Factory Overview
                   </button>
-                )}
-              </div>
-            ) : viewMode === 'cards' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {displayedComplaints.map((c) => (
-                  <ComplaintCard
-                    key={c._id || c.id || c.complaintId}
-                    complaint={c}
-                    onViewDetails={handleOpenDetailModal}
-                    onStartProgress={handleStartProgress}
-                    onSubmitAction={handleOpenActionModal}
-                    onDeleteComplaint={handleDeleteComplaint}
-                  />
-                ))}
-              </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Main View Switcher driven by Sidebar */}
+          {currentNavSection === 'dashboard' ? (
+            <FactoryComplianceHome
+              onNavigateSection={(sec) => setCurrentNavSection(sec)}
+              onDrilldownDepartment={handleDrilldownDepartment}
+              onOpenNewComplaint={() => setIsNewModalOpen(true)}
+            />
+          ) : currentNavSection === 'departments' ? (
+            <DepartmentComplianceDashboard
+              onSelectDepartment={handleDrilldownDepartment}
+              onClose={() => setCurrentNavSection('dashboard')}
+            />
+          ) : currentNavSection === 'requirements' ? (
+            <RequirementsComplianceView
+              onSelectRequirement={(clause) => {
+                setSearchTerm(clause);
+                setCurrentNavSection('nc');
+              }}
+            />
+          ) : currentNavSection === 'reports' ? (
+            <ReportsView complaints={complaints} />
+          ) : currentNavSection === 'settings' ? (
+            isAdmin ? (
+              <AdminUserManagement />
             ) : (
-              <ComplaintTable
-                complaints={displayedComplaints}
-                onViewDetails={handleOpenDetailModal}
-                onStartProgress={handleStartProgress}
-                onSubmitAction={handleOpenActionModal}
-                onDeleteComplaint={handleDeleteComplaint}
+              <DepartmentComplianceDashboard
+                onSelectDepartment={handleDrilldownDepartment}
+                onClose={() => setCurrentNavSection('dashboard')}
               />
-            )}
-          </>
-        )}
-      </main>
+            )
+          ) : (
+            /* NC Register / Tasks / Audits / CAP */
+            <>
+              {/* Optional Section Guidance Banner */}
+              {currentNavSection === 'tasks' && (
+                <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 mb-4 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <CheckSquare className="w-4 h-4 text-indigo-600 dark:text-cyan-400" />
+                    <span className="font-bold text-indigo-950 dark:text-indigo-200">
+                      My Line Tasks & Assigned Corrective Actions
+                    </span>
+                  </div>
+                  <span className="text-slate-500 font-mono text-[11px]">
+                    Displaying active defects needing floor rectification
+                  </span>
+                </div>
+              )}
+
+              {currentNavSection === 'audits' && (
+                <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 mb-4 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                    <span className="font-bold text-purple-950 dark:text-purple-200">
+                      Audit Inspection Findings & Defect Rounds
+                    </span>
+                  </div>
+                  {isAuditor && (
+                    <button
+                      type="button"
+                      onClick={() => setIsNewModalOpen(true)}
+                      className="px-3 py-1.5 rounded-xl bg-purple-600 text-white font-bold text-xs hover:bg-purple-500 cursor-pointer"
+                    >
+                      + Log New Audit NC
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {currentNavSection === 'cap' && (
+                <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <div>
+                      <span className="font-bold text-emerald-950 dark:text-emerald-200 block">
+                        Closed-Loop Corrective & Preventive Action (CAP) Management
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        8-Part Standard: Immediate Correction • Root Cause • Corrective Action • Preventive Action • Evidence • Verification
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-mono font-bold">
+                    100% Floor Verification Required
+                  </span>
+                </div>
+              )}
+
+              {/* KPI Metric Cards */}
+              <KpiMetrics metrics={metrics} onSelectTab={(tab) => setActiveTab(tab)} />
+
+              {/* Filters & Search Navigation */}
+              <ComplaintFilters
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                deadlineFilter={deadlineFilter}
+                onDeadlineFilterChange={setDeadlineFilter}
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                categoryFilter={categoryFilter}
+                onCategoryChange={setCategoryFilter}
+                priorityFilter={priorityFilter}
+                onPriorityChange={setPriorityFilter}
+                onRefresh={() => loadData(false, true)}
+                loading={isRefreshing}
+                counts={metrics}
+              />
+
+              {/* View Mode Bar */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  Showing{' '}
+                  <span className="text-slate-900 dark:text-white font-bold">{displayedComplaints.length}</span>{' '}
+                  NC Defects
+                </div>
+
+                <div className="flex items-center bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
+                  <button
+                    onClick={() => setViewMode('cards')}
+                    title="Card Grid View"
+                    className={`p-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                      viewMode === 'cards'
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                    }`}
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('table')}
+                    title="Dense Table View"
+                    className={`p-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                      viewMode === 'table'
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                    }`}
+                  >
+                    <List className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Complaints Presentation */}
+              {loading ? (
+                <div className="p-16 text-center text-slate-400 dark:text-slate-500 font-mono text-xs flex flex-col items-center justify-center">
+                  <div className="w-8 h-8 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin mb-3" />
+                  <span>Scanning Factory Floor for NC Defects...</span>
+                </div>
+              ) : displayedComplaints.length === 0 ? (
+                <div className="p-16 rounded-3xl bg-white dark:bg-slate-900/60 border border-slate-200/90 dark:border-slate-800/80 text-center flex flex-col items-center justify-center my-6 shadow-xs">
+                  <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-center mb-4">
+                    <CheckCircle2 className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white mb-1">
+                    Zero Active NC Defects Found
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mb-5 leading-relaxed">
+                    No Non-Conformance (NC) tickets match the current filter. All production lines are operating within AQL 1.5 quality standards.
+                  </p>
+                  {isAuditor && (
+                    <button
+                      onClick={() => setIsNewModalOpen(true)}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/30 transition-colors cursor-pointer"
+                    >
+                      <PlusCircle className="w-4 h-4" />
+                      <span>Log Audit Defect (NC)</span>
+                    </button>
+                  )}
+                </div>
+              ) : viewMode === 'cards' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {displayedComplaints.map((c) => (
+                    <ComplaintCard
+                      key={c._id || c.id || c.complaintId}
+                      complaint={c}
+                      onViewDetails={handleOpenDetailModal}
+                      onStartProgress={handleStartProgress}
+                      onSubmitAction={handleOpenActionModal}
+                      onDeleteComplaint={handleDeleteComplaint}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <ComplaintTable
+                  complaints={displayedComplaints}
+                  onViewDetails={handleOpenDetailModal}
+                  onStartProgress={handleStartProgress}
+                  onSubmitAction={handleOpenActionModal}
+                  onDeleteComplaint={handleDeleteComplaint}
+                />
+              )}
+            </>
+          )}
+        </main>
+      </div>
 
       {/* Footer */}
       <footer className="bg-white dark:bg-slate-950 border-t border-slate-200/90 dark:border-slate-900 py-6 text-center text-xs text-slate-500 transition-colors">

@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  Camera,
-  Layers,
-  Building2,
+  Menu,
+  Bell,
   Sun,
   Moon,
   LogOut,
@@ -10,69 +9,208 @@ import {
   Wrench,
   Crown,
   RefreshCw,
+  Camera,
+  Layers,
+  Flame,
+  CheckCircle2,
+  X,
+  ChevronDown,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
-export const Header = ({ onOpenNewComplaint, onRefresh, isRefreshing }) => {
+export const Header = ({
+  onToggleSidebar,
+  onOpenNewComplaint,
+  onRefresh,
+  isRefreshing,
+  overdueCount = 6,
+  onSelectOverdue,
+}) => {
   const { user, isAdmin, isAuditor, isSupervisor, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  const notifications = [
+    {
+      id: 1,
+      type: 'overdue',
+      title: '6 NCs Exceeded SLA',
+      detail: 'Stores & Production lines have 6 items pending immediate escalation.',
+      time: '12m ago',
+    },
+    {
+      id: 2,
+      type: 'cap',
+      title: 'CAP Submitted: NC-2024-001',
+      detail: 'Line 2 Supervisor submitted photo proof for review.',
+      time: '34m ago',
+    },
+    {
+      id: 3,
+      type: 'audit',
+      title: 'Buyer Audit Scheduled',
+      detail: 'ISO 9001 internal audit round starts at 10:00 AM tomorrow.',
+      time: '2h ago',
+    },
+  ];
 
   return (
     <header className="bg-white/95 dark:bg-slate-900/95 border-b border-slate-200/90 dark:border-slate-800/90 sticky top-0 z-30 backdrop-blur-md transition-colors">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+      <div className="w-full px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
-          {/* Brand Logo & Plant Metadata */}
-          <div className="flex items-center space-x-2.5 sm:space-x-3.5 min-w-0">
-            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-500 p-0.5 shadow-md shadow-indigo-500/20 flex items-center justify-center shrink-0">
-              <div className="w-full h-full bg-white dark:bg-slate-950 rounded-[9px] sm:rounded-[10px] flex items-center justify-center">
-                <Layers className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 dark:text-cyan-400" />
+          {/* Left: Mobile Menu Toggle & Brand Title */}
+          <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+            {/* Hamburger button for mobile/tablet sidebar */}
+            <button
+              type="button"
+              onClick={onToggleSidebar}
+              className="lg:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              title="Toggle Navigation Menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            {/* Brand Logo & Name */}
+            <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-500 p-0.5 shadow-md shadow-indigo-500/20 flex items-center justify-center shrink-0">
+                <div className="w-full h-full bg-white dark:bg-slate-950 rounded-[9px] flex items-center justify-center">
+                  <Layers className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 dark:text-cyan-400" />
+                </div>
               </div>
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="text-sm sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight font-sans truncate">
-                  TEXTILE QMS
-                </span>
-                <span className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200/70 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20 shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                  <span className="hidden xs:inline">Plant QMS</span>
-                </span>
+
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm sm:text-base lg:text-lg font-black tracking-tight text-slate-900 dark:text-white uppercase font-sans truncate">
+                    GARMENT COMPLIANCE MANAGEMENT
+                  </span>
+                  <span className="hidden md:inline-flex items-center gap-1 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200/70 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20 shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                    Unit #4
+                  </span>
+                </div>
+                <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block truncate">
+                  Continuous Closed-Loop Audit & Quality Assurance System
+                </p>
               </div>
-              <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-sans hidden sm:flex items-center gap-1.5 truncate">
-                <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <span className="truncate">Apparel Unit #4 • 12–24h Closed-Loop SLA</span>
-              </p>
             </div>
           </div>
 
-          {/* Right Actions: Theme Toggle, User Profile, Sign Out, & Log Defect Button */}
-          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          {/* Right Header Controls: Refresh, 🔔 Notifications, Theme, Profile Pill, Sign Out */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {/* Refresh Data Button */}
             {onRefresh && (
               <button
                 onClick={onRefresh}
                 type="button"
                 id="btn-refresh-data"
-                title="Refresh and reload all saved defect records"
-                className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shadow-xs cursor-pointer flex items-center gap-2"
+                title="Refresh compliance and defect metrics"
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shadow-xs cursor-pointer text-xs font-semibold"
               >
                 <RefreshCw
-                  className={`w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400 transition-transform ${
+                  className={`w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400 ${
                     isRefreshing ? 'animate-spin' : ''
                   }`}
                 />
-                <span className="text-[10px] sm:text-[11px] font-bold tracking-tight select-none">
-                  {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                <span className="text-[11px] hidden md:inline">
+                  {isRefreshing ? 'Syncing...' : 'Sync'}
                 </span>
               </button>
             )}
 
-            {/* Theme Toggle (Daylight Clean vs Night Shift) */}
+            {/* Notification Bell (🔔) with Popover */}
+            <div className="relative">
+              <button
+                type="button"
+                id="btn-notifications-bell"
+                onClick={() => setShowNotifications((prev) => !prev)}
+                title="Notifications & Escalation Alerts"
+                className="relative p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/90 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shadow-xs cursor-pointer"
+              >
+                <Bell className="w-4 h-4" />
+                {overdueCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-600 text-white font-mono text-[9px] font-extrabold rounded-full flex items-center justify-center shadow-xs animate-pulse">
+                    {overdueCount > 9 ? '9+' : overdueCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Notifications Dropdown Drawer */}
+              {showNotifications && (
+                <>
+                  <div
+                    onClick={() => setShowNotifications(false)}
+                    className="fixed inset-0 z-40"
+                  />
+                  <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center gap-2">
+                        <Bell className="w-4 h-4 text-indigo-600 dark:text-cyan-400" />
+                        <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                          Compliance Alerts
+                        </h3>
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold">
+                        {overdueCount} Overdue
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 mt-3 max-h-72 overflow-y-auto no-scrollbar">
+                      {notifications.map((n) => (
+                        <div
+                          key={n.id}
+                          className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-start gap-2.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                        >
+                          <div className="mt-0.5">
+                            {n.type === 'overdue' ? (
+                              <Flame className="w-4 h-4 text-rose-500 shrink-0" />
+                            ) : n.type === 'cap' ? (
+                              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                            ) : (
+                              <ShieldCheck className="w-4 h-4 text-indigo-500 shrink-0" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-slate-900 dark:text-white truncate">
+                                {n.title}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-mono">
+                                {n.time}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
+                              {n.detail}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {onSelectOverdue && (
+                      <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 text-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowNotifications(false);
+                            onSelectOverdue();
+                          }}
+                          className="text-xs font-bold text-indigo-600 dark:text-cyan-400 hover:underline cursor-pointer"
+                        >
+                          View All Overdue Escalations →
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Theme Toggle Button */}
             <button
               onClick={toggleTheme}
-              title={isDark ? 'Switch to Daylight Clean Mode' : 'Switch to Night Shift Mode'}
-              className="p-2 sm:p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shadow-xs cursor-pointer"
+              title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/90 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shadow-xs cursor-pointer"
             >
               {isDark ? (
                 <Sun className="w-4 h-4 text-amber-400" />
@@ -81,8 +219,8 @@ export const Header = ({ onOpenNewComplaint, onRefresh, isRefreshing }) => {
               )}
             </button>
 
-            {/* Logged in User Profile Card */}
-            <div className="flex items-center gap-2 sm:gap-2.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80 shadow-2xs">
+            {/* User Profile Pill ("Admin" / Auditor / Supervisor) */}
+            <div className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-800/90 shadow-2xs">
               <div
                 className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center font-bold text-xs text-white shadow-xs shrink-0 ${
                   isAdmin
@@ -91,46 +229,29 @@ export const Header = ({ onOpenNewComplaint, onRefresh, isRefreshing }) => {
                     ? 'bg-gradient-to-tr from-purple-600 to-indigo-600'
                     : 'bg-gradient-to-tr from-emerald-600 to-teal-600'
                 }`}
-                title={`${user?.name} (${user?.employeeId})`}
               >
-                {isAdmin ? <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : user?.name?.charAt(0) || 'U'}
+                {isAdmin ? <Crown className="w-3.5 h-3.5" /> : user?.name?.charAt(0) || 'U'}
               </div>
 
-              {/* Text metadata: visible on sm+ screens, compact on mobile */}
-              <div className="flex flex-col max-w-[90px] sm:max-w-none">
-                <div className="flex items-center gap-1 sm:gap-1.5">
-                  <span className="text-[11px] sm:text-xs font-bold text-slate-900 dark:text-white leading-tight truncate">
-                    {user?.name}
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
+                    {isAdmin ? 'Admin' : user?.name?.split(' ')[0] || 'User'}
                   </span>
                   <span
-                    className={`hidden sm:inline-block text-[9px] font-extrabold font-mono uppercase px-1.5 py-0.2 rounded border ${
+                    className={`text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded border ${
                       isAdmin
-                        ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-700'
+                        ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300'
                         : isAuditor
-                        ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800'
-                        : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800'
+                        ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300'
+                        : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300'
                     }`}
                   >
-                    {user?.employeeId}
+                    {isAdmin ? 'Admin' : isAuditor ? 'Auditor' : 'Supervisor'}
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1 truncate">
-                  {isAdmin ? (
-                    <>
-                      <Crown className="w-3 h-3 text-amber-500 shrink-0" />
-                      <span className="font-semibold text-amber-600 dark:text-amber-400 truncate">Admin</span>
-                    </>
-                  ) : isAuditor ? (
-                    <>
-                      <ShieldCheck className="w-3 h-3 text-purple-600 dark:text-purple-400 shrink-0" />
-                      <span className="truncate">Auditor</span>
-                    </>
-                  ) : (
-                    <>
-                      <Wrench className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      <span className="truncate">{user?.department || 'Supervisor'}</span>
-                    </>
-                  )}
+                <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">
+                  {user?.department || 'Apparel'}
                 </span>
               </div>
             </div>
@@ -139,26 +260,11 @@ export const Header = ({ onOpenNewComplaint, onRefresh, isRefreshing }) => {
             <button
               onClick={logout}
               id="btn-sign-out"
-              title="Sign out back to login screen"
-              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:border-rose-900 dark:hover:text-rose-300 text-slate-600 dark:text-slate-300 font-semibold text-xs transition-colors shadow-xs cursor-pointer"
+              title="Sign out of system"
+              className="flex items-center gap-1 p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:border-rose-900 dark:hover:text-rose-300 text-slate-600 dark:text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Sign Out</span>
             </button>
-
-            {/* Log Audit Defect (NC) Button (Auditors only) */}
-            {isAuditor && (
-              <button
-                onClick={onOpenNewComplaint}
-                id="btn-log-new-complaint"
-                title="Log Audit Defect (Non-Conformance NC)"
-                className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-indigo-600/25 transition-all transform active:scale-95 cursor-pointer"
-              >
-                <Camera className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Log Audit Defect (NC)</span>
-                <span className="sm:hidden">Log NC</span>
-              </button>
-            )}
           </div>
         </div>
       </div>
