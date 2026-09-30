@@ -90,4 +90,12 @@ export const complaintService = {
   createAudit: (data) => api.post('/complaints/admin/audits', data),
 };
 
+export const taskService = {
+  getTasks: (params) => api.get('/tasks', { params }),
+  createTask: (data) => api.post('/tasks', data),
+  updateTask: (id, data) => api.put(`/tasks/${id}`, data),
+  completeTask: (id) => api.post(`/tasks/${id}/complete`),
+  deleteTask: (id) => api.delete(`/tasks/${id}`),
+};
+
 export default api;

@@ -226,7 +226,81 @@ ON CONFLICT (email) DO UPDATE SET
     "updatedAt" = NOW();
 
 -- ==============================================================================
+-- 5. COMPLIANCE TASKS TABLE (SCHEDULED INSPECTIONS)
+-- ==============================================================================
+-- Recurring, per-user compliance work (fire safety, PPE, payroll review).
+-- Distinct from `complaints`: a task is work to perform, an NC is a defect found.
+CREATE TABLE IF NOT EXISTS public.compliance_tasks (
+    id TEXT PRIMARY KEY DEFAULT ('tsk-' || substr(md5(random()::text), 1, 8)),
+    title TEXT NOT NULL,
+    department TEXT NOT NULL DEFAULT 'Central Quality Audit',
+    description TEXT DEFAULT '',
+    "assignedTo" JSONB NOT NULL DEFAULT '{}'::jsonb,
+    "dueDate" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    status TEXT NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending', 'Completed')),
+    "completedAt" TIMESTAMPTZ DEFAULT NULL,
+    "completedBy" JSONB DEFAULT NULL,
+    recurrence TEXT NOT NULL DEFAULT 'NONE'
+        CHECK (recurrence IN ('NONE', 'DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY')),
+    priority TEXT NOT NULL DEFAULT 'MEDIUM' CHECK (priority IN ('LOW', 'MEDIUM', 'HIGH')),
+    "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+    "updatedAt" TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Backfill columns for existing installations
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='compliance_tasks' AND column_name='assignedTo') THEN
+        ALTER TABLE public.compliance_tasks ADD COLUMN "assignedTo" JSONB DEFAULT '{}'::jsonb;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='compliance_tasks' AND column_name='dueDate') THEN
+        ALTER TABLE public.compliance_tasks ADD COLUMN "dueDate" TIMESTAMPTZ NOT NULL DEFAULT NOW();
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='compliance_tasks' AND column_name='recurrence') THEN
+        ALTER TABLE public.compliance_tasks ADD COLUMN recurrence TEXT DEFAULT 'NONE';
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_tasks_dueDate ON public.compliance_tasks ("dueDate");
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON public.compliance_tasks (status);
+CREATE INDEX IF NOT EXISTS idx_tasks_department ON public.compliance_tasks (department);
+CREATE INDEX IF NOT EXISTS idx_tasks_assignedTo ON public.compliance_tasks USING gin ("assignedTo");
+
+-- RLS: owner sees own tasks, ADMIN/AUDITOR see all.
+-- NOTE: this is intentionally NOT the wide-open `USING (true)` policy that
+-- guards users/complaints. anon access is revoked; the API talks to this table
+-- with the service-role key, which bypasses RLS entirely.
+ALTER TABLE public.compliance_tasks ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow all for compliance_tasks" ON public.compliance_tasks;
+
+CREATE POLICY "Assigned user reads own tasks" ON public.compliance_tasks
+    FOR SELECT TO authenticated
+    USING (("assignedTo"->>'employeeId') = auth.jwt()::text);
+
+-- ==============================================================================
+-- 6. SEED COMPLIANCE TASKS (idempotent via ON CONFLICT)
+-- ==============================================================================
+INSERT INTO public.compliance_tasks (id, title, department, description, "assignedTo", "dueDate", status, recurrence, priority)
+VALUES
+    ('tsk-fire-001', 'Fire Safety Inspection', 'Environmental Health & Safety', 'Hose reels, extinguishers, gangways, emergency exits.', '{"userId":"usr-aud-001","employeeId":"AUD-001","name":"Pooja Sharma","department":"Central Quality Audit"}'::jsonb, NOW() - INTERVAL '2 days', 'Pending', 'MONTHLY', 'HIGH'),
+    ('tsk-hr-002',    'Employee File Review',  'Human Resources',              'Verify personal records, attendance and overtime logs.', '{"userId":"usr-adm-001","employeeId":"ADM-001","name":"Anil Mehta","department":"Plant Operations & Executive Oversight"}'::jsonb, NOW(), 'Pending', 'WEEKLY', 'MEDIUM'),
+    ('tsk-ppe-003',   'PPE Inspection',        'Production',                   'Needle guards, eye protection and aprons in place.', '{"userId":"usr-aud-001","employeeId":"AUD-001","name":"Pooja Sharma","department":"Central Quality Audit"}'::jsonb, NOW() - INTERVAL '1 day', 'Completed', 'NONE', 'MEDIUM'),
+    ('tsk-pay-004',   'Payroll Compliance Review', 'Human Resources',           'Pay slips distributed on schedule; minimum wage adherence.', '{"userId":"usr-adm-001","employeeId":"ADM-001","name":"Anil Mehta","department":"Plant Operations & Executive Oversight"}'::jsonb, NOW() + INTERVAL '3 days', 'Pending', 'MONTHLY', 'HIGH'),
+    ('tsk-chem-005',  'Chemical Storage Inspection', 'Environmental Health & Safety', 'MSDS availability, container labelling, ventilation.', '{"userId":"usr-aud-001","employeeId":"AUD-001","name":"Pooja Sharma","department":"Central Quality Audit"}'::jsonb, NOW() + INTERVAL '4 days', 'Pending', 'MONTHLY', 'HIGH'),
+    ('tsk-mach-006',  'Machine Safety Inspection',  'Maintenance',               'Guarding, lockout/tagout, emergency stops.', '{"userId":"usr-sup-001","employeeId":"SUP-001","name":"Rajesh Kumar","department":"Production"}'::jsonb, NOW() + INTERVAL '5 days', 'Pending', 'QUARTERLY', 'MEDIUM')
+ON CONFLICT (id) DO UPDATE SET
+    title = EXCLUDED.title,
+    department = EXCLUDED.department,
+    description = EXCLUDED.description,
+    "assignedTo" = EXCLUDED."assignedTo",
+    recurrence = EXCLUDED.recurrence,
+    priority = EXCLUDED.priority,
+    "updatedAt" = NOW();
+
+-- ==============================================================================
 -- Verification Output
 -- ==============================================================================
 SELECT 'Users count: ' || count(*)::text FROM public.users;
 SELECT 'Complaints count: ' || count(*)::text FROM public.complaints;
+SELECT 'Compliance tasks count: ' || count(*)::text FROM public.compliance_tasks;

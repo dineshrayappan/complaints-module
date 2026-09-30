@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 import { useTheme } from './context/ThemeContext';
-import { complaintService } from './services/api';
+import { complaintService, taskService } from './services/api';
 import { supabase } from './services/supabase';
 import Header from './components/Header';
 import KpiMetrics from './components/KpiMetrics';
@@ -29,6 +29,7 @@ import FactoryComplianceHome from './components/FactoryComplianceHome';
 import RequirementsComplianceView from './components/RequirementsComplianceView';
 import ReportsView from './components/ReportsView';
 import AuditManagementDashboard from './components/AuditManagementDashboard';
+import MyTasksPanel from './components/MyTasksPanel';
 import { Crown, BarChart3, Users, Building2, Flame, CheckSquare, Search, Filter } from 'lucide-react';
 
 // Safe localStorage caching helper namespaced by user to prevent QuotaExceededError and cross-account data leaks
@@ -79,6 +80,7 @@ export const App = () => {
     return [];
   });
   const [metrics, setMetrics] = useState(null);
+  const [taskCounts, setTaskCounts] = useState({ overdue: 0, dueToday: 0, completed: 0 });
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
@@ -173,6 +175,24 @@ export const App = () => {
   useEffect(() => {
     loadData(!initialLoadedRef.current, false);
   }, [loadData]);
+
+  // Sidebar badge for My Tasks. Deliberately separate from loadData so that
+  // changing complaint filters does not re-issue the task request.
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    taskService
+      .getTasks()
+      .then((res) => {
+        if (active && res.data?.success && res.data.counts) {
+          setTaskCounts(res.data.counts);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   // Handle Start Progress (Line Supervisor)
   const handleStartProgress = async (complaint) => {
@@ -461,6 +481,7 @@ export const App = () => {
             overdueNC: metrics?.overdueCount || 6,
             audits: '8',
             tasks: complaints.filter((c) => ['Open', 'Assigned', 'In Progress', 'Rejected / Rework'].includes(c.status)).length || null,
+            myTasks: (taskCounts.overdue + taskCounts.dueToday) || null,
             cap: metrics?.capSubmitted || null,
             deptCount: '7',
           }}
@@ -517,6 +538,8 @@ export const App = () => {
               onDrilldownDepartment={handleDrilldownDepartment}
               onOpenNewComplaint={() => setIsNewModalOpen(true)}
             />
+          ) : currentNavSection === 'my-tasks' ? (
+            <MyTasksPanel />
           ) : currentNavSection === 'departments' ? (
             <DepartmentComplianceDashboard
               onSelectDepartment={handleDrilldownDepartment}

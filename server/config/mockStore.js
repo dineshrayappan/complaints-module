@@ -143,6 +143,35 @@ const initialComplaints = [];
 let mockUsers = [...initialUsers];
 let mockComplaints = [...initialComplaints];
 
+// Seed helper for compliance_tasks fallback. `dayOffset` is relative to today so
+// the demo always shows a live OVERDUE / Due Today / This Week mix.
+const mockTask = (id, title, department, description, employeeId, dayOffset, status, recurrence, priority) => {
+  const owner = mockUsers.find((u) => u.employeeId === employeeId) || {};
+  const due = new Date();
+  due.setHours(17, 0, 0, 0);
+  due.setDate(due.getDate() + dayOffset);
+  return {
+    id,
+    title,
+    department,
+    description,
+    assignedTo: {
+      userId: owner._id || '',
+      employeeId: employeeId,
+      name: owner.name || '',
+      department: owner.department || '',
+    },
+    dueDate: due.toISOString(),
+    status,
+    completedAt: status === 'Completed' ? due.toISOString() : null,
+    completedBy: status === 'Completed' ? { employeeId, name: owner.name || '' } : null,
+    recurrence,
+    priority,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+};
+
 module.exports = {
   getUsers: () => [...mockUsers],
   findUserById: (id) => mockUsers.find((u) => u._id === id || u.employeeId === id),
@@ -384,7 +413,55 @@ module.exports = {
     mockAudits.unshift(newAudit);
     return newAudit;
   },
+
+  // ---- Compliance Tasks (scheduled per-user inspections) ----
+  getTasks: () => [...mockTasks],
+  getTaskById: (id) => {
+    const s = String(id);
+    return mockTasks.find((t) => String(t.id) === s);
+  },
+  createTask: (data) => {
+    const newTask = {
+      id: data.id || `tsk-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      status: 'Pending',
+      recurrence: 'NONE',
+      priority: 'MEDIUM',
+      description: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      ...data,
+    };
+    mockTasks.unshift(newTask);
+    return newTask;
+  },
+  updateTask: (id, updates) => {
+    const task = mockTasks.find((t) => String(t.id) === String(id));
+    if (!task) return null;
+    Object.assign(task, updates, { updatedAt: new Date().toISOString() });
+    return task;
+  },
+  deleteTask: (id) => {
+    const idx = mockTasks.findIndex((t) => String(t.id) === String(id));
+    if (idx === -1) return false;
+    mockTasks.splice(idx, 1);
+    return true;
+  },
 };
+
+let mockTasks = [
+  mockTask('tsk-fire-001', 'Fire Safety Inspection', 'Environmental Health & Safety',
+    'Hose reels, extinguishers, gangways, emergency exits.', 'AUD-001', -2, 'Pending', 'MONTHLY', 'HIGH'),
+  mockTask('tsk-hr-002', 'Employee File Review', 'Human Resources',
+    'Verify personal records, attendance and overtime logs.', 'ADM-001', 0, 'Pending', 'WEEKLY', 'MEDIUM'),
+  mockTask('tsk-ppe-003', 'PPE Inspection', 'Production',
+    'Needle guards, eye protection and aprons in place.', 'AUD-001', -1, 'Completed', 'NONE', 'MEDIUM'),
+  mockTask('tsk-pay-004', 'Payroll Compliance Review', 'Human Resources',
+    'Pay slips distributed on schedule; minimum wage adherence.', 'ADM-001', 3, 'Pending', 'MONTHLY', 'HIGH'),
+  mockTask('tsk-chem-005', 'Chemical Storage Inspection', 'Environmental Health & Safety',
+    'MSDS availability, container labelling, ventilation.', 'AUD-001', 4, 'Pending', 'MONTHLY', 'HIGH'),
+  mockTask('tsk-mach-006', 'Machine Safety Inspection', 'Maintenance',
+    'Guarding, lockout/tagout, emergency stops.', 'SUP-001', 5, 'Pending', 'QUARTERLY', 'MEDIUM'),
+];
 
 let mockAudits = [
   {

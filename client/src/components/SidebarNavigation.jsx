@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   LayoutDashboard,
+  ClipboardCheck,
   ClipboardList,
   ShieldCheck,
   AlertTriangle,
@@ -33,8 +34,15 @@ export const SidebarNavigation = ({
       badgeColor: '',
     },
     {
+      id: 'my-tasks',
+      label: 'My Tasks',
+      icon: ClipboardCheck,
+      badge: counts.myTasks || null,
+      badgeColor: 'bg-rose-500 text-white',
+    },
+    {
       id: 'tasks',
-      label: 'Tasks',
+      label: 'NC Tasks',
       icon: ClipboardList,
       badge: counts.tasks || null,
       badgeColor: 'bg-indigo-500 text-white',

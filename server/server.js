@@ -12,6 +12,7 @@ const { seedData } = require('./scripts/seed');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const complaintRoutes = require('./routes/complaintRoutes');
+const taskRoutes = require('./routes/taskRoutes');
 
 const app = express();
 
@@ -82,6 +83,7 @@ app.use('/api', async (req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/complaints', complaintRoutes);
+app.use('/api/tasks', taskRoutes);
 
 // Central Error Handler
 app.use((err, req, res, next) => {
