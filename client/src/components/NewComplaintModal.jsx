@@ -493,9 +493,17 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
     setCurrentStep((prev) => Math.max(1, prev - 1));
   };
 
-  // Submit NC Defect to Backend
-  const handleSubmit = async (e) => {
-    if (e && e.preventDefault) e.preventDefault();
+  // Submit NC Defect to Backend (supports Draft or Open)
+  const handleSubmit = async (eOrDraft, maybeDraft) => {
+    let isDraft = false;
+    if (typeof eOrDraft === 'boolean') {
+      isDraft = eOrDraft;
+    } else if (typeof maybeDraft === 'boolean') {
+      isDraft = maybeDraft;
+    }
+    if (eOrDraft && typeof eOrDraft.preventDefault === 'function') {
+      eOrDraft.preventDefault();
+    }
     setError(null);
 
     // Final checks
@@ -528,6 +536,7 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
       formData.append('description', description.trim());
       formData.append('findingDescription', description.trim());
       formData.append('requirement', effectiveReq);
+      formData.append('isDraft', isDraft ? 'true' : 'false');
       formData.append('capRequired', capRequired ? 'true' : 'false');
       if (capRequired) {
         formData.append('immediateCorrection', immediateContainment.trim());
@@ -1585,15 +1594,26 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
                   <ChevronRight className="w-4 h-4" />
                 </button>
               ) : (
-                <button
-                  type="button"
-                  onClick={handleSubmit}
-                  disabled={submitting || compressing}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm shadow-lg shadow-emerald-600/30 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>{submitting ? 'Creating & Issuing NC...' : 'Create & Issue NC (Log Defect)'}</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSubmit(true)}
+                    disabled={submitting || compressing}
+                    className="flex items-center gap-1 px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs shadow-xs transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                  >
+                    <span>Save as Draft</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSubmit(false)}
+                    disabled={submitting || compressing}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm shadow-lg shadow-emerald-600/30 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>{submitting ? 'Publishing NC...' : 'Publish & Issue NC (Open)'}</span>
+                  </button>
+                </div>
               )}
             </div>
           </div>

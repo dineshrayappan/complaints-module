@@ -6,6 +6,8 @@ export const ComplaintFilters = ({
   onTabChange,
   searchTerm,
   onSearchChange,
+  deadlineFilter = '',
+  onDeadlineChange,
   categoryFilter,
   onCategoryChange,
   priorityFilter,
@@ -15,11 +17,22 @@ export const ComplaintFilters = ({
   counts,
 }) => {
   const tabs = [
-    { id: 'all', label: 'All NC Defects', count: counts?.total },
-    { id: 'action-pending', label: 'NC Action Pending', count: counts?.activeTickets },
-    { id: 'under-verification', label: 'NC Verification', count: counts?.underVerification },
-    { id: 'overdue', label: 'Overdue NC SLA', count: counts?.overdueCount, isAlert: counts?.overdueCount > 0 },
-    { id: 'closed', label: 'Closed NCs', count: counts?.closedTickets },
+    { id: 'all', label: 'All NCs', count: counts?.total },
+    { id: 'open', label: 'Open', count: counts?.open ?? counts?.activeTickets },
+    { id: 'cap-submitted', label: 'CAP Submitted', count: counts?.capSubmitted },
+    { id: 'under-review', label: 'Under Review', count: counts?.underReview },
+    { id: 'rejected-rework', label: 'Rejected / Rework', count: counts?.rejectedRework },
+    { id: 'verified', label: 'Verified', count: counts?.verified },
+    { id: 'closed', label: 'Closed', count: counts?.closed ?? counts?.closedTickets },
+    { id: 'draft', label: 'Draft', count: counts?.draft },
+  ];
+
+  const deadlineOptions = [
+    { value: '', label: 'All Deadlines' },
+    { value: 'Overdue', label: `Overdue (${counts?.overdueCount ?? 0})` },
+    { value: 'Due Soon', label: `Due Soon (<4h) (${counts?.dueSoonCount ?? 0})` },
+    { value: 'Open', label: `Open (Within SLA) (${counts?.openDeadlineCount ?? 0})` },
+    { value: 'Closed', label: `Closed (${counts?.closedDeadlineCount ?? counts?.closedTickets ?? 0})` },
   ];
 
   const categories = [
@@ -36,7 +49,7 @@ export const ComplaintFilters = ({
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-3 sm:p-4 mb-4 sm:mb-6 shadow-xs transition-colors space-y-3 sm:space-y-3.5">
-      {/* Tab Navigation Row with Smooth Horizontal Swipe */}
+      {/* 1. Workflow Lifecycle Status Tabs */}
       <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2.5 sm:pb-3">
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth flex-1 min-w-0 py-0.5">
           {tabs.map((tab) => {
@@ -57,7 +70,7 @@ export const ComplaintFilters = ({
                     className={`px-1.5 py-0.2 text-[10px] rounded-full font-bold font-mono ${
                       isActive
                         ? 'bg-indigo-700/80 text-white'
-                        : tab.isAlert
+                        : tab.count > 0 && tab.id === 'rejected-rework'
                         ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
                         : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
                     }`}
@@ -82,16 +95,16 @@ export const ComplaintFilters = ({
         </button>
       </div>
 
-      {/* Filter & Search Controls */}
+      {/* 2. Decoupled Filters Row: Search, Deadline Condition, Category, Priority */}
       <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
         {/* Search */}
-        <div className="relative sm:col-span-6">
+        <div className="relative sm:col-span-5">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search NC / Defect ID (e.g. CMP-...), line, supervisor..."
+            placeholder="Search NC ID, line, supervisor, 5-Why..."
             className="w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-xs sm:text-sm pl-10 pr-9 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-950 placeholder:text-slate-400 font-sans transition-all"
           />
           {searchTerm && (
@@ -104,8 +117,30 @@ export const ComplaintFilters = ({
           )}
         </div>
 
-        {/* Category Filter */}
+        {/* Separate Deadline Condition Filter */}
         <div className="sm:col-span-3">
+          <select
+            value={deadlineFilter}
+            onChange={(e) => onDeadlineChange && onDeadlineChange(e.target.value)}
+            aria-label="Filter by Deadline Condition"
+            className={`w-full text-xs sm:text-sm px-3 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer font-medium ${
+              deadlineFilter === 'Overdue'
+                ? 'bg-rose-50 text-rose-800 border-rose-300 dark:bg-rose-950/80 dark:text-rose-200 dark:border-rose-700'
+                : deadlineFilter === 'Due Soon'
+                ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-200 dark:border-amber-700'
+                : 'bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-800'
+            }`}
+          >
+            {deadlineOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Category Filter */}
+        <div className="sm:col-span-2">
           <select
             value={categoryFilter}
             onChange={(e) => onCategoryChange(e.target.value)}
@@ -120,7 +155,7 @@ export const ComplaintFilters = ({
         </div>
 
         {/* Priority Filter */}
-        <div className="sm:col-span-3">
+        <div className="sm:col-span-2">
           <select
             value={priorityFilter}
             onChange={(e) => onPriorityChange(e.target.value)}

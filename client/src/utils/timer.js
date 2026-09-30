@@ -1,11 +1,43 @@
 /**
- * Real-Time Countdown & SLA Status Calculator
- * Handles 12-24h resolution deadlines, amber warnings (< 4h), and pulsating overdue states.
+ * QMS Standards & Decoupled Status Architecture:
+ * 1. Workflow Lifecycle Status: Draft -> Open -> CAP Submitted -> Under Review -> Rejected / Rework -> Verified -> Closed
+ * 2. Deadline Condition: Open | Overdue | Due Soon | Closed
  */
+export const WORKFLOW_STATUSES = [
+  'Draft',
+  'Open',
+  'CAP Submitted',
+  'Under Review',
+  'Rejected / Rework',
+  'Verified',
+  'Closed',
+];
+
+export const DEADLINE_CONDITIONS = ['Open', 'Overdue', 'Due Soon', 'Closed'];
+
+/**
+ * Calculates separate deadline condition independent of workflow status:
+ * - 'Closed': When NC is in Verified or Closed status
+ * - 'Overdue': When target deadline has passed and NC is not closed
+ * - 'Due Soon': Within 4 hours of target deadline
+ * - 'Open': Within SLA (more than 4 hours remaining)
+ */
+export const calculateDeadlineCondition = (deadlineTimestamp, complaintStatus) => {
+  const isTerminal = complaintStatus === 'Closed' || complaintStatus === 'Verified';
+  if (isTerminal) return 'Closed';
+  if (!deadlineTimestamp) return 'Open';
+
+  const diffMs = new Date(deadlineTimestamp).getTime() - Date.now();
+  if (diffMs <= 0) return 'Overdue';
+  if (diffMs <= 4 * 60 * 60 * 1000) return 'Due Soon';
+  return 'Open';
+};
 
 export const calculateSlaStatus = (deadlineTimestamp, complaintStatus) => {
-  if (complaintStatus === 'Closed') {
+  const isTerminal = complaintStatus === 'Closed' || complaintStatus === 'Verified';
+  if (isTerminal) {
     return {
+      condition: 'Closed',
       type: 'CLOSED',
       label: 'SLA Fulfilled',
       formattedText: 'Closed',
@@ -33,9 +65,10 @@ export const calculateSlaStatus = (deadlineTimestamp, complaintStatus) => {
       : `-${minutes}m ${seconds}s`;
 
     return {
+      condition: 'Overdue',
       type: 'OVERDUE',
-      label: 'OVERDUE SLA',
-      formattedText: `OVERDUE (${formattedTime})`,
+      label: 'OVERDUE',
+      formattedText: `Overdue (${formattedTime})`,
       timeOnly: formattedTime,
       isOverdue: true,
       isWarning: false,
@@ -52,11 +85,12 @@ export const calculateSlaStatus = (deadlineTimestamp, complaintStatus) => {
 
   const formattedTime = `${hours}h ${minutes.toString().padStart(2, '0')}m ${seconds.toString().padStart(2, '0')}s remaining`;
 
-  // WARNING: Less than 4 hours remaining
+  // WARNING: Less than 4 hours remaining (Due Soon)
   if (hours < 4) {
     return {
+      condition: 'Due Soon',
       type: 'WARNING',
-      label: 'SLA Critical (< 4h)',
+      label: 'Due Soon (< 4h)',
       formattedText: formattedTime,
       timeOnly: `${hours}h ${minutes}m ${seconds}s`,
       isOverdue: false,
@@ -66,10 +100,11 @@ export const calculateSlaStatus = (deadlineTimestamp, complaintStatus) => {
     };
   }
 
-  // NORMAL: More than 4 hours remaining
+  // NORMAL: More than 4 hours remaining (Open)
   return {
+    condition: 'Open',
     type: 'NORMAL',
-    label: 'Within SLA',
+    label: 'Open (Within SLA)',
     formattedText: formattedTime,
     timeOnly: `${hours}h ${minutes}m ${seconds}s`,
     isOverdue: false,

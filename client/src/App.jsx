@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   LayoutGrid,
   List,
@@ -79,6 +79,7 @@ export const App = () => {
 
   // Filter States
   const [activeTab, setActiveTab] = useState('all');
+  const [deadlineFilter, setDeadlineFilter] = useState(''); // '' (all), 'Overdue', 'Due Soon', 'Open', 'Closed'
   const [adminActiveTab, setAdminActiveTab] = useState('oversight'); // 'oversight' or 'register'
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -112,6 +113,7 @@ export const App = () => {
 
       const params = {
         tab: activeTab,
+        deadlineCondition: deadlineFilter || undefined,
         category: categoryFilter || undefined,
         priority: priorityFilter || undefined,
         search: searchTerm || undefined,
@@ -134,7 +136,7 @@ export const App = () => {
           );
           const combined = [...optimisticPending, ...incoming];
           // Persist full complaints cache safely only when on 'all' tab with no filters
-          if (activeTab === 'all' && !categoryFilter && !priorityFilter && !searchTerm) {
+          if (activeTab === 'all' && !deadlineFilter && !categoryFilter && !priorityFilter && !searchTerm) {
             safePersistCache(combined, user);
           }
           return combined;
@@ -153,7 +155,7 @@ export const App = () => {
         setTimeout(() => setIsRefreshing(false), 400);
       }
     }
-  }, [user, activeTab, categoryFilter, priorityFilter, searchTerm]);
+  }, [user, activeTab, deadlineFilter, categoryFilter, priorityFilter, searchTerm]);
 
   // Load records on initial component mount or page refresh
   useEffect(() => {
@@ -343,6 +345,40 @@ export const App = () => {
     loadData(false);
   };
 
+  // Instant client-side filtering for smooth tab switches and deadline filtering
+  const displayedComplaints = useMemo(() => {
+    return complaints.filter((c) => {
+      // 1. Tab workflow status filter
+      if (activeTab === 'draft' && c.status !== 'Draft') return false;
+      if (activeTab === 'open' && !['Open', 'Assigned', 'In Progress'].includes(c.status)) return false;
+      if (activeTab === 'cap-submitted' && c.status !== 'CAP Submitted') return false;
+      if (activeTab === 'under-review' && !['Under Review', 'Under Verification'].includes(c.status)) return false;
+      if (activeTab === 'rejected-rework' && !['Rejected / Rework', 'Rejected / Sent Back'].includes(c.status)) return false;
+      if (activeTab === 'verified' && c.status !== 'Verified') return false;
+      if (activeTab === 'closed' && c.status !== 'Closed') return false;
+
+      // 2. Separate Deadline Condition filter
+      if (deadlineFilter) {
+        const cond =
+          c.deadlineCondition ||
+          (c.status === 'Closed'
+            ? 'Closed'
+            : Date.now() > new Date(c.deadlineTimestamp).getTime()
+            ? 'Overdue'
+            : 'Open');
+        if (deadlineFilter === 'Due Soon') {
+          const diffMs = new Date(c.deadlineTimestamp).getTime() - Date.now();
+          const isDueSoon = diffMs > 0 && diffMs <= 4 * 60 * 60 * 1000 && c.status !== 'Closed';
+          if (!isDueSoon) return false;
+        } else if (cond.toLowerCase() !== deadlineFilter.toLowerCase()) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [complaints, activeTab, deadlineFilter]);
+
   // Render dedicated Login Page when not authenticated
   if (!user) {
     return <LoginPage />;
@@ -470,6 +506,8 @@ export const App = () => {
             <ComplaintFilters
               activeTab={activeTab}
               onTabChange={setActiveTab}
+              deadlineFilter={deadlineFilter}
+              onDeadlineFilterChange={setDeadlineFilter}
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
               categoryFilter={categoryFilter}
@@ -485,7 +523,7 @@ export const App = () => {
             <div className="flex items-center justify-between mb-4">
               <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                 Showing{' '}
-                <span className="text-slate-900 dark:text-white font-bold">{complaints.length}</span>{' '}
+                <span className="text-slate-900 dark:text-white font-bold">{displayedComplaints.length}</span>{' '}
                 NC Defects
               </div>
 
@@ -521,7 +559,7 @@ export const App = () => {
                 <div className="w-8 h-8 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin mb-3" />
                 <span>Scanning Factory Floor for NC Defects...</span>
               </div>
-            ) : complaints.length === 0 ? (
+            ) : displayedComplaints.length === 0 ? (
               <div className="p-16 rounded-3xl bg-white dark:bg-slate-900/60 border border-slate-200/90 dark:border-slate-800/80 text-center flex flex-col items-center justify-center my-6 shadow-xs">
                 <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-center mb-4">
                   <CheckCircle2 className="w-8 h-8" />
@@ -544,7 +582,7 @@ export const App = () => {
               </div>
             ) : viewMode === 'cards' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {complaints.map((c) => (
+                {displayedComplaints.map((c) => (
                   <ComplaintCard
                     key={c._id || c.id || c.complaintId}
                     complaint={c}
@@ -557,7 +595,7 @@ export const App = () => {
               </div>
             ) : (
               <ComplaintTable
-                complaints={complaints}
+                complaints={displayedComplaints}
                 onViewDetails={handleOpenDetailModal}
                 onStartProgress={handleStartProgress}
                 onSubmitAction={handleOpenActionModal}

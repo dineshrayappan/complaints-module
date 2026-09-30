@@ -118,11 +118,34 @@ const formatComplaintOutput = (complaint) => {
     obj.afterPhoto = ensureDataUrl(obj.afterPhoto);
   }
 
-  // Virtual property: dynamic calculation whether currently overdue
-  if (typeof obj.isCurrentlyOverdue === 'undefined') {
-    obj.isCurrentlyOverdue =
-      obj.status !== 'Closed' && new Date() > new Date(obj.deadlineTimestamp);
+  // 1. Workflow Lifecycle Status: Draft -> Open -> CAP Submitted -> Under Review -> Rejected / Rework -> Verified -> Closed
+  let normalizedStatus = obj.status || 'Open';
+  if (['Assigned', 'In Progress'].includes(normalizedStatus)) {
+    normalizedStatus = 'Open';
+  } else if (['Under Verification'].includes(normalizedStatus)) {
+    normalizedStatus = 'CAP Submitted';
+  } else if (['Rejected / Sent Back'].includes(normalizedStatus)) {
+    normalizedStatus = 'Rejected / Rework';
   }
+  obj.status = normalizedStatus;
+
+  // 2. Decoupled Deadline Condition: Open | Overdue | Due Soon | Closed
+  const isTerminal = normalizedStatus === 'Closed' || normalizedStatus === 'Verified';
+  let deadlineCondition = 'Open';
+  if (isTerminal) {
+    deadlineCondition = 'Closed';
+  } else if (obj.deadlineTimestamp) {
+    const diffMs = new Date(obj.deadlineTimestamp).getTime() - Date.now();
+    if (diffMs <= 0) {
+      deadlineCondition = 'Overdue';
+    } else if (diffMs <= 4 * 60 * 60 * 1000) {
+      deadlineCondition = 'Due Soon';
+    } else {
+      deadlineCondition = 'Open';
+    }
+  }
+  obj.deadlineCondition = deadlineCondition;
+  obj.isCurrentlyOverdue = deadlineCondition === 'Overdue';
 
   // Ensure timeline is an array
   if (!Array.isArray(obj.timeline)) {
@@ -176,8 +199,11 @@ const formatComplaintOutput = (complaint) => {
     }
   }
 
-  const isClosed = obj.status === 'Closed';
-  const isUnderVerification = obj.status === 'Under Verification';
+  const isClosed = obj.status === 'Closed' || obj.status === 'Verified';
+  const isUnderVerification =
+    obj.status === 'CAP Submitted' ||
+    obj.status === 'Under Review' ||
+    obj.status === 'Under Verification';
   const hasResolution = Boolean(obj.actionNotes || obj.feedbackRemarks || obj.afterPhoto);
 
   let immediateCorrection = obj.immediateCorrection || '';
@@ -490,7 +516,7 @@ const createComplaint = async (req, res) => {
           createdBy: createdByData,
           deadlineHours: hours,
           deadlineTimestamp: deadlineTimestamp.toISOString(),
-          status: 'Assigned',
+          status: req.body.isDraft === 'true' || req.body.isDraft === true ? 'Draft' : 'Open',
           actionNotes: '',
           feedbackRemarks: '',
           rejectionReason: '',
@@ -583,6 +609,7 @@ const createComplaint = async (req, res) => {
       createdBy: createdByData,
       deadlineHours: hours,
       deadlineTimestamp,
+      status: req.body.isDraft === 'true' || req.body.isDraft === true ? 'Draft' : 'Open',
       cap: initialCap,
     });
 
@@ -606,7 +633,7 @@ const createComplaint = async (req, res) => {
 // @access  Private
 const getComplaints = async (req, res) => {
   try {
-    const { status, category, priority, department, search, tab } = req.query;
+    const { status, category, priority, department, search, tab, deadlineCondition, deadline } = req.query;
     const now = new Date();
 
     if (isSupabaseConfigured && supabase) {
@@ -629,17 +656,45 @@ const getComplaints = async (req, res) => {
           }
         }
 
-        // Tab filtering
-        if (tab === 'action-pending') {
-          query = query.in('status', ['Assigned', 'In Progress', 'Rejected / Sent Back']);
-        } else if (tab === 'under-verification') {
-          query = query.eq('status', 'Under Verification');
+        // 1. Workflow Status / Tab filtering
+        if (tab === 'draft') {
+          query = query.eq('status', 'Draft');
+        } else if (tab === 'open') {
+          query = query.in('status', ['Open', 'Assigned', 'In Progress']);
+        } else if (tab === 'cap-submitted') {
+          query = query.in('status', ['CAP Submitted', 'Under Verification']);
+        } else if (tab === 'under-review') {
+          query = query.eq('status', 'Under Review');
+        } else if (tab === 'rejected-rework') {
+          query = query.in('status', ['Rejected / Rework', 'Rejected / Sent Back']);
+        } else if (tab === 'verified') {
+          query = query.eq('status', 'Verified');
         } else if (tab === 'closed') {
-          query = query.eq('status', 'Closed');
+          query = query.in('status', ['Closed', 'Verified']);
+        } else if (tab === 'action-pending') {
+          query = query.in('status', ['Open', 'Assigned', 'In Progress', 'Rejected / Rework', 'Rejected / Sent Back']);
+        } else if (tab === 'under-verification') {
+          query = query.in('status', ['CAP Submitted', 'Under Review', 'Under Verification']);
         } else if (tab === 'overdue') {
-          query = query.neq('status', 'Closed').lt('deadlineTimestamp', now.toISOString());
-        } else if (status) {
+          query = query.not('status', 'in', '("Closed","Verified")').lt('deadlineTimestamp', now.toISOString());
+        } else if (status && status !== 'all' && status !== 'All Statuses') {
           query = query.eq('status', status);
+        }
+
+        // 2. Decoupled Deadline Condition filter: Open | Overdue | Due Soon | Closed
+        const dCond = deadlineCondition || deadline;
+        if (dCond && dCond !== 'All Deadlines') {
+          if (dCond === 'Overdue') {
+            query = query.not('status', 'in', '("Closed","Verified")').lt('deadlineTimestamp', now.toISOString());
+          } else if (dCond === 'Due Soon') {
+            const fourHoursLater = new Date(now.getTime() + 4 * 60 * 60 * 1000).toISOString();
+            query = query.not('status', 'in', '("Closed","Verified")').gte('deadlineTimestamp', now.toISOString()).lte('deadlineTimestamp', fourHoursLater);
+          } else if (dCond === 'Open') {
+            const fourHoursLater = new Date(now.getTime() + 4 * 60 * 60 * 1000).toISOString();
+            query = query.not('status', 'in', '("Closed","Verified")').gt('deadlineTimestamp', fourHoursLater);
+          } else if (dCond === 'Closed') {
+            query = query.in('status', ['Closed', 'Verified']);
+          }
         }
 
         if (category) query = query.eq('category', category);
@@ -1029,7 +1084,7 @@ const submitAction = async (req, res) => {
           actionNotes: finalActionNotes,
           feedbackRemarks: finalFeedbackRemarks,
           actualCompletedAt: now.toISOString(),
-          status: 'Under Verification',
+          status: 'CAP Submitted',
           timeline,
           updatedAt: now.toISOString(),
         };
@@ -1103,7 +1158,7 @@ const submitAction = async (req, res) => {
     complaint.capTargetDate = targetDate || now.toISOString();
     complaint.cap = structuredCap;
     complaint.actualCompletedAt = now;
-    complaint.status = 'Under Verification';
+    complaint.status = 'CAP Submitted';
     complaint.timeline.push({
       action: 'ACTION_SUBMITTED',
       performedBy: {
@@ -1140,10 +1195,10 @@ const verifyComplaint = async (req, res) => {
     const { decision, notes, rejectionReason } = req.body;
     const now = new Date();
 
-    if (!['APPROVE', 'REJECT'].includes(decision)) {
+    if (!['APPROVE', 'REJECT', 'VERIFY', 'START_REVIEW', 'CLOSE'].includes(decision)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid verification decision. Must be APPROVE or REJECT.',
+        message: 'Invalid verification decision. Must be APPROVE, CLOSE, VERIFY, START_REVIEW, or REJECT.',
       });
     }
 
@@ -1182,7 +1237,33 @@ const verifyComplaint = async (req, res) => {
         let newStatus = current.status;
         let updatePayload = { updatedAt: now.toISOString() };
 
-        if (decision === 'APPROVE') {
+        if (decision === 'START_REVIEW') {
+          newStatus = 'Under Review';
+          updatePayload.status = newStatus;
+          timeline.push({
+            action: 'UNDER_REVIEW',
+            performedBy: {
+              name: req.user.name,
+              role: req.user.role,
+              employeeId: req.user.employeeId,
+            },
+            notes: notes || 'Auditor initiated review and on-site audit of submitted CAP.',
+            timestamp: now.toISOString(),
+          });
+        } else if (decision === 'VERIFY') {
+          newStatus = 'Verified';
+          updatePayload.status = newStatus;
+          timeline.push({
+            action: 'VERIFIED',
+            performedBy: {
+              name: req.user.name,
+              role: req.user.role,
+              employeeId: req.user.employeeId,
+            },
+            notes: notes || 'Audit verified that CAP actions are effective on the shop floor.',
+            timestamp: now.toISOString(),
+          });
+        } else if (decision === 'APPROVE' || decision === 'CLOSE') {
           newStatus = 'Closed';
           updatePayload.status = newStatus;
           updatePayload.actualCompletedAt = now.toISOString();
@@ -1199,7 +1280,7 @@ const verifyComplaint = async (req, res) => {
           });
         } else {
           const reason = rejectionReason || notes;
-          newStatus = 'Rejected / Sent Back';
+          newStatus = 'Rejected / Rework';
           updatePayload.status = newStatus;
           updatePayload.rejectionReason = reason;
           timeline.push({
@@ -1209,7 +1290,7 @@ const verifyComplaint = async (req, res) => {
               role: req.user.role,
               employeeId: req.user.employeeId,
             },
-            notes: `Audit rejected resolution and returned to line. Reason: ${reason}`,
+            notes: `Audit rejected resolution and returned to line for rework. Reason: ${reason}`,
             timestamp: now.toISOString(),
           });
         }
@@ -1271,7 +1352,37 @@ const verifyComplaint = async (req, res) => {
       });
     }
 
-    if (decision === 'APPROVE') {
+    if (decision === 'START_REVIEW') {
+      complaint.status = 'Under Review';
+      complaint.timeline.push({
+        action: 'UNDER_REVIEW',
+        performedBy: {
+          name: req.user.name,
+          role: req.user.role,
+          employeeId: req.user.employeeId,
+        },
+        notes: notes || 'Auditor initiated review and on-site audit of submitted CAP.',
+        timestamp: now,
+      });
+    } else if (decision === 'VERIFY') {
+      complaint.status = 'Verified';
+      if (!complaint.cap) complaint.cap = {};
+      complaint.cap.status = 'VERIFIED_EFFECTIVE';
+      complaint.cap.verifiedEffective = true;
+      complaint.cap.verifiedAt = now.toISOString();
+      complaint.cap.verifiedBy = req.user.name;
+      complaint.cap.verificationNotes = notes || 'Audit verified CAP effectiveness on floor.';
+      complaint.timeline.push({
+        action: 'VERIFIED',
+        performedBy: {
+          name: req.user.name,
+          role: req.user.role,
+          employeeId: req.user.employeeId,
+        },
+        notes: notes || 'Audit verified that CAP actions are effective on the shop floor.',
+        timestamp: now,
+      });
+    } else if (decision === 'APPROVE' || decision === 'CLOSE') {
       complaint.status = 'Closed';
       complaint.actualCompletedAt = now;
       complaint.rejectionReason = '';
@@ -1293,7 +1404,7 @@ const verifyComplaint = async (req, res) => {
       });
     } else {
       const reason = rejectionReason || notes;
-      complaint.status = 'Rejected / Sent Back';
+      complaint.status = 'Rejected / Rework';
       complaint.rejectionReason = reason;
       if (!complaint.cap) complaint.cap = {};
       complaint.cap.status = 'REJECTED';
@@ -1306,7 +1417,7 @@ const verifyComplaint = async (req, res) => {
           role: req.user.role,
           employeeId: req.user.employeeId,
         },
-        notes: `Audit rejected CAP resolution and returned to line. Reason: ${reason}`,
+        notes: `Audit rejected CAP resolution and returned to line for rework. Reason: ${reason}`,
         timestamp: now,
       });
     }
@@ -1479,23 +1590,46 @@ const getKpiStats = async (req, res) => {
         const { data: allComplaints, error } = await query;
 
         if (!error && allComplaints) {
-          const activeTickets = allComplaints.filter((c) =>
-            ['Assigned', 'In Progress', 'Rejected / Sent Back'].includes(c.status)
-          ).length;
-          const underVerification = allComplaints.filter((c) => c.status === 'Under Verification').length;
+          const draftTickets = allComplaints.filter((c) => c.status === 'Draft').length;
+          const openTickets = allComplaints.filter((c) => ['Open', 'Assigned', 'In Progress'].includes(c.status)).length;
+          const capSubmitted = allComplaints.filter((c) => ['CAP Submitted', 'Under Verification'].includes(c.status)).length;
+          const underReview = allComplaints.filter((c) => c.status === 'Under Review').length;
+          const rejectedRework = allComplaints.filter((c) => ['Rejected / Rework', 'Rejected / Sent Back'].includes(c.status)).length;
+          const verifiedTickets = allComplaints.filter((c) => c.status === 'Verified').length;
           const closedTickets = allComplaints.filter((c) => c.status === 'Closed').length;
+
           const overdueCount = allComplaints.filter(
-            (c) => c.status !== 'Closed' && new Date(c.deadlineTimestamp) < now
+            (c) => !['Closed', 'Verified'].includes(c.status) && new Date(c.deadlineTimestamp) < now
           ).length;
+          const dueSoonCount = allComplaints.filter((c) => {
+            if (['Closed', 'Verified'].includes(c.status)) return false;
+            const diff = new Date(c.deadlineTimestamp) - now;
+            return diff >= 0 && diff <= 4 * 3600 * 1000;
+          }).length;
+          const openDeadlineCount = allComplaints.filter((c) => {
+            if (['Closed', 'Verified'].includes(c.status)) return false;
+            const diff = new Date(c.deadlineTimestamp) - now;
+            return diff > 4 * 3600 * 1000;
+          }).length;
 
           return res.status(200).json({
             success: true,
             metrics: {
               total: allComplaints.length,
-              activeTickets,
-              underVerification,
-              closedTickets,
+              draft: draftTickets,
+              open: openTickets,
+              capSubmitted,
+              underReview,
+              rejectedRework,
+              verified: verifiedTickets,
+              closed: closedTickets,
+              activeTickets: openTickets + rejectedRework,
+              underVerification: capSubmitted + underReview,
+              closedTickets: closedTickets + verifiedTickets,
               overdueCount,
+              dueSoonCount,
+              openDeadlineCount,
+              closedDeadlineCount: closedTickets + verifiedTickets,
             },
           });
         }
@@ -1505,23 +1639,46 @@ const getKpiStats = async (req, res) => {
     }
 
     const allComplaints = mockStore.getComplaints();
-    const activeTickets = allComplaints.filter((c) =>
-      ['Assigned', 'In Progress', 'Rejected / Sent Back'].includes(c.status)
-    ).length;
-    const underVerification = allComplaints.filter((c) => c.status === 'Under Verification').length;
+    const draftTickets = allComplaints.filter((c) => c.status === 'Draft').length;
+    const openTickets = allComplaints.filter((c) => ['Open', 'Assigned', 'In Progress'].includes(c.status)).length;
+    const capSubmitted = allComplaints.filter((c) => ['CAP Submitted', 'Under Verification'].includes(c.status)).length;
+    const underReview = allComplaints.filter((c) => c.status === 'Under Review').length;
+    const rejectedRework = allComplaints.filter((c) => ['Rejected / Rework', 'Rejected / Sent Back'].includes(c.status)).length;
+    const verifiedTickets = allComplaints.filter((c) => c.status === 'Verified').length;
     const closedTickets = allComplaints.filter((c) => c.status === 'Closed').length;
+
     const overdueCount = allComplaints.filter(
-      (c) => c.status !== 'Closed' && new Date(c.deadlineTimestamp) < now
+      (c) => !['Closed', 'Verified'].includes(c.status) && new Date(c.deadlineTimestamp) < now
     ).length;
+    const dueSoonCount = allComplaints.filter((c) => {
+      if (['Closed', 'Verified'].includes(c.status)) return false;
+      const diff = new Date(c.deadlineTimestamp) - now;
+      return diff >= 0 && diff <= 4 * 3600 * 1000;
+    }).length;
+    const openDeadlineCount = allComplaints.filter((c) => {
+      if (['Closed', 'Verified'].includes(c.status)) return false;
+      const diff = new Date(c.deadlineTimestamp) - now;
+      return diff > 4 * 3600 * 1000;
+    }).length;
 
     res.status(200).json({
       success: true,
       metrics: {
         total: allComplaints.length,
-        activeTickets,
-        underVerification,
-        closedTickets,
+        draft: draftTickets,
+        open: openTickets,
+        capSubmitted,
+        underReview,
+        rejectedRework,
+        verified: verifiedTickets,
+        closed: closedTickets,
+        activeTickets: openTickets + rejectedRework,
+        underVerification: capSubmitted + underReview,
+        closedTickets: closedTickets + verifiedTickets,
         overdueCount,
+        dueSoonCount,
+        openDeadlineCount,
+        closedDeadlineCount: closedTickets + verifiedTickets,
       },
     });
   } catch (error) {
@@ -1583,9 +1740,13 @@ const getAdminOversightStats = async (req, res) => {
     const breachedTickets = allComplaints.filter(
       (c) => c.status !== 'Closed' && new Date(c.deadlineTimestamp) < now
     );
-    const unstartedTickets = allComplaints.filter((c) => c.status === 'Assigned');
-    const pendingVerificationTickets = allComplaints.filter((c) => c.status === 'Under Verification');
-    const rejectedTickets = allComplaints.filter((c) => c.status === 'Rejected / Sent Back');
+    const unstartedTickets = allComplaints.filter((c) => ['Open', 'Assigned'].includes(c.status));
+    const pendingVerificationTickets = allComplaints.filter((c) =>
+      ['CAP Submitted', 'Under Review', 'Verified', 'Under Verification'].includes(c.status)
+    );
+    const rejectedTickets = allComplaints.filter((c) =>
+      ['Rejected / Rework', 'Rejected / Sent Back'].includes(c.status)
+    );
     const closed = allComplaints.filter((c) => c.status === 'Closed');
 
     const auditorActivity = {
@@ -1633,11 +1794,15 @@ const getAdminOversightStats = async (req, res) => {
         );
       });
 
-      const unstarted = assignedTickets.filter((c) => c.status === 'Assigned');
+      const unstarted = assignedTickets.filter((c) => ['Open', 'Assigned'].includes(c.status));
       const inProgress = assignedTickets.filter((c) => c.status === 'In Progress');
-      const underVerification = assignedTickets.filter((c) => c.status === 'Under Verification');
+      const underVerification = assignedTickets.filter((c) =>
+        ['CAP Submitted', 'Under Review', 'Verified', 'Under Verification'].includes(c.status)
+      );
       const closedTickets = assignedTickets.filter((c) => c.status === 'Closed');
-      const rejected = assignedTickets.filter((c) => c.status === 'Rejected / Sent Back');
+      const rejected = assignedTickets.filter((c) =>
+        ['Rejected / Rework', 'Rejected / Sent Back'].includes(c.status)
+      );
       const overdue = assignedTickets.filter(
         (c) => c.status !== 'Closed' && new Date(c.deadlineTimestamp) < now
       );

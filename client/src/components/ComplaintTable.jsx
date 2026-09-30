@@ -31,14 +31,24 @@ export const ComplaintTable = ({
 
   const getStatusBadge = (status) => {
     switch (status) {
-      case 'Closed':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800';
-      case 'Under Verification':
-        return 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-700 animate-pulse font-semibold';
+      case 'Draft':
+        return 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
+      case 'Open':
+      case 'Assigned':
       case 'In Progress':
         return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/70 dark:text-blue-300 dark:border-blue-800';
+      case 'CAP Submitted':
+        return 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/70 dark:text-purple-300 dark:border-purple-800 font-semibold';
+      case 'Under Review':
+      case 'Under Verification':
+        return 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-700 animate-pulse font-semibold';
+      case 'Rejected / Rework':
       case 'Rejected / Sent Back':
-        return 'bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950/80 dark:text-rose-300 dark:border-rose-800';
+        return 'bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950/80 dark:text-rose-300 dark:border-rose-800 font-semibold';
+      case 'Verified':
+        return 'bg-teal-50 text-teal-700 border-teal-300 dark:bg-teal-950/70 dark:text-teal-300 dark:border-teal-800 font-semibold';
+      case 'Closed':
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800';
       default:
         return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
     }
@@ -53,8 +63,8 @@ export const ComplaintTable = ({
             <th className="py-3 px-3.5 sm:py-3.5 sm:px-4 font-semibold">Priority</th>
             <th className="py-3 px-3.5 sm:py-3.5 sm:px-4 font-semibold">NC Defect & Location</th>
             <th className="py-3 px-3.5 sm:py-3.5 sm:px-4 font-semibold">Line In-Charge</th>
-            <th className="py-3 px-3.5 sm:py-3.5 sm:px-4 font-semibold">Live SLA Countdown</th>
-            <th className="py-3 px-3.5 sm:py-3.5 sm:px-4 font-semibold">Status</th>
+            <th className="py-3 px-3.5 sm:py-3.5 sm:px-4 font-semibold">Deadline Condition</th>
+            <th className="py-3 px-3.5 sm:py-3.5 sm:px-4 font-semibold">NC Status</th>
             <th className="py-3 px-3.5 sm:py-3.5 sm:px-4 font-semibold text-right">Actions</th>
           </tr>
         </thead>
@@ -168,37 +178,43 @@ export const ComplaintTable = ({
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex items-center justify-end gap-2">
-                    {canAct && c.status === 'Assigned' && (
-                      <button
-                        onClick={() => onStartProgress(c)}
-                        className="p-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-xs"
-                        title="Start Rework"
-                      >
-                        <Play className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-
+                    {/* Action Button for Supervisor / Action Person */}
                     {canAct &&
-                      ['In Progress', 'Rejected / Sent Back'].includes(
+                      ['Open', 'Rejected / Rework', 'Assigned', 'In Progress', 'Rejected / Sent Back'].includes(
                         c.status
                       ) && (
                         <button
                           onClick={() => onSubmitAction(c)}
-                          className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-1 shadow-xs"
-                          title="Submit Action Resolution Proof"
+                          className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center gap-1 shadow-xs"
+                          title="Submit CAP & Proof"
                         >
                           <Camera className="w-3.5 h-3.5" />
-                          <span>Submit Proof</span>
+                          <span>{c.capRequired ? 'Submit CAP' : 'Submit Action'}</span>
                         </button>
                       )}
 
-                    {isAuditor && c.status === 'Under Verification' && (
+                    {/* Verification / Review Action for Auditor or Admin */}
+                    {(isAuditor || isAdmin) &&
+                      ['CAP Submitted', 'Under Review', 'Under Verification'].includes(c.status) && (
+                        <button
+                          onClick={() => onViewDetails(c)}
+                          className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs flex items-center gap-1 shadow-xs animate-pulse"
+                          title="Review / Verify CAP"
+                        >
+                          <CheckCheck className="w-3.5 h-3.5" />
+                          <span>Review</span>
+                        </button>
+                      )}
+
+                    {/* Close Action for Auditor or Admin */}
+                    {(isAuditor || isAdmin) && c.status === 'Verified' && (
                       <button
                         onClick={() => onViewDetails(c)}
-                        className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs flex items-center gap-1 shadow-xs animate-pulse"
+                        className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-1 shadow-xs"
+                        title="Close NC"
                       >
                         <CheckCheck className="w-3.5 h-3.5" />
-                        <span>Verify NC</span>
+                        <span>Close</span>
                       </button>
                     )}
 

@@ -159,8 +159,8 @@ export const ComplaintDetailModal = ({
     }
   };
 
-  // Handle Auditor Verification (Approve or Reject)
-  const handleVerify = async (decision) => {
+  // Handle Auditor Verification (Start Review, Verify, Approve, or Reject)
+  const handleVerify = async (decision, customNotes = '') => {
     if (decision === 'REJECT' && !rejectionReason.trim()) {
       setError('A rejection reason is mandatory when returning an NC defect to the line.');
       return;
@@ -173,6 +173,7 @@ export const ComplaintDetailModal = ({
       const res = await complaintService.verifyComplaint(targetId, {
         decision,
         rejectionReason: rejectionReason.trim(),
+        verificationNotes: customNotes,
       });
 
       if (res.data.success) {
@@ -187,18 +188,49 @@ export const ComplaintDetailModal = ({
     }
   };
 
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'Draft':
+        return 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
+      case 'Open':
+      case 'Assigned':
+      case 'In Progress':
+        return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/70 dark:text-blue-300 dark:border-blue-800';
+      case 'CAP Submitted':
+        return 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/70 dark:text-purple-300 dark:border-purple-800 font-semibold';
+      case 'Under Review':
+      case 'Under Verification':
+        return 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-700 animate-pulse font-semibold';
+      case 'Rejected / Rework':
+      case 'Rejected / Sent Back':
+        return 'bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950/80 dark:text-rose-300 dark:border-rose-800 font-semibold';
+      case 'Verified':
+        return 'bg-teal-50 text-teal-700 border-teal-300 dark:bg-teal-950/70 dark:text-teal-300 dark:border-teal-800 font-semibold';
+      case 'Closed':
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800';
+      default:
+        return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
+    }
+  };
+
   const getTimelineEventBadge = (action) => {
     switch (action) {
       case 'CREATED':
+      case 'OPENED':
         return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/40';
       case 'IN_PROGRESS':
         return 'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-500/20 dark:text-cyan-400 dark:border-cyan-500/40';
       case 'ACTION_SUBMITTED':
+      case 'CAP_SUBMITTED':
+        return 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/20 dark:text-purple-400 dark:border-purple-500/40';
+      case 'REVIEW_STARTED':
         return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/40';
+      case 'VERIFIED':
+        return 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-500/20 dark:text-teal-400 dark:border-teal-500/40';
       case 'REJECTED':
         return 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/40';
       case 'REASSIGNED':
-        return 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/20 dark:text-purple-400 dark:border-purple-500/40';
+        return 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-400 dark:border-indigo-500/40';
       case 'CLOSED':
         return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/40';
       default:
@@ -216,12 +248,20 @@ export const ComplaintDetailModal = ({
               NC: {complaint.complaintId}
             </span>
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                 <h2 className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight truncate">
                   {complaint.category}
                 </h2>
                 <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0">
                   {complaint.priority}
+                </span>
+                <span
+                  title="NC Lifecycle Status"
+                  className={`text-[10px] sm:text-xs font-semibold px-2 sm:px-2.5 py-0.5 rounded-full border shrink-0 ${getStatusBadge(
+                    complaint.status
+                  )}`}
+                >
+                  {complaint.status}
                 </span>
               </div>
               <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 truncate">
@@ -833,51 +873,28 @@ export const ComplaintDetailModal = ({
             </div>
           </div>
 
-          {/* Rejection notice if status is Rejected */}
-          {complaint.status === 'Rejected / Sent Back' && complaint.rejectionReason && (
+          {/* Rejection notice if status is Rejected / Rework */}
+          {['Rejected / Rework', 'Rejected / Sent Back'].includes(complaint.status) && complaint.rejectionReason && (
             <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/70 border border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs space-y-1">
               <div className="font-bold flex items-center gap-1.5 text-rose-700 dark:text-rose-300">
                 <AlertTriangle className="w-4 h-4" />
-                Audit Rejection Notice: Returned to Line
+                Audit Rejection Notice: Returned for Rework
               </div>
               <p className="text-rose-900 dark:text-rose-100">{complaint.rejectionReason}</p>
             </div>
           )}
 
-          {/* Action Box for Starting Rework */}
-          {complaint.status === 'Assigned' && onStartProgress && (
+          {/* Action Box for Submitting Resolution Proof / CAP */}
+          {['Open', 'Rejected / Rework', 'In Progress', 'Assigned', 'Rejected / Sent Back'].includes(complaint.status) && onSubmitAction && (
             <div className="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">
-                  Ready to commence rectification work?
+                  {complaint.capRequired ? 'Action Required: Submit CAP & Evidence' : 'Work Completed? Submit Rectification Proof'}
                 </h4>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Update status to In Progress to record floor commencement in the audit log.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onStartProgress(complaint);
-                }}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"
-              >
-                <Play className="w-4 h-4" />
-                <span>Start Defect Rework</span>
-              </button>
-            </div>
-          )}
-
-          {/* Action Box for Submitting Resolution Proof */}
-          {['In Progress', 'Rejected / Sent Back'].includes(complaint.status) && onSubmitAction && (
-            <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">
-                  Work Completed? Submit Rectification Proof
-                </h4>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Upload mandatory After Photo proof and action notes for Quality Audit verification.
+                  {complaint.capRequired
+                    ? 'Submit 8-step Root Cause, Corrective & Preventive action plan with photo evidence.'
+                    : 'Upload mandatory After Photo proof and action notes for Quality Audit verification.'}
                 </p>
               </div>
               <button
@@ -886,86 +903,124 @@ export const ComplaintDetailModal = ({
                   onClose();
                   onSubmitAction(complaint);
                 }}
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
               >
                 <Camera className="w-4 h-4" />
-                <span>Submit Resolution Proof & After Photo</span>
+                <span>{complaint.capRequired ? 'Submit CAP & Evidence' : 'Submit Proof'}</span>
               </button>
             </div>
           )}
 
           {/* Auditor Verification Gateway Action Box */}
-          {isAuditor && complaint.status === 'Under Verification' && (
-            <div className="p-5 rounded-2xl bg-purple-50/60 dark:bg-purple-950/30 border-2 border-purple-200 dark:border-purple-600 shadow-xs space-y-3.5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-purple-600 dark:text-cyan-400" />
-                    Auditor Sign-Off & Verification Gateway
-                  </h4>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
-                    Inspect the Before vs. After photos above. Verify AQL standards are satisfied.
-                  </p>
-                </div>
-                <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-800 dark:bg-purple-500/20 dark:text-purple-300 border border-purple-300 dark:border-purple-500/40">
-                  Auditor Exclusive
-                </span>
-              </div>
-
-              {showRejectBox ? (
-                <div className="space-y-3 pt-2">
-                  <label className="block text-xs font-bold text-rose-700 dark:text-rose-300">
-                    Mandatory Rejection Reason:
-                  </label>
-                  <textarea
-                    rows="2"
-                    value={rejectionReason}
-                    onChange={(e) => setRejectionReason(e.target.value)}
-                    placeholder="Specify why the rectification was rejected (e.g., seam puckering still visible on sample #4, needle hole not covered)..."
-                    className="w-full bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-3 rounded-xl border border-rose-300 dark:border-rose-800 text-xs focus:ring-2 focus:ring-rose-500"
-                  />
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowRejectBox(false)}
-                      className="px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white text-xs"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      disabled={verifying}
-                      onClick={() => handleVerify('REJECT')}
-                      className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition-colors"
-                    >
-                      {verifying ? 'Rejecting...' : 'Confirm Rejection & Return'}
-                    </button>
+          {(isAuditor || isAdmin) &&
+            ['CAP Submitted', 'Under Review', 'Verified', 'Under Verification'].includes(complaint.status) && (
+              <div className="p-5 rounded-2xl bg-purple-50/60 dark:bg-purple-950/30 border-2 border-purple-200 dark:border-purple-600 shadow-xs space-y-3.5">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <h4 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-purple-600 dark:text-cyan-400" />
+                      Auditor Sign-Off & Verification Gateway
+                    </h4>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                      {complaint.status === 'CAP Submitted' &&
+                        'CAP Plan and containment submitted. Inspect root cause, actions, and evidence before starting formal review or verifying.'}
+                      {complaint.status === 'Under Review' &&
+                        'NC is currently under formal audit review. Inspect floor execution, verify effectiveness, or close.'}
+                      {complaint.status === 'Verified' &&
+                        'Non-conformance has been verified effective by QA Auditor. Grant official final closure.'}
+                      {complaint.status === 'Under Verification' &&
+                        'Inspect the Before vs. After photos above. Verify AQL standards are satisfied.'}
+                    </p>
                   </div>
+                  <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-800 dark:bg-purple-500/20 dark:text-purple-300 border border-purple-300 dark:border-purple-500/40">
+                    Stage: {complaint.status}
+                  </span>
                 </div>
-              ) : (
-                <div className="flex items-center justify-end gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowRejectBox(true)}
-                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950 hover:text-rose-700 dark:hover:text-rose-300 text-slate-700 dark:text-slate-300 font-bold text-xs border border-slate-300 dark:border-slate-700 transition-all active:scale-95 shadow-xs"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Reject NC & Return to Line</span>
-                  </button>
 
-                  <button
-                    type="button"
-                    disabled={verifying}
-                    onClick={() => handleVerify('APPROVE')}
-                    className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/30 transition-all active:scale-95"
-                  >
-                    <Check className="w-4 h-4" />
-                    <span>{verifying ? 'Closing...' : 'Approve & Close NC'}</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+                {showRejectBox ? (
+                  <div className="space-y-3 pt-2">
+                    <label className="block text-xs font-bold text-rose-700 dark:text-rose-300">
+                      Mandatory Rejection / Rework Reason:
+                    </label>
+                    <textarea
+                      rows="2"
+                      value={rejectionReason}
+                      onChange={(e) => setRejectionReason(e.target.value)}
+                      placeholder="Specify why the CAP or rectification was rejected (e.g., root cause not fully addressed, evidence photo blurred, recurrence risk)..."
+                      className="w-full bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-3 rounded-xl border border-rose-300 dark:border-rose-800 text-xs focus:ring-2 focus:ring-rose-500"
+                    />
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowRejectBox(false)}
+                        className="px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white text-xs cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        disabled={verifying}
+                        onClick={() => handleVerify('REJECT')}
+                        className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition-colors cursor-pointer"
+                      >
+                        {verifying ? 'Rejecting...' : 'Confirm Rejection & Return for Rework'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-end gap-2.5 pt-2 flex-wrap">
+                    {/* Always allow returning for rework */}
+                    <button
+                      type="button"
+                      onClick={() => setShowRejectBox(true)}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950 hover:text-rose-700 dark:hover:text-rose-300 text-slate-700 dark:text-slate-300 font-bold text-xs border border-slate-300 dark:border-slate-700 transition-all active:scale-95 shadow-xs cursor-pointer"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-rose-500" />
+                      <span>Reject / Rework</span>
+                    </button>
+
+                    {/* Stage: CAP Submitted -> Start Review */}
+                    {complaint.status === 'CAP Submitted' && (
+                      <button
+                        type="button"
+                        disabled={verifying}
+                        onClick={() => handleVerify('START_REVIEW')}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-sm transition-all active:scale-95 cursor-pointer"
+                      >
+                        <Play className="w-3.5 h-3.5" />
+                        <span>{verifying ? 'Updating...' : 'Start Review'}</span>
+                      </button>
+                    )}
+
+                    {/* Stage: CAP Submitted, Under Review, or Under Verification -> Verify Effective */}
+                    {['CAP Submitted', 'Under Review', 'Under Verification'].includes(complaint.status) && (
+                      <button
+                        type="button"
+                        disabled={verifying}
+                        onClick={() => handleVerify('VERIFY')}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-sm transition-all active:scale-95 cursor-pointer"
+                      >
+                        <CheckCheck className="w-3.5 h-3.5" />
+                        <span>{verifying ? 'Verifying...' : 'Verify Effective'}</span>
+                      </button>
+                    )}
+
+                    {/* Stage: Under Review, Verified, or Under Verification -> Approve & Close */}
+                    {['Under Review', 'Verified', 'Under Verification'].includes(complaint.status) && (
+                      <button
+                        type="button"
+                        disabled={verifying}
+                        onClick={() => handleVerify('APPROVE')}
+                        className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/30 transition-all active:scale-95 cursor-pointer"
+                      >
+                        <Check className="w-4 h-4" />
+                        <span>{verifying ? 'Closing...' : 'Approve & Close NC'}</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
           {/* Section 4: In-Ticket Chronological Audit Timeline Log */}
           <div className="border-t border-slate-200 dark:border-slate-800 pt-5 space-y-4">

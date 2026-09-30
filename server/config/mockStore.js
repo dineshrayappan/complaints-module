@@ -195,14 +195,51 @@ module.exports = {
       }
     }
 
-    if (params.tab === 'action-pending' || params.tab === 'pending') {
-      result = result.filter((c) => ['Assigned', 'In Progress', 'Rejected / Sent Back'].includes(c.status));
+    if (params.tab === 'draft') {
+      result = result.filter((c) => c.status === 'Draft');
+    } else if (params.tab === 'open') {
+      result = result.filter((c) => ['Open', 'Assigned', 'In Progress'].includes(c.status));
+    } else if (params.tab === 'cap-submitted') {
+      result = result.filter((c) => ['CAP Submitted', 'Under Verification'].includes(c.status));
+    } else if (params.tab === 'under-review') {
+      result = result.filter((c) => c.status === 'Under Review');
+    } else if (params.tab === 'rejected-rework') {
+      result = result.filter((c) => ['Rejected / Rework', 'Rejected / Sent Back'].includes(c.status));
+    } else if (params.tab === 'verified') {
+      result = result.filter((c) => c.status === 'Verified');
+    } else if (params.tab === 'closed') {
+      result = result.filter((c) => ['Closed', 'Verified'].includes(c.status));
+    } else if (params.tab === 'action-pending' || params.tab === 'pending') {
+      result = result.filter((c) => ['Open', 'Assigned', 'In Progress', 'Rejected / Rework', 'Rejected / Sent Back'].includes(c.status));
     } else if (params.tab === 'under-verification' || params.tab === 'under_verification') {
-      result = result.filter((c) => c.status === 'Under Verification');
-    } else if (params.tab === 'closed' || params.tab === 'resolved') {
-      result = result.filter((c) => c.status === 'Closed');
+      result = result.filter((c) => ['CAP Submitted', 'Under Review', 'Under Verification'].includes(c.status));
     } else if (params.tab === 'overdue') {
-      result = result.filter((c) => c.status !== 'Closed' && new Date(c.deadlineTimestamp) < new Date());
+      result = result.filter((c) => !['Closed', 'Verified'].includes(c.status) && new Date(c.deadlineTimestamp) < new Date());
+    } else if (params.status && params.status !== 'all' && params.status !== 'All Statuses') {
+      result = result.filter((c) => c.status === params.status);
+    }
+
+    // Separate Deadline Condition filter: Open | Overdue | Due Soon | Closed
+    const dCond = params.deadlineCondition || params.deadline;
+    if (dCond && dCond !== 'All Deadlines') {
+      const now = new Date();
+      if (dCond === 'Overdue') {
+        result = result.filter((c) => !['Closed', 'Verified'].includes(c.status) && new Date(c.deadlineTimestamp) < now);
+      } else if (dCond === 'Due Soon') {
+        result = result.filter((c) => {
+          if (['Closed', 'Verified'].includes(c.status)) return false;
+          const diff = new Date(c.deadlineTimestamp) - now;
+          return diff >= 0 && diff <= 4 * 3600 * 1000;
+        });
+      } else if (dCond === 'Open') {
+        result = result.filter((c) => {
+          if (['Closed', 'Verified'].includes(c.status)) return false;
+          const diff = new Date(c.deadlineTimestamp) - now;
+          return diff > 4 * 3600 * 1000;
+        });
+      } else if (dCond === 'Closed') {
+        result = result.filter((c) => ['Closed', 'Verified'].includes(c.status));
+      }
     }
 
     if (params.category) {

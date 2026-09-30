@@ -42,14 +42,24 @@ export const ComplaintCard = ({
 
   const getStatusBadge = (status) => {
     switch (status) {
-      case 'Closed':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800';
-      case 'Under Verification':
-        return 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-800 animate-pulse font-semibold';
+      case 'Draft':
+        return 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
+      case 'Open':
+      case 'Assigned':
       case 'In Progress':
         return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/70 dark:text-blue-300 dark:border-blue-800';
+      case 'CAP Submitted':
+        return 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/70 dark:text-purple-300 dark:border-purple-800 font-semibold';
+      case 'Under Review':
+      case 'Under Verification':
+        return 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-800 animate-pulse font-semibold';
+      case 'Rejected / Rework':
       case 'Rejected / Sent Back':
-        return 'bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950/80 dark:text-rose-300 dark:border-rose-800';
+        return 'bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950/80 dark:text-rose-300 dark:border-rose-800 font-semibold';
+      case 'Verified':
+        return 'bg-teal-50 text-teal-700 border-teal-300 dark:bg-teal-950/70 dark:text-teal-300 dark:border-teal-800 font-semibold';
+      case 'Closed':
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800';
       default:
         return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
     }
@@ -127,17 +137,18 @@ export const ComplaintCard = ({
           {complaint.description}
         </p>
 
-        {/* Solution Details & Proof (Visible on Auditor & Supervisor pages once resolved) */}
+        {/* Solution Details & Proof (Visible once submitted, reviewed, verified, or closed) */}
         {(complaint.afterPhoto ||
           complaint.actionNotes ||
           complaint.feedbackRemarks ||
-          complaint.status === 'Under Verification' ||
-          complaint.status === 'Closed') && (
+          complaint.capPlan?.immediateCorrection ||
+          complaint.capPlan?.correctiveAction ||
+          ['CAP Submitted', 'Under Review', 'Verified', 'Closed', 'Under Verification'].includes(complaint.status)) && (
           <div className="mb-3 p-2.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 text-xs">
             <div className="flex items-center justify-between font-bold text-emerald-800 dark:text-emerald-300 text-[11px] mb-1">
               <span className="flex items-center gap-1">
                 <CheckCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                Solution & Rectification Details:
+                Solution & CAP Details:
               </span>
               {complaint.actualCompletedAt && (
                 <span className="text-[10px] font-mono text-emerald-700/80 dark:text-emerald-400/80">
@@ -149,6 +160,12 @@ export const ComplaintCard = ({
               <p className="text-slate-800 dark:text-slate-100 text-[11px] line-clamp-2 leading-relaxed">
                 <strong className="text-slate-900 dark:text-white font-semibold">Action Taken: </strong>
                 {complaint.actionNotes}
+              </p>
+            )}
+            {complaint.capPlan?.immediateCorrection && (
+              <p className="text-slate-700 dark:text-slate-200 text-[11px] line-clamp-1 mt-0.5">
+                <strong className="font-semibold text-slate-800 dark:text-white">Correction: </strong>
+                {complaint.capPlan.immediateCorrection}
               </p>
             )}
             {complaint.feedbackRemarks && (
@@ -233,36 +250,40 @@ export const ComplaintCard = ({
           <span>Inspect NC</span>
         </button>
 
-        {/* Action Button for Supervisor */}
-        {canActionPersonAct && complaint.status === 'Assigned' && (
-          <button
-            onClick={() => onStartProgress(complaint)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition-all active:scale-95"
-          >
-            <Play className="w-3.5 h-3.5" />
-            <span>Start Rework</span>
-          </button>
-        )}
-
+        {/* Action Button for Supervisor / Action Person */}
         {canActionPersonAct &&
-          ['In Progress', 'Rejected / Sent Back'].includes(complaint.status) && (
+          ['Open', 'Rejected / Rework', 'In Progress', 'Assigned', 'Rejected / Sent Back'].includes(
+            complaint.status
+          ) && (
             <button
               onClick={() => onSubmitAction(complaint)}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm transition-all active:scale-95"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition-all active:scale-95"
             >
               <Camera className="w-3.5 h-3.5" />
               <span>{complaint.capRequired ? 'Submit CAP & Proof' : 'Submit Proof'}</span>
             </button>
           )}
 
-        {/* Verification Action for Auditor */}
-        {isAuditor && complaint.status === 'Under Verification' && (
+        {/* Verification / Review Action for Auditor or Admin */}
+        {(isAuditor || isAdmin) &&
+          ['CAP Submitted', 'Under Review', 'Under Verification'].includes(complaint.status) && (
+            <button
+              onClick={() => onViewDetails(complaint)}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-sm transition-all animate-pulse active:scale-95"
+            >
+              <CheckCheck className="w-3.5 h-3.5" />
+              <span>Review / Verify</span>
+            </button>
+          )}
+
+        {/* Final Closure Action for Auditor or Admin */}
+        {(isAuditor || isAdmin) && complaint.status === 'Verified' && (
           <button
             onClick={() => onViewDetails(complaint)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-sm transition-all animate-pulse active:scale-95"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm transition-all active:scale-95"
           >
             <CheckCheck className="w-3.5 h-3.5" />
-            <span>Verify NC</span>
+            <span>Close NC</span>
           </button>
         )}
 
