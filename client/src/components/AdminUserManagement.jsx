@@ -28,14 +28,13 @@ import {
 import { userService } from '../services/api';
 
 const FACTORY_DEPARTMENTS = [
-  'Sewing Line 1',
-  'Sewing Line 2',
-  'Sewing Line 3',
-  'Sewing Line 4',
-  'Spreading & Cutting',
-  'Finishing & Packing',
-  'Central Quality Audit',
-  'Plant Operations & Executive Oversight',
+  'Production',
+  'Quality',
+  'Maintenance',
+  'Store',
+  'EHS',
+  'EDP',
+  'HR',
 ];
 
 export const AdminUserManagement = () => {
@@ -58,7 +57,7 @@ export const AdminUserManagement = () => {
     employeeId: '',
     email: '',
     password: '',
-    department: 'Central Quality Audit',
+    department: 'Quality',
     designation: 'QA Quality Auditor',
     mobileNumber: '',
   });
@@ -171,8 +170,8 @@ export const AdminUserManagement = () => {
       employeeId: isAud ? nextAuditorId : nextSupervisorId,
       email: '',
       password: generateStrongPassword(),
-      department: isAud ? 'Central Quality Audit' : 'Sewing Line 1',
-      designation: isAud ? 'QA Quality Auditor' : 'Line In-Charge',
+      department: isAud ? 'Quality' : 'Production',
+      designation: isAud ? 'QA Quality Auditor' : 'Production Supervisor',
       mobileNumber: '+91 ',
     });
     setCreatedCredentials(null);
@@ -193,14 +192,14 @@ export const AdminUserManagement = () => {
         ? `SUP-10${supervisorCount + 1}`
         : `ADM-00${adminCount + 1}`,
       department: isAud
-        ? 'Central Quality Audit'
+        ? 'Quality'
         : isSup
-        ? 'Sewing Line 1'
-        : 'Plant Operations & Executive Oversight',
+        ? 'Production'
+        : 'Quality',
       designation: isAud
         ? 'QA Quality Auditor'
         : isSup
-        ? 'Line In-Charge'
+        ? 'Production Supervisor'
         : 'Operations Director',
     }));
   };

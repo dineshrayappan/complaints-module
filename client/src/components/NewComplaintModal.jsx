@@ -31,20 +31,71 @@ import { compressImage, formatFileSize } from '../utils/imageCompressor';
 // Backward compatibility export
 export const DUMMY_SUPERVISORS = [];
 
-// Industry standard garment audit departments
+// 7 Specific Industrial Factory Departments & Roles
 const AUDIT_DEPARTMENTS = [
-  { id: 'Sewing Line 1', name: 'Sewing Line 1', group: 'Sewing & Stitching', desc: 'Main Shirt Assembly' },
-  { id: 'Sewing Line 2', name: 'Sewing Line 2', group: 'Sewing & Stitching', desc: 'Trousers & Chinos' },
-  { id: 'Sewing Line 3', name: 'Sewing Line 3', group: 'Sewing & Stitching', desc: 'Polo & Knits Line' },
-  { id: 'Sewing Line 4', name: 'Sewing Line 4', group: 'Sewing & Stitching', desc: 'Jacket & Outerwear' },
-  { id: 'Sewing Line 5', name: 'Sewing Line 5', group: 'Sewing & Stitching', desc: 'Collar & Cuff Sub-Assembly' },
-  { id: 'Cutting Section', name: 'Cutting Department', group: 'Pre-Production', desc: 'Spreading, Auto-Cutting & Bundling' },
-  { id: 'Finishing & Pressing', name: 'Finishing & Pressing', group: 'Post-Production', desc: 'Steam Pressing & Thread Trimming' },
-  { id: 'Packing & Carton Store', name: 'Packing & Carton Store', group: 'Post-Production', desc: 'Polybag, Tagging & Barcode Scan' },
-  { id: 'Fabric Inspection Store', name: 'Fabric Store (4-Point)', group: 'Raw Materials', desc: 'Roll Inspection & Shade Matching' },
-  { id: 'Washing & Dyeing Unit', name: 'Washing & Dyeing Plant', group: 'Wet Processing', desc: 'Enzyme Wash, Silicon & Tinting' },
-  { id: 'Printing & Embroidery', name: 'Printing & Embroidery', group: 'Embellishment', desc: 'Screen Print, Heat Transfer & Stitch' },
-  { id: 'Quality Assurance (Final AQL)', name: 'QA & Final AQL Room', group: 'Audit & Compliance', desc: 'Pre-Shipment Random Sampling' },
+  {
+    id: 'Production',
+    name: 'Production',
+    group: 'Manufacturing',
+    code: 'PRD',
+    desc: 'Sewing, Stitching Lines, Cutting, Finishing & Assembly Operations',
+    focus: 'Stitching defects, needle deflection, line balance & workmanship',
+    defaultLocation: 'Production Floor - Sewing Section',
+  },
+  {
+    id: 'Quality',
+    name: 'Quality',
+    group: 'QA / QC & AQL',
+    code: 'QA',
+    desc: 'Quality Assurance, In-Line QC, End-Line & Pre-Shipment AQL Audits',
+    focus: 'AQL 1.5 standards, measurement tolerance & visual inspection',
+    defaultLocation: 'QA Inspection Table - AQL Room',
+  },
+  {
+    id: 'Maintenance',
+    name: 'Maintenance',
+    group: 'Engineering',
+    code: 'MNT',
+    desc: 'Sewing Machines, Looper Calibration, Motors, Compressors & Electrical',
+    focus: 'Needle bar oil leaks, mechanical timing, pneumatic pressure & wiring',
+    defaultLocation: 'Maintenance Workshop & Line Machinery',
+  },
+  {
+    id: 'Store',
+    name: 'Store',
+    group: 'Materials & Inventory',
+    code: 'STR',
+    desc: 'Raw Material Store, Fabric Rolls (4-Point), Trims, Zippers & Thread Store',
+    focus: 'Fabric roll shading, yarn flaws, inventory storage & trim defects',
+    defaultLocation: 'Fabric & Raw Materials Store Bay',
+  },
+  {
+    id: 'EHS',
+    name: 'EHS',
+    group: 'Environment & Safety',
+    code: 'EHS',
+    desc: 'Environment, Health & Safety, PPE Protocols, Fire Safety & Chemical Handling',
+    focus: 'Eye shields, needle guards, aisle clear paths, MSDS & chemical safety',
+    defaultLocation: 'EHS Station & Chemical Storage Area',
+  },
+  {
+    id: 'EDP',
+    name: 'EDP',
+    group: 'IT & Data Processing',
+    code: 'EDP',
+    desc: 'Electronic Data Processing, ERP Terminals, Barcode Printers & Network',
+    focus: 'Barcode scannability, ERP sync, RFID readers & line tablets',
+    defaultLocation: 'EDP Server Room & Line Data Terminals',
+  },
+  {
+    id: 'HR',
+    name: 'HR',
+    group: 'Human Resources',
+    code: 'HR',
+    desc: 'Human Resources, Labor Compliance, Operator Training & Working Hours',
+    focus: 'Operator skill matrices, attendance compliance & social audit standards',
+    defaultLocation: 'HR Department & Training Center',
+  },
 ];
 
 // Standard garment quality audit requirements & clauses
@@ -179,28 +230,28 @@ const SAMPLE_PROOFS = [
     id: 'stitch',
     name: 'Skipped Stitches',
     category: 'Stitching Fault',
-    department: 'Sewing Line 1',
+    department: 'Production',
     requirement: 'AQL 1.5 Workmanship Standard',
     description: 'Machine #14: 8 skipped stitches per 10cm along collar seam line. Needle deflecting on bulky interlining.',
-    svg: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="380" viewBox="0 0 600 380"><rect width="100%" height="100%" fill="%230f172a"/><rect x="20" y="20" width="560" height="340" rx="16" fill="%231e293b" stroke="%23334155" stroke-width="2"/><text x="40" y="65" fill="%23ef4444" font-family="sans-serif" font-size="18" font-weight="bold">AUDIT PROOF: SKIPPED STITCHES</text><text x="40" y="92" fill="%2394a3b8" font-family="sans-serif" font-size="12">Sewing Line 1 • Machine %2314 • Collar Join</text><line x1="60" y1="200" x2="540" y2="200" stroke="%23ef4444" stroke-width="4" stroke-dasharray="16,10"/><circle cx="300" cy="200" r="45" fill="%23ef4444" fill-opacity="0.2" stroke="%23ef4444" stroke-width="2.5"/><text x="300" y="275" fill="%23f8fafc" font-family="monospace" font-size="13" font-weight="bold" text-anchor="middle">DEFECT ZONE: 8 SKIPPED STITCHES</text><text x="300" y="325" fill="%2364748b" font-family="sans-serif" font-size="11" text-anchor="middle">QMS AUDIT EVIDENCE CAPTURED</text></svg>`,
+    svg: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="380" viewBox="0 0 600 380"><rect width="100%" height="100%" fill="%230f172a"/><rect x="20" y="20" width="560" height="340" rx="16" fill="%231e293b" stroke="%23334155" stroke-width="2"/><text x="40" y="65" fill="%23ef4444" font-family="sans-serif" font-size="18" font-weight="bold">AUDIT PROOF: SKIPPED STITCHES</text><text x="40" y="92" fill="%2394a3b8" font-family="sans-serif" font-size="12">Production • Sewing Section • Collar Join</text><line x1="60" y1="200" x2="540" y2="200" stroke="%23ef4444" stroke-width="4" stroke-dasharray="16,10"/><circle cx="300" cy="200" r="45" fill="%23ef4444" fill-opacity="0.2" stroke="%23ef4444" stroke-width="2.5"/><text x="300" y="275" fill="%23f8fafc" font-family="monospace" font-size="13" font-weight="bold" text-anchor="middle">DEFECT ZONE: 8 SKIPPED STITCHES</text><text x="300" y="325" fill="%2364748b" font-family="sans-serif" font-size="11" text-anchor="middle">QMS AUDIT EVIDENCE CAPTURED</text></svg>`,
   },
   {
     id: 'oil',
-    name: 'Needle Bar Oil Stain',
+    name: 'Needle Bar Oil Leak',
     category: 'Oil & Soil Contamination',
-    department: 'Sewing Line 2',
+    department: 'Maintenance',
     requirement: 'Buyer Technical Audit Standard',
-    description: 'Dark lubricant drip stain on right sleeve cuff panel caused by saturated felt wick on needle bar.',
-    svg: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="380" viewBox="0 0 600 380"><rect width="100%" height="100%" fill="%230f172a"/><rect x="20" y="20" width="560" height="340" rx="16" fill="%231e293b" stroke="%23334155" stroke-width="2"/><text x="40" y="65" fill="%23f59e0b" font-family="sans-serif" font-size="18" font-weight="bold">AUDIT PROOF: NEEDLE BAR OIL DRIP</text><text x="40" y="92" fill="%2394a3b8" font-family="sans-serif" font-size="12">Sewing Line 2 • Sleeve Assembly</text><ellipse cx="300" cy="200" rx="60" ry="40" fill="%23d97706" fill-opacity="0.7"/><circle cx="300" cy="200" r="55" fill="none" stroke="%23f59e0b" stroke-width="2" stroke-dasharray="6,4"/><text x="300" y="275" fill="%23f8fafc" font-family="monospace" font-size="13" font-weight="bold" text-anchor="middle">DEFECT ZONE: LUBRICANT CONTAMINATION</text><text x="300" y="325" fill="%2364748b" font-family="sans-serif" font-size="11" text-anchor="middle">QMS AUDIT EVIDENCE CAPTURED</text></svg>`,
+    description: 'Dark lubricant drip stain on right sleeve cuff panel caused by saturated felt wick on needle bar assembly.',
+    svg: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="380" viewBox="0 0 600 380"><rect width="100%" height="100%" fill="%230f172a"/><rect x="20" y="20" width="560" height="340" rx="16" fill="%231e293b" stroke="%23334155" stroke-width="2"/><text x="40" y="65" fill="%23f59e0b" font-family="sans-serif" font-size="18" font-weight="bold">AUDIT PROOF: NEEDLE BAR OIL DRIP</text><text x="40" y="92" fill="%2394a3b8" font-family="sans-serif" font-size="12">Maintenance • Machine Assembly • Sleeve Line</text><ellipse cx="300" cy="200" rx="60" ry="40" fill="%23d97706" fill-opacity="0.7"/><circle cx="300" cy="200" r="55" fill="none" stroke="%23f59e0b" stroke-width="2" stroke-dasharray="6,4"/><text x="300" y="275" fill="%23f8fafc" font-family="monospace" font-size="13" font-weight="bold" text-anchor="middle">DEFECT ZONE: LUBRICANT CONTAMINATION</text><text x="300" y="325" fill="%2364748b" font-family="sans-serif" font-size="11" text-anchor="middle">QMS AUDIT EVIDENCE CAPTURED</text></svg>`,
   },
   {
     id: 'tear',
-    name: 'Needle Seam Cut',
-    category: 'Cutting Defect',
-    department: 'Cutting Section',
-    requirement: 'ISO 9001:2015 Clause 8.7',
-    description: 'Blunt needle / blade notch cut at seam allowance of armhole rib causing micro runs under stretch test.',
-    svg: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="380" viewBox="0 0 600 380"><rect width="100%" height="100%" fill="%230f172a"/><rect x="20" y="20" width="560" height="340" rx="16" fill="%231e293b" stroke="%23334155" stroke-width="2"/><text x="40" y="65" fill="%23ef4444" font-family="sans-serif" font-size="18" font-weight="bold">AUDIT PROOF: NEEDLE CUT / KNIT RUN</text><text x="40" y="92" fill="%2394a3b8" font-family="sans-serif" font-size="12">Spreading &amp; Cutting • Armhole Notch</text><path d="M 220 185 Q 300 240 380 185" fill="none" stroke="%23ef4444" stroke-width="4"/><circle cx="300" cy="215" r="40" fill="%23ef4444" fill-opacity="0.2" stroke="%23ef4444" stroke-width="2"/><text x="300" y="280" fill="%23f8fafc" font-family="monospace" font-size="13" font-weight="bold" text-anchor="middle">DEFECT ZONE: SEAM ALLOWANCE TEAR</text><text x="300" y="325" fill="%2364748b" font-family="sans-serif" font-size="11" text-anchor="middle">QMS AUDIT EVIDENCE CAPTURED</text></svg>`,
+    name: 'Fabric Roll Shading',
+    category: 'Fabric Flaw',
+    department: 'Store',
+    requirement: 'Fabric 4-Point System Standard',
+    description: 'Fabric Roll #F-4412 shows center-to-selvedge shade variation (> 4.5 Delta E) exceeding buyer 4-point tolerance.',
+    svg: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="380" viewBox="0 0 600 380"><rect width="100%" height="100%" fill="%230f172a"/><rect x="20" y="20" width="560" height="340" rx="16" fill="%231e293b" stroke="%23334155" stroke-width="2"/><text x="40" y="65" fill="%23ef4444" font-family="sans-serif" font-size="18" font-weight="bold">AUDIT PROOF: FABRIC ROLL SHADING</text><text x="40" y="92" fill="%2394a3b8" font-family="sans-serif" font-size="12">Store • Roll %23F-4412 • 4-Point Inspection</text><path d="M 220 185 Q 300 240 380 185" fill="none" stroke="%23ef4444" stroke-width="4"/><circle cx="300" cy="215" r="40" fill="%23ef4444" fill-opacity="0.2" stroke="%23ef4444" stroke-width="2"/><text x="300" y="280" fill="%23f8fafc" font-family="monospace" font-size="13" font-weight="bold" text-anchor="middle">DEFECT ZONE: COLOR SHADING VARIANCE</text><text x="300" y="325" fill="%2364748b" font-family="sans-serif" font-size="11" text-anchor="middle">QMS AUDIT EVIDENCE CAPTURED</text></svg>`,
   },
 ];
 
@@ -231,8 +282,8 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
 
   // Form State corresponding to the 10 workflow stages
   // Stage 1: Select Department & Location
-  const [department, setDepartment] = useState('Sewing Line 1');
-  const [location, setLocation] = useState('Line 1 - Machine #14 (Collar Seam)');
+  const [department, setDepartment] = useState('Production');
+  const [location, setLocation] = useState('Production Floor - Sewing Section');
 
   // Stage 2: Select Requirement
   const [requirement, setRequirement] = useState('AQL 1.5 Workmanship Standard');
@@ -301,11 +352,22 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
     }
   }, [isOpen]);
 
-  // When department changes, sync location suggestion if empty
+  // When department changes, sync location suggestion & auto-suggest matching supervisor
   const handleDepartmentChange = (deptId) => {
     setDepartment(deptId);
-    if (!location || location.includes('Line') || location.includes('Floor')) {
-      setLocation(`${deptId} - Inspection Zone`);
+    const targetDept = AUDIT_DEPARTMENTS.find((d) => d.id === deptId);
+    if (targetDept?.defaultLocation) {
+      setLocation(targetDept.defaultLocation);
+    } else {
+      setLocation(`${deptId} - Section Area`);
+    }
+
+    // Auto-match supervisor for this department if available
+    if (supervisors && supervisors.length > 0) {
+      const match = supervisors.find((s) => (s.department || '').toLowerCase().includes(deptId.toLowerCase()));
+      if (match) {
+        setAssignedToUserId(match._id || match.id);
+      }
     }
   };
 
@@ -458,7 +520,7 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
       setSubmitting(true);
       const formData = new FormData();
       formData.append('category', category || 'Stitching Fault');
-      formData.append('department', department || 'Sewing Line 1');
+      formData.append('department', department || 'Production');
       formData.append('location', location.trim() || `${department} - Production Floor`);
       formData.append('priority', priority || 'HIGH');
       formData.append('riskSeverity', priority || 'HIGH');
@@ -622,8 +684,8 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
                 </span>
               </div>
 
-              {/* Department Cards Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 pt-2">
+              {/* Department Cards Grid - 7 Factory Departments */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 pt-2">
                 {AUDIT_DEPARTMENTS.map((dept) => {
                   const isSelected = department === dept.id;
                   return (
@@ -631,20 +693,28 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
                       key={dept.id}
                       type="button"
                       onClick={() => handleDepartmentChange(dept.id)}
-                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                         isSelected
-                          ? 'border-indigo-600 bg-indigo-50/80 dark:bg-indigo-950/60 text-indigo-950 dark:text-indigo-100 ring-2 ring-indigo-500/20 shadow-xs'
+                          ? 'border-indigo-600 bg-indigo-50/90 dark:bg-indigo-950/70 text-indigo-950 dark:text-indigo-100 ring-2 ring-indigo-500/25 shadow-xs'
                           : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">
-                          {dept.group}
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                          {dept.code}
                         </span>
-                        {isSelected && <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />}
+                        {isSelected ? (
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-cyan-400">
+                            <Check className="w-3.5 h-3.5" />
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">
+                            {dept.group}
+                          </span>
+                        )}
                       </div>
-                      <div className="font-bold text-xs truncate">{dept.name}</div>
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                      <div className="font-extrabold text-xs text-slate-900 dark:text-white">{dept.name}</div>
+                      <div className="text-[10.5px] text-slate-500 dark:text-slate-400 line-clamp-2 mt-1 leading-snug">
                         {dept.desc}
                       </div>
                     </button>

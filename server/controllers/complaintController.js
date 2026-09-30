@@ -318,27 +318,33 @@ const createComplaint = async (req, res) => {
       }
     }
 
+    if (!supervisor && department) {
+      supervisor = mockStore.getUsers().find(
+        (u) => u.role === 'ACTION_PERSON' && (u.department || '').toLowerCase().includes(department.toLowerCase())
+      );
+    }
+
     if (!supervisor) {
       supervisor =
         mockStore.findUserById(lookupSupervisorId) ||
         mockStore.getUsers().find((u) => u.employeeId === lookupSupervisorId) ||
         mockStore.getUsers().find((u) => u.role === 'ACTION_PERSON') || {
-          _id: 'usr-sup-101',
-          id: 'usr-sup-101',
-          employeeId: 'SUP-101',
-          name: 'Mohammad Arif',
-          department: department || 'Sewing Line 1',
-          designation: 'Line 1 In-Charge',
+          _id: 'usr-sup-001',
+          id: 'usr-sup-001',
+          employeeId: 'SUP-001',
+          name: 'Rajesh Kumar',
+          department: department || 'Production',
+          designation: 'Production Floor In-Charge',
           mobileNumber: '+91 98111 22334',
         };
     }
 
     const assignedToData = {
-      userId: supervisor.id || supervisor._id || 'usr-sup-101',
-      employeeId: supervisor.employeeId || 'SUP-101',
-      name: supervisor.name || 'Mohammad Arif',
-      department: supervisor.department || department || 'Sewing Line 1',
-      designation: supervisor.designation || 'Line In-Charge',
+      userId: supervisor.id || supervisor._id || 'usr-sup-001',
+      employeeId: supervisor.employeeId || 'SUP-001',
+      name: supervisor.name || 'Rajesh Kumar',
+      department: supervisor.department || department || 'Production',
+      designation: supervisor.designation || 'Production Floor In-Charge',
       mobileNumber: supervisor.mobileNumber || '+91 98111 22334',
     };
 
@@ -364,7 +370,7 @@ const createComplaint = async (req, res) => {
         const basePayload = {
           complaintId,
           category: category || 'Stitching Fault',
-          department: department || supervisor.department || 'Sewing Line 1',
+          department: department || supervisor.department || 'Production',
           location: location || 'Production Floor',
           priority: effectivePriority,
           description: enrichedDescription,
@@ -448,7 +454,7 @@ const createComplaint = async (req, res) => {
     // Fallback when Supabase is not configured
     const fallbackTicket = mockStore.createComplaint({
       category: category || 'Stitching Fault',
-      department: department || supervisor.department || 'Sewing Line 1',
+      department: department || supervisor.department || 'Production',
       location: location || 'Production Floor',
       priority: effectivePriority,
       description: enrichedDescription,
@@ -1585,11 +1591,11 @@ const reassignComplaint = async (req, res) => {
     }
 
     const assignedTo = {
-      userId: supervisor.id || supervisor._id || 'usr-sup-101',
-      employeeId: supervisor.employeeId || 'SUP-101',
-      name: supervisor.name || 'Mohammad Arif',
-      department: supervisor.department || 'Sewing Line 1',
-      designation: supervisor.designation || 'Line In-Charge',
+      userId: supervisor.id || supervisor._id || 'usr-sup-001',
+      employeeId: supervisor.employeeId || 'SUP-001',
+      name: supervisor.name || 'Rajesh Kumar',
+      department: supervisor.department || 'Production',
+      designation: supervisor.designation || 'Production Floor In-Charge',
       mobileNumber: supervisor.mobileNumber || '+91 98111 22334',
     };
 

@@ -50,7 +50,7 @@ export const LoginPage = () => {
     employeeId: '',
     email: '',
     password: '',
-    department: 'Plant Operations & Executive Oversight',
+    department: 'Quality',
     designation: 'Operations Director',
     mobileNumber: '+91 98000 11223',
   });
@@ -187,16 +187,16 @@ export const LoginPage = () => {
                 role: activePortal === 'ADMIN' ? 'ADMIN' : activePortal === 'AUDITOR' ? 'AUDITOR' : 'ACTION_PERSON',
                 department:
                   activePortal === 'ADMIN'
-                    ? 'Plant Operations & Executive Oversight'
+                    ? 'Quality'
                     : activePortal === 'AUDITOR'
-                    ? 'Central Quality Audit'
-                    : 'Sewing Line 3',
+                    ? 'Quality'
+                    : 'Production',
                 designation:
                   activePortal === 'ADMIN'
                     ? 'Operations Director'
                     : activePortal === 'AUDITOR'
                     ? 'Senior QA Auditor'
-                    : 'Line 3 Supervisor',
+                    : 'Production Supervisor',
               }));
               setIsRegisterOpen(true);
             }}
@@ -571,7 +571,7 @@ export const LoginPage = () => {
                         setRegData((prev) => ({
                           ...prev,
                           role: 'ADMIN',
-                          department: 'Plant Operations & Executive Oversight',
+                          department: 'Quality',
                           designation: 'Operations Director',
                           employeeId: prev.employeeId || 'ADM-002',
                         }))
@@ -592,7 +592,7 @@ export const LoginPage = () => {
                         setRegData((prev) => ({
                           ...prev,
                           role: 'AUDITOR',
-                          department: 'Central Quality Audit',
+                          department: 'Quality',
                           designation: 'QA Auditor',
                           employeeId: prev.employeeId || 'AUD-002',
                         }))
@@ -613,8 +613,8 @@ export const LoginPage = () => {
                         setRegData((prev) => ({
                           ...prev,
                           role: 'ACTION_PERSON',
-                          department: 'Sewing Line 3',
-                          designation: 'Line 3 Supervisor',
+                          department: 'Production',
+                          designation: 'Production Floor Supervisor',
                           employeeId: prev.employeeId || 'SUP-105',
                         }))
                       }
@@ -718,18 +718,22 @@ export const LoginPage = () => {
                   {/* Department */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Department / Line
+                      Department / Role *
                     </label>
                     <div className="relative">
-                      <Building2 className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
-                      <input
-                        type="text"
+                      <Building2 className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                      <select
                         value={regData.department}
                         onChange={(e) => setRegData({ ...regData, department: e.target.value })}
-                        placeholder="e.g. Sewing Line 3"
-                        className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:ring-2 focus:ring-indigo-500"
+                        className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white outline-none cursor-pointer"
                         required
-                      />
+                      >
+                        {['Production', 'Quality', 'Maintenance', 'Store', 'EHS', 'EDP', 'HR'].map((d) => (
+                          <option key={d} value={d}>
+                            {d}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 
