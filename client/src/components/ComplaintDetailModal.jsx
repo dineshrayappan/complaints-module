@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   X,
   Clock,
@@ -21,9 +21,8 @@ import {
 } from 'lucide-react';
 import CountdownBadge from './CountdownBadge';
 import { formatAbsoluteTime } from '../utils/timer';
-import { complaintService } from '../services/api';
+import { complaintService, userService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { DUMMY_SUPERVISORS } from './NewComplaintModal';
 
 const FALLBACK_BEFORE_IMG =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23fee2e2'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='16' font-weight='bold' fill='%23b91c1c'%3EBefore Defect Photo%3C/text%3E%3C/svg%3E";
@@ -59,23 +58,20 @@ export const ComplaintDetailModal = ({
 
   const canReassign = (isAuditor || isAdmin) && complaint?.status !== 'Closed';
 
-  // Master Contact List of Supervisors (10 dummy supervisors + registered users)
-  const supervisorsList = useMemo(() => {
-    const list = [...(demoUsers || [])]
-      .filter((u) => u.role === 'ACTION_PERSON' || u.role === 'SUPERVISOR')
-      .concat(DUMMY_SUPERVISORS);
+  // Master Contact List of Supervisors from database
+  const [supervisorsList, setSupervisorsList] = useState([]);
 
-    const seen = new Set();
-    const unique = [];
-    for (const sup of list) {
-      const key = sup.employeeId || sup._id;
-      if (!seen.has(key)) {
-        seen.add(key);
-        unique.push(sup);
-      }
+  useEffect(() => {
+    if (isOpen) {
+      userService.getLineSupervisors().then((res) => {
+        if (res.data?.success && Array.isArray(res.data.supervisors)) {
+          setSupervisorsList(res.data.supervisors);
+        }
+      }).catch((err) => {
+        console.warn('Failed to load line supervisors for modal:', err.message);
+      });
     }
-    return unique;
-  }, [demoUsers]);
+  }, [isOpen]);
 
   const filteredSupervisors = supervisorsList.filter((s) => {
     if (!reassignSearch.trim()) return true;

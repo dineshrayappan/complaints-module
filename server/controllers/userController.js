@@ -40,16 +40,8 @@ const getLineSupervisors = async (req, res) => {
           .order('department', { ascending: true })
           .order('name', { ascending: true });
 
-        if (!error && data && data.length > 0) {
-          let supervisors = data.map(formatUser);
-
-          // Supplement with mockSupervisors if some defaults are missing
-          if (supervisors.length < mockSupervisors.length) {
-            const existingEmpIds = new Set(supervisors.map((s) => s.employeeId));
-            const missing = mockSupervisors.filter((m) => !existingEmpIds.has(m.employeeId));
-            supervisors = [...supervisors, ...missing];
-          }
-
+        if (!error && data) {
+          const supervisors = data.map(formatUser);
           return res.status(200).json({
             success: true,
             count: supervisors.length,
@@ -113,7 +105,7 @@ const getAllUsers = async (req, res) => {
 
         const { data, error } = await query.order('role', { ascending: true }).order('name', { ascending: true });
 
-        if (!error && data && data.length > 0) {
+        if (!error && data) {
           const users = data.map(formatUser);
           return res.status(200).json({
             success: true,

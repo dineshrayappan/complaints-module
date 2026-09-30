@@ -13,15 +13,6 @@ const generateToken = (id) => {
   );
 };
 
-// Verify role passwords helper
-const checkRolePassword = (userRole, inputPassword) => {
-  if (inputPassword === 'Password123!') return true;
-  if (userRole === 'ADMIN' && (inputPassword === 'admin123' || inputPassword === 'Admin@123' || inputPassword === 'admin')) return true;
-  if (userRole === 'AUDITOR' && (inputPassword === 'auditor123' || inputPassword === 'Auditor@123' || inputPassword === 'auditor')) return true;
-  if ((userRole === 'ACTION_PERSON' || userRole === 'SUPERVISOR') && (inputPassword === 'supervisor123' || inputPassword === 'Supervisor@123' || inputPassword === 'supervisor')) return true;
-  return false;
-};
-
 // Formats a user row for consistent API response
 const formatUserResponse = (user) => {
   if (!user) return null;
@@ -57,9 +48,7 @@ const login = async (req, res) => {
     let mappedIdentifier = queryIdentifier;
     const lowerId = queryIdentifier.toLowerCase();
     if (lowerId === 'admin') mappedIdentifier = 'ADM-001';
-    else if (lowerId === 'auditor') mappedIdentifier = 'AUD-001';
     else if (lowerId === 'dinesh') mappedIdentifier = 'AUD-002';
-    else if (lowerId === 'supervisor' || lowerId === 'arif') mappedIdentifier = 'SUP-101';
 
     // 1. If Supabase is configured, attempt authentication from PostgreSQL
     if (isSupabaseConfigured && supabase) {
@@ -75,9 +64,9 @@ const login = async (req, res) => {
         if (!error && users && users.length > 0) {
           const user = users[0];
 
-          // Check password: role preset match or bcrypt compare
-          let isMatch = checkRolePassword(user.role, password);
-          if (!isMatch && user.password) {
+          // Check password: bcrypt compare or direct comparison
+          let isMatch = false;
+          if (user.password) {
             if (user.password.startsWith('$2a$') || user.password.startsWith('$2b$')) {
               isMatch = await bcrypt.compare(password, user.password);
             } else {
@@ -144,8 +133,16 @@ const login = async (req, res) => {
       mockStore.findUserByIdentifier(mappedIdentifier) ||
       mockStore.findUserByIdentifier(queryIdentifier);
 
-    const isRolePwdMatch = fallbackUser && checkRolePassword(fallbackUser.role, password);
-    if (!fallbackUser || (!isRolePwdMatch && fallbackUser.password !== password)) {
+    let isFallbackMatch = false;
+    if (fallbackUser && fallbackUser.password) {
+      if (fallbackUser.password.startsWith('$2a$') || fallbackUser.password.startsWith('$2b$')) {
+        isFallbackMatch = await bcrypt.compare(password, fallbackUser.password);
+      } else {
+        isFallbackMatch = fallbackUser.password === password;
+      }
+    }
+
+    if (!fallbackUser || !isFallbackMatch) {
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials. User not found or incorrect password.',
@@ -358,98 +355,8 @@ const getMe = async (req, res) => {
   }
 };
 
-// @desc    Get available demo users for quick role switching
-// @route   GET /api/auth/demo-users
-// @access  Public
-const getDemoUsers = async (req, res) => {
-  try {
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data: users, error } = await supabase
-          .from('users')
-          .select('id, employeeId, name, email, role, department, designation, mobileNumber, isActive')
-          .eq('isActive', true)
-          .order('role', { ascending: true })
-          .order('employeeId', { ascending: true });
-
-        if (!error && users && users.length > 0) {
-          return res.status(200).json({
-            success: true,
-            users: users.map(formatUserResponse),
-          });
-        }
-      } catch (dbErr) {
-        console.warn('[AuthController:getDemoUsers] Supabase notice:', dbErr.message);
-      }
-    }
-
-    res.status(200).json({
-      success: true,
-      users: mockStore.getUsers().map(formatUserResponse),
-    });
-  } catch (error) {
-    res.status(200).json({
-      success: true,
-      users: mockStore.getUsers().map(formatUserResponse),
-    });
-  }
-};
-
-// @desc    Quick demo role switch (generates token directly for testing)
-// @route   POST /api/auth/switch-demo
-// @access  Public
-const switchDemoUser = async (req, res) => {
-  try {
-    const { userId } = req.body;
-
-    if (isSupabaseConfigured && supabase && userId) {
-      try {
-        const { data: user, error } = await supabase
-          .from('users')
-          .select('id, employeeId, name, email, role, department, designation, mobileNumber, isActive')
-          .or(`id.eq.${userId},employeeId.eq.${userId}`)
-          .maybeSingle();
-
-        if (!error && user) {
-          const token = generateToken(user.id);
-          return res.status(200).json({
-            success: true,
-            token,
-            user: formatUserResponse(user),
-          });
-        }
-      } catch (dbErr) {
-        // fallback to mockStore below
-      }
-    }
-
-    const fallbackUser = mockStore.findUserById(userId) || mockStore.getUsers().find((u) => u.employeeId === userId);
-    if (fallbackUser) {
-      const token = generateToken(fallbackUser._id);
-      return res.status(200).json({
-        success: true,
-        token,
-        user: formatUserResponse(fallbackUser),
-      });
-    }
-
-    res.status(404).json({
-      success: false,
-      message: 'Demo user not found.',
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error switching demo user.',
-      error: error.message,
-    });
-  }
-};
-
 module.exports = {
   login,
   register,
   getMe,
-  getDemoUsers,
-  switchDemoUser,
 };

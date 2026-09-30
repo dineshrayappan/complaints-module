@@ -24,16 +24,14 @@ An enterprise-grade, closed-loop Quality Management & Defect Rectification Platf
 
 ---
 
-## 🔑 Demo Login Credentials
+## 🔑 System Login Credentials
 
 | Role | Employee ID | Email / Username | Password | Scope & Authority |
 | :--- | :--- | :--- | :--- | :--- |
-| 👑 **Executive Admin** | `ADM-001` | `admin@factory.com` | `Password123!` | Executive oversight, credential management, bottleneck radar |
-| 🛡️ **Internal Auditor** | `AUD-001` | `auditor@factory.com` | `Password123!` | Factory-wide defect logging, SLA governance, closure verification |
-| 🔧 **Line 1 Supervisor** | `SUP-101` | `arif@factory.com` | `Password123!` | Sewing Line 1 defect rectification & proof submission |
-| 🔧 **Line 2 Supervisor** | `SUP-102` | `priya@factory.com` | `Password123!` | Sewing Line 2 defect rectification & proof submission |
-| 🔧 **Cutting Section Head** | `SUP-103` | `kamal@factory.com` | `Password123!` | Spreading & Cutting defect rectification & proof submission |
-| 🔧 **Finishing Manager** | `SUP-104` | `sunita@factory.com` | `Password123!` | Finishing & Packing defect rectification & proof submission |
+| 👑 **Executive Admin** | `ADM-001` | `admin@factory.com` | `admin123` | Executive oversight, user credential management, factory analytics |
+| 🛡️ **Internal Auditor** | `AUD-002` | `dinesh@factory.com` | `auditor123` | Factory-wide defect logging, SLA governance, closure verification |
+
+> Additional Auditor or Line Supervisor accounts can be created at any time using the **Register New User** button on the sign-in page or through the **Personnel Management** section inside the Executive Admin Portal.
 
 ---
 

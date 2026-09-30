@@ -21,154 +21,12 @@ import {
 import { userService, complaintService } from '../services/api';
 import { compressImage, formatFileSize } from '../utils/imageCompressor';
 
-// 10 Pre-configured Dummy Contacts with Full Production Line Details
-export const DUMMY_SUPERVISORS = [
-  {
-    _id: 'usr-sup-101',
-    id: 'usr-sup-101',
-    employeeId: 'SUP-101',
-    name: 'Mohammad Arif',
-    email: 'arif@factory.com',
-    role: 'ACTION_PERSON',
-    department: 'Sewing Line 1',
-    designation: 'Line 1 In-Charge',
-    mobileNumber: '+91 98111 22334',
-    shift: 'Shift A (07:00 - 15:30)',
-    workstation: 'Main Floor, Bay 1',
-    avatarColor: 'bg-blue-600',
-  },
-  {
-    _id: 'usr-sup-102',
-    id: 'usr-sup-102',
-    employeeId: 'SUP-102',
-    name: 'Priya Sharma',
-    email: 'priya@factory.com',
-    role: 'ACTION_PERSON',
-    department: 'Sewing Line 2',
-    designation: 'Line 2 In-Charge',
-    mobileNumber: '+91 98222 33445',
-    shift: 'Shift A (07:00 - 15:30)',
-    workstation: 'Main Floor, Bay 2',
-    avatarColor: 'bg-emerald-600',
-  },
-  {
-    _id: 'usr-sup-103',
-    id: 'usr-sup-103',
-    employeeId: 'SUP-103',
-    name: 'Kamal Hasan',
-    email: 'kamal@factory.com',
-    role: 'ACTION_PERSON',
-    department: 'Spreading & Cutting',
-    designation: 'Cutting Section Head',
-    mobileNumber: '+91 98333 44556',
-    shift: 'General Shift (08:30 - 17:00)',
-    workstation: 'CAD & Auto-Cutter Bay',
-    avatarColor: 'bg-amber-600',
-  },
-  {
-    _id: 'usr-sup-104',
-    id: 'usr-sup-104',
-    employeeId: 'SUP-104',
-    name: 'Sunita Roy',
-    email: 'sunita@factory.com',
-    role: 'ACTION_PERSON',
-    department: 'Finishing & Packing',
-    designation: 'Finishing Floor Manager',
-    mobileNumber: '+91 98444 55667',
-    shift: 'General Shift (09:00 - 18:00)',
-    workstation: 'Steam Tunnel & Tagging Area',
-    avatarColor: 'bg-purple-600',
-  },
-  {
-    _id: 'usr-sup-105',
-    id: 'usr-sup-105',
-    employeeId: 'SUP-105',
-    name: 'Ramesh Patel',
-    email: 'ramesh@factory.com',
-    role: 'ACTION_PERSON',
-    department: 'Sewing Line 3',
-    designation: 'Line 3 Supervisor',
-    mobileNumber: '+91 98555 66778',
-    shift: 'Shift A (07:00 - 15:30)',
-    workstation: 'Main Floor, Bay 3',
-    avatarColor: 'bg-teal-600',
-  },
-  {
-    _id: 'usr-sup-106',
-    id: 'usr-sup-106',
-    employeeId: 'SUP-106',
-    name: 'Kavita Deshmukh',
-    email: 'kavita@factory.com',
-    role: 'ACTION_PERSON',
-    department: 'Sewing Line 4',
-    designation: 'Line 4 Supervisor',
-    mobileNumber: '+91 98666 77889',
-    shift: 'Shift B (15:30 - 00:00)',
-    workstation: 'Main Floor, Bay 4',
-    avatarColor: 'bg-pink-600',
-  },
-  {
-    _id: 'usr-sup-107',
-    id: 'usr-sup-107',
-    employeeId: 'SUP-107',
-    name: "Anthony D'Souza",
-    email: 'anthony@factory.com',
-    role: 'ACTION_PERSON',
-    department: 'Embroidery & Printing',
-    designation: 'Embroidery Unit Master',
-    mobileNumber: '+91 98777 88990',
-    shift: 'General Shift (08:30 - 17:00)',
-    workstation: 'Multi-head Tajima Unit 2',
-    avatarColor: 'bg-indigo-600',
-  },
-  {
-    _id: 'usr-sup-108',
-    id: 'usr-sup-108',
-    employeeId: 'SUP-108',
-    name: 'Meera Nambiar',
-    email: 'meera@factory.com',
-    role: 'ACTION_PERSON',
-    department: 'Wet Processing & Washing',
-    designation: 'Washing Lab In-Charge',
-    mobileNumber: '+91 98888 99001',
-    shift: 'General Shift (09:00 - 17:30)',
-    workstation: 'Industrial Wash & Enzyme Plant',
-    avatarColor: 'bg-cyan-600',
-  },
-  {
-    _id: 'usr-sup-109',
-    id: 'usr-sup-109',
-    employeeId: 'SUP-109',
-    name: 'Gurpreet Singh',
-    email: 'gurpreet@factory.com',
-    role: 'ACTION_PERSON',
-    department: 'Trims & Special Machinery',
-    designation: 'Buttoning & Snap Rivet Master',
-    mobileNumber: '+91 98999 00112',
-    shift: 'Shift A (07:00 - 15:30)',
-    workstation: 'Pneumatic Press Bay 5',
-    avatarColor: 'bg-orange-600',
-  },
-  {
-    _id: 'usr-sup-110',
-    id: 'usr-sup-110',
-    employeeId: 'SUP-110',
-    name: 'Lakshmi Narayanan',
-    email: 'lakshmi@factory.com',
-    role: 'ACTION_PERSON',
-    department: 'End-Line Inspection',
-    designation: 'Final QC & Audit Coordinator',
-    mobileNumber: '+91 98012 34567',
-    shift: 'Flexible Shift (08:00 - 18:00)',
-    workstation: 'Final Audit Station 100% Inspection',
-    avatarColor: 'bg-rose-600',
-  },
-];
+// Export empty dummy supervisors for backwards-compatibility
+export const DUMMY_SUPERVISORS = [];
 
 export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
   const fileInputRef = useRef(null);
-  // Initialize immediately with 10 dummy contacts so assignment is never blocked
-  const [supervisors, setSupervisors] = useState(DUMMY_SUPERVISORS);
+  const [supervisors, setSupervisors] = useState([]);
   const [loadingSupervisors, setLoadingSupervisors] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -178,8 +36,7 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
   const [location, setLocation] = useState('');
   const [priority, setPriority] = useState('HIGH');
   const [description, setDescription] = useState('');
-  // Always pre-selected to first supervisor
-  const [assignedToUserId, setAssignedToUserId] = useState(DUMMY_SUPERVISORS[0]._id);
+  const [assignedToUserId, setAssignedToUserId] = useState('');
   // Strictly bounded 12 to 24 hours SLA slider
   const [deadlineHours, setDeadlineHours] = useState(16);
 
@@ -194,32 +51,25 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
   const [imageMeta, setImageMeta] = useState(null);
   const [compressing, setCompressing] = useState(false);
 
-  // Fetch Master Contact List of Line Supervisors & merge with dummy contacts
+  // Fetch Master Contact List of Line Supervisors
   useEffect(() => {
     if (isOpen) {
       const loadSupervisors = async () => {
         setLoadingSupervisors(true);
         try {
           const res = await userService.getLineSupervisors();
-          if (res.data?.success && Array.isArray(res.data.supervisors) && res.data.supervisors.length > 0) {
+          if (res.data?.success && Array.isArray(res.data.supervisors)) {
             const serverList = res.data.supervisors;
-            const existingEmpIds = new Set(serverList.map((s) => s.employeeId));
-            const merged = [...serverList];
-            // Ensure all 10 dummy supervisors are present
-            DUMMY_SUPERVISORS.forEach((d) => {
-              if (!existingEmpIds.has(d.employeeId)) {
-                merged.push(d);
-              }
-            });
-            setSupervisors(merged);
-            // If current assignedToUserId is not in merged list, set to first
-            if (!merged.some((m) => m._id === assignedToUserId)) {
-              setAssignedToUserId(merged[0]._id);
+            setSupervisors(serverList);
+            if (serverList.length > 0) {
+              setAssignedToUserId((prev) => {
+                const found = serverList.some((s) => (s._id || s.id) === prev);
+                return found ? prev : (serverList[0]._id || serverList[0].id);
+              });
             }
           }
         } catch (err) {
-          // Gracefully fallback to DUMMY_SUPERVISORS without blocking user
-          console.warn('Using built-in master contacts list:', err.message);
+          console.warn('Failed to load line supervisors:', err.message);
         } finally {
           setLoadingSupervisors(false);
         }
@@ -276,12 +126,8 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
     hour12: true,
   });
 
-  const effectiveAssignedId =
-    assignedToUserId || supervisors[0]?._id || DUMMY_SUPERVISORS[0]._id;
-  const selectedSupervisor =
-    supervisors.find((s) => s._id === effectiveAssignedId) ||
-    supervisors[0] ||
-    DUMMY_SUPERVISORS[0];
+  const effectiveAssignedId = assignedToUserId || supervisors[0]?._id || supervisors[0]?.id || "";
+  const selectedSupervisor = supervisors.find((s) => (s._id || s.id) === effectiveAssignedId) || supervisors[0] || null;
 
   const filteredSupervisors = supervisors.filter((s) => {
     if (!contactSearch.trim()) return true;
