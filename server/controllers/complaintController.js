@@ -162,6 +162,97 @@ const formatComplaintOutput = (complaint) => {
     obj.riskSeverity = obj.priority || 'HIGH';
   }
 
+  // Extract or synthesize full structured 8-part CAP structure (NC -> Immediate Correction -> Root Cause -> Corrective Action -> Preventive Action -> Responsible Person -> Target Date -> Evidence -> Verification)
+  let capObj = null;
+  if (obj.cap) {
+    if (typeof obj.cap === 'string') {
+      try {
+        capObj = JSON.parse(obj.cap);
+      } catch (e) {
+        capObj = null;
+      }
+    } else if (typeof obj.cap === 'object') {
+      capObj = { ...obj.cap };
+    }
+  }
+
+  const isClosed = obj.status === 'Closed';
+  const isUnderVerification = obj.status === 'Under Verification';
+  const hasResolution = Boolean(obj.actionNotes || obj.feedbackRemarks || obj.afterPhoto);
+
+  let immediateCorrection = obj.immediateCorrection || '';
+  let correctiveAction = obj.correctiveAction || '';
+  let rootCause = obj.rootCause || '';
+  let preventiveAction = obj.preventiveAction || '';
+
+  if (obj.actionNotes) {
+    const immMatch = obj.actionNotes.match(/\[Immediate Correction\]:\s*(.*?)(?=\n\n\[|$)/s);
+    const corrMatch = obj.actionNotes.match(/\[Corrective Action\]:\s*(.*?)(?=\n\n\[|$)/s);
+    if (immMatch && !immediateCorrection) immediateCorrection = immMatch[1].trim();
+    if (corrMatch && !correctiveAction) correctiveAction = corrMatch[1].trim();
+    if (!immediateCorrection && !correctiveAction) {
+      immediateCorrection = obj.actionNotes;
+      correctiveAction = obj.actionNotes;
+    }
+  }
+
+  if (obj.feedbackRemarks) {
+    const rcMatch = obj.feedbackRemarks.match(/\[Root Cause\]:\s*(.*?)(?=\n\n\[|$)/s);
+    const prevMatch = obj.feedbackRemarks.match(/\[Preventive Action\]:\s*(.*?)(?=\n\n\[|$)/s);
+    if (rcMatch && !rootCause) rootCause = rcMatch[1].trim();
+    if (prevMatch && !preventiveAction) preventiveAction = prevMatch[1].trim();
+    if (!rootCause && !preventiveAction) {
+      rootCause = obj.feedbackRemarks;
+      preventiveAction = obj.feedbackRemarks;
+    }
+  }
+
+  if (!capObj) {
+    capObj = {
+      required: Boolean(obj.capRequired),
+      status: isClosed
+        ? 'VERIFIED_EFFECTIVE'
+        : isUnderVerification
+        ? 'SUBMITTED'
+        : hasResolution
+        ? 'SUBMITTED'
+        : obj.capRequired
+        ? 'PENDING'
+        : 'DIRECT_CORRECTION',
+      immediateCorrection: immediateCorrection || '',
+      rootCause: rootCause || '',
+      correctiveAction: correctiveAction || '',
+      preventiveAction: preventiveAction || '',
+      responsiblePerson: obj.capResponsiblePerson || obj.assignedTo || null,
+      targetDate: obj.capTargetDate || obj.deadlineTimestamp || null,
+      evidence: obj.afterPhoto || null,
+      verificationMethod: obj.verificationMethod || 'Physical Floor Re-inspection',
+      verificationCriteria: obj.verificationCriteria || 'Zero defect recurrence & standard adherence',
+      verificationReadinessNotes: obj.verificationReadinessNotes || '',
+      verifiedEffective: isClosed,
+      verifiedAt: isClosed ? obj.actualCompletedAt || obj.updatedAt : null,
+      verifiedBy: obj.verifiedBy || (isClosed ? 'Internal QA Auditor' : null),
+    };
+  } else {
+    if (!capObj.immediateCorrection && immediateCorrection) capObj.immediateCorrection = immediateCorrection;
+    if (!capObj.rootCause && rootCause) capObj.rootCause = rootCause;
+    if (!capObj.correctiveAction && correctiveAction) capObj.correctiveAction = correctiveAction;
+    if (!capObj.preventiveAction && preventiveAction) capObj.preventiveAction = preventiveAction;
+    if (!capObj.responsiblePerson) capObj.responsiblePerson = obj.assignedTo || null;
+    if (!capObj.targetDate) capObj.targetDate = obj.deadlineTimestamp || null;
+    if (!capObj.evidence && obj.afterPhoto) capObj.evidence = obj.afterPhoto;
+    if (!capObj.verificationMethod) capObj.verificationMethod = obj.verificationMethod || 'Physical Floor Re-inspection';
+    if (!capObj.verificationCriteria) capObj.verificationCriteria = obj.verificationCriteria || 'Zero defect recurrence & standard adherence';
+    if (isClosed) {
+      capObj.status = 'VERIFIED_EFFECTIVE';
+      capObj.verifiedEffective = true;
+      if (!capObj.verifiedAt) capObj.verifiedAt = obj.actualCompletedAt || obj.updatedAt;
+      if (!capObj.verifiedBy) capObj.verifiedBy = 'Internal QA Auditor';
+    }
+  }
+
+  obj.cap = capObj;
+
   return obj;
 };
 
@@ -267,6 +358,25 @@ const createComplaint = async (req, res) => {
     if (!enrichedDescription.includes('[Audit Requirement:')) {
       enrichedDescription = `[Audit Requirement: ${effectiveRequirement}] [Risk: ${effectivePriority}] [CAP Required: ${isCapRequired ? 'YES' : 'NO'}] [Verification: ${effectiveVerification}]\n\n${rawFinding}`;
     }
+
+    const initialCap = {
+      required: isCapRequired,
+      status: isCapRequired ? 'PENDING' : 'NOT_REQUIRED',
+      immediateCorrection: (req.body.immediateCorrection || '').trim(),
+      rootCause: (req.body.rootCause || '').trim(),
+      correctiveAction: (req.body.correctiveAction || '').trim(),
+      preventiveAction: (req.body.preventiveAction || '').trim(),
+      responsiblePerson: null, // will be assigned to assignedToData below
+      targetDate: deadlineTimestamp.toISOString().split('T')[0],
+      evidence: null,
+      verificationMethod: effectiveVerification,
+      verificationCriteria: (req.body.verificationCriteria || 'Zero defect recurrence & standard adherence').trim(),
+      verificationReadinessNotes: '',
+      submittedAt: null,
+      verifiedEffective: false,
+      verifiedAt: null,
+      verifiedBy: null,
+    };
 
     // Extract Before Photo (memory buffer, disk file, base64 or URL)
     const beforePhotoUrl = extractPhotoPayload(req, 'beforePhoto', 'beforePhotoBase64');
@@ -419,6 +529,8 @@ const createComplaint = async (req, res) => {
           inserted = fallbackData;
         }
 
+        initialCap.responsiblePerson = assignedToData;
+
         if (inserted) {
           mockStore.createComplaint({
             ...inserted,
@@ -428,6 +540,7 @@ const createComplaint = async (req, res) => {
             riskSeverity: effectivePriority,
             capRequired: isCapRequired,
             verificationMethod: effectiveVerification,
+            cap: initialCap,
           });
           return res.status(201).json({
             success: true,
@@ -438,6 +551,7 @@ const createComplaint = async (req, res) => {
               riskSeverity: effectivePriority,
               capRequired: isCapRequired,
               verificationMethod: effectiveVerification,
+              cap: initialCap,
             }),
           });
         }
@@ -450,6 +564,8 @@ const createComplaint = async (req, res) => {
         });
       }
     }
+
+    initialCap.responsiblePerson = assignedToData;
 
     // Fallback when Supabase is not configured
     const fallbackTicket = mockStore.createComplaint({
@@ -467,6 +583,7 @@ const createComplaint = async (req, res) => {
       createdBy: createdByData,
       deadlineHours: hours,
       deadlineTimestamp,
+      cap: initialCap,
     });
 
     return res.status(201).json({
@@ -772,7 +889,17 @@ const markInProgress = async (req, res) => {
 const submitAction = async (req, res) => {
   try {
     const paramId = req.params.id;
-    const { actionNotes, feedbackRemarks } = req.body;
+    const {
+      actionNotes,
+      feedbackRemarks,
+      immediateCorrection,
+      rootCause,
+      correctiveAction,
+      preventiveAction,
+      responsiblePerson,
+      targetDate,
+      verificationReadinessNotes,
+    } = req.body;
     const now = new Date();
 
     const afterPhotoUrl = extractPhotoPayload(req, 'afterPhoto', 'afterPhotoBase64');
@@ -780,16 +907,79 @@ const submitAction = async (req, res) => {
     if (!afterPhotoUrl) {
       return res.status(400).json({
         success: false,
-        message: 'Mandatory After Photo proof is required to submit defect resolution.',
+        message: 'Mandatory After Photo proof (Evidence) is required to submit defect resolution.',
       });
     }
 
-    if (!actionNotes || !feedbackRemarks) {
+    const finalImmediateCorrection = (immediateCorrection || '').trim() || (actionNotes || '').trim();
+    const finalCorrectiveAction = (correctiveAction || '').trim() || (actionNotes || '').trim();
+    const finalRootCause = (rootCause || '').trim() || (feedbackRemarks || '').trim();
+    const finalPreventiveAction = (preventiveAction || '').trim() || (feedbackRemarks || '').trim();
+
+    if (!finalImmediateCorrection && !finalCorrectiveAction && !actionNotes) {
       return res.status(400).json({
         success: false,
-        message: 'Both Action Notes (work done) and Root Cause Feedback (preventive measures) are mandatory.',
+        message: 'Immediate Correction and Corrective Action details are mandatory for CAP.',
       });
     }
+
+    if (!finalRootCause && !finalPreventiveAction && !feedbackRemarks) {
+      return res.status(400).json({
+        success: false,
+        message: 'Root Cause Analysis and Preventive Action are mandatory for QMS compliance.',
+      });
+    }
+
+    // Synthesize readable legacy text blocks while preserving exact CAP headers
+    const finalActionNotes =
+      actionNotes && actionNotes.includes('[Immediate Correction]')
+        ? actionNotes
+        : [
+            finalImmediateCorrection ? `[Immediate Correction]: ${finalImmediateCorrection}` : '',
+            finalCorrectiveAction ? `[Corrective Action]: ${finalCorrectiveAction}` : '',
+          ].filter(Boolean).join('\n\n') || actionNotes || finalImmediateCorrection || 'Correction Completed';
+
+    const finalFeedbackRemarks =
+      feedbackRemarks && feedbackRemarks.includes('[Root Cause]')
+        ? feedbackRemarks
+        : [
+            finalRootCause ? `[Root Cause]: ${finalRootCause}` : '',
+            finalPreventiveAction ? `[Preventive Action]: ${finalPreventiveAction}` : '',
+          ].filter(Boolean).join('\n\n') || feedbackRemarks || finalRootCause || 'Preventive Action Implemented';
+
+    let respPerson = null;
+    if (responsiblePerson) {
+      try {
+        respPerson = typeof responsiblePerson === 'string' ? JSON.parse(responsiblePerson) : responsiblePerson;
+      } catch (e) {
+        respPerson = null;
+      }
+    }
+    if (!respPerson) {
+      respPerson = {
+        userId: req.user?.id || req.user?._id || 'usr-sup-001',
+        employeeId: req.user?.employeeId || 'SUP-001',
+        name: req.user?.name || 'Line Supervisor',
+        role: req.user?.role || 'ACTION_PERSON',
+        department: req.user?.department || 'Production',
+        designation: req.user?.designation || 'In-Charge',
+      };
+    }
+
+    const structuredCap = {
+      required: true,
+      status: 'SUBMITTED',
+      immediateCorrection: finalImmediateCorrection,
+      rootCause: finalRootCause,
+      correctiveAction: finalCorrectiveAction,
+      preventiveAction: finalPreventiveAction,
+      responsiblePerson: respPerson,
+      targetDate: targetDate || now.toISOString().split('T')[0],
+      evidence: afterPhotoUrl,
+      verificationReadinessNotes: (verificationReadinessNotes || '').trim(),
+      submittedAt: now.toISOString(),
+      verifiedEffective: false,
+    };
 
     if (isSupabaseConfigured && supabase) {
       try {
@@ -830,21 +1020,23 @@ const submitAction = async (req, res) => {
             role: req.user.role,
             employeeId: req.user.employeeId,
           },
-          notes: `Corrective action submitted for audit verification. Action: "${actionNotes}". Root Cause: "${feedbackRemarks}"`,
+          notes: `CAP submitted for audit verification:\n• Immediate Correction: ${finalImmediateCorrection}\n• Root Cause: ${finalRootCause}\n• Corrective Action: ${finalCorrectiveAction}\n• Preventive Action: ${finalPreventiveAction}\n• Responsible: ${respPerson.name} (${respPerson.department})`,
           timestamp: now.toISOString(),
         });
 
+        const updatePayload = {
+          afterPhoto: afterPhotoUrl,
+          actionNotes: finalActionNotes,
+          feedbackRemarks: finalFeedbackRemarks,
+          actualCompletedAt: now.toISOString(),
+          status: 'Under Verification',
+          timeline,
+          updatedAt: now.toISOString(),
+        };
+
         const { data: updated, error: updateErr } = await supabase
           .from('complaints')
-          .update({
-            afterPhoto: afterPhotoUrl,
-            actionNotes,
-            feedbackRemarks,
-            actualCompletedAt: now.toISOString(),
-            status: 'Under Verification',
-            timeline,
-            updatedAt: now.toISOString(),
-          })
+          .update(updatePayload)
           .eq('id', current.id)
           .select()
           .single();
@@ -860,18 +1052,19 @@ const submitAction = async (req, res) => {
 
         if (updated) {
           mockStore.updateComplaint(current.id, {
-            afterPhoto: afterPhotoUrl,
-            actionNotes,
-            feedbackRemarks,
-            actualCompletedAt: now.toISOString(),
-            status: 'Under Verification',
-            timeline: updated.timeline,
-            updatedAt: now.toISOString(),
+            ...updatePayload,
+            cap: structuredCap,
+            immediateCorrection: finalImmediateCorrection,
+            rootCause: finalRootCause,
+            correctiveAction: finalCorrectiveAction,
+            preventiveAction: finalPreventiveAction,
+            capResponsiblePerson: respPerson,
+            capTargetDate: targetDate || now.toISOString(),
           });
           return res.status(200).json({
             success: true,
             message: `Resolution for ${updated.complaintId} submitted for audit verification.`,
-            complaint: formatComplaintOutput(updated),
+            complaint: formatComplaintOutput({ ...updated, cap: structuredCap }),
           });
         }
       } catch (dbErr) {
@@ -900,8 +1093,15 @@ const submitAction = async (req, res) => {
     }
 
     complaint.afterPhoto = afterPhotoUrl;
-    complaint.actionNotes = actionNotes;
-    complaint.feedbackRemarks = feedbackRemarks;
+    complaint.actionNotes = finalActionNotes;
+    complaint.feedbackRemarks = finalFeedbackRemarks;
+    complaint.immediateCorrection = finalImmediateCorrection;
+    complaint.rootCause = finalRootCause;
+    complaint.correctiveAction = finalCorrectiveAction;
+    complaint.preventiveAction = finalPreventiveAction;
+    complaint.capResponsiblePerson = respPerson;
+    complaint.capTargetDate = targetDate || now.toISOString();
+    complaint.cap = structuredCap;
     complaint.actualCompletedAt = now;
     complaint.status = 'Under Verification';
     complaint.timeline.push({
@@ -911,7 +1111,7 @@ const submitAction = async (req, res) => {
         role: req.user.role,
         employeeId: req.user.employeeId,
       },
-      notes: `Corrective action submitted for audit verification. Action: "${actionNotes}". Root Cause: "${feedbackRemarks}"`,
+      notes: `CAP submitted for audit verification:\n• Immediate Correction: ${finalImmediateCorrection}\n• Root Cause: ${finalRootCause}\n• Corrective Action: ${finalCorrectiveAction}\n• Preventive Action: ${finalPreventiveAction}\n• Responsible: ${respPerson.name} (${respPerson.department})`,
       timestamp: now,
     });
     mockStore.updateComplaint(complaint._id, complaint);
@@ -1033,11 +1233,24 @@ const verifyComplaint = async (req, res) => {
         }
 
         if (updated) {
-          mockStore.updateComplaint(current.id, updatePayload);
+          const capUpdate = current.cap ? { ...current.cap } : {};
+          if (decision === 'APPROVE') {
+            capUpdate.status = 'VERIFIED_EFFECTIVE';
+            capUpdate.verifiedEffective = true;
+            capUpdate.verifiedAt = now.toISOString();
+            capUpdate.verifiedBy = req.user.name;
+            capUpdate.verificationNotes = notes || 'Audit verified CAP effectiveness.';
+          } else {
+            capUpdate.status = 'REJECTED';
+            capUpdate.verifiedEffective = false;
+            capUpdate.rejectionReason = rejectionReason || notes;
+          }
+
+          mockStore.updateComplaint(current.id, { ...updatePayload, cap: capUpdate });
           return res.status(200).json({
             success: true,
             message: `Complaint ${updated.complaintId} has been ${decision === 'APPROVE' ? 'Approved & Closed' : 'Rejected & Returned to line'}.`,
-            complaint: formatComplaintOutput(updated),
+            complaint: formatComplaintOutput({ ...updated, cap: capUpdate }),
           });
         }
       } catch (dbErr) {
@@ -1062,6 +1275,12 @@ const verifyComplaint = async (req, res) => {
       complaint.status = 'Closed';
       complaint.actualCompletedAt = now;
       complaint.rejectionReason = '';
+      if (!complaint.cap) complaint.cap = {};
+      complaint.cap.status = 'VERIFIED_EFFECTIVE';
+      complaint.cap.verifiedEffective = true;
+      complaint.cap.verifiedAt = now.toISOString();
+      complaint.cap.verifiedBy = req.user.name;
+      complaint.cap.verificationNotes = notes || 'Audit verified CAP effectiveness and approved closure.';
       complaint.timeline.push({
         action: 'CLOSED',
         performedBy: {
@@ -1069,13 +1288,17 @@ const verifyComplaint = async (req, res) => {
           role: req.user.role,
           employeeId: req.user.employeeId,
         },
-        notes: notes || 'Audit verified Before/After photos and approved closure of ticket.',
+        notes: notes || 'Audit verified Before/After photos & CAP effectiveness, approving ticket closure.',
         timestamp: now,
       });
     } else {
       const reason = rejectionReason || notes;
       complaint.status = 'Rejected / Sent Back';
       complaint.rejectionReason = reason;
+      if (!complaint.cap) complaint.cap = {};
+      complaint.cap.status = 'REJECTED';
+      complaint.cap.verifiedEffective = false;
+      complaint.cap.rejectionReason = reason;
       complaint.timeline.push({
         action: 'REJECTED',
         performedBy: {
@@ -1083,7 +1306,7 @@ const verifyComplaint = async (req, res) => {
           role: req.user.role,
           employeeId: req.user.employeeId,
         },
-        notes: `Audit rejected resolution and returned to line. Reason: ${reason}`,
+        notes: `Audit rejected CAP resolution and returned to line. Reason: ${reason}`,
         timestamp: now,
       });
     }

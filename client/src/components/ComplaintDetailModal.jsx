@@ -18,6 +18,10 @@ import {
   Play,
   Camera,
   Trash2,
+  Layers,
+  Sparkles,
+  ArrowRight,
+  ShieldAlert,
 } from 'lucide-react';
 import CountdownBadge from './CountdownBadge';
 import { formatAbsoluteTime } from '../utils/timer';
@@ -528,50 +532,306 @@ export const ComplaintDetailModal = ({
             </div>
           </div>
 
-          {/* Section 3: Action Taken & Root Cause (if submitted) */}
-          {(complaint.afterPhoto ||
-            complaint.actionNotes ||
-            complaint.feedbackRemarks ||
-            complaint.status === 'Under Verification' ||
-            complaint.status === 'Closed') && (
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase text-emerald-700 dark:text-emerald-400 tracking-wider flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4" />
-                  Supervisor / Auditor Resolution & Root Cause Feedback
-                </span>
-                {complaint.actualCompletedAt ? (
-                  <span className="text-[11px] font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                    Completed: {formatAbsoluteTime(complaint.actualCompletedAt)}
-                  </span>
-                ) : (
-                  <span className="text-[11px] font-mono text-slate-500">
-                    Shop-Floor Input
-                  </span>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <span className="font-bold text-slate-800 dark:text-slate-300 block mb-1">
-                    Action Taken (Work Performed):
-                  </span>
-                  <p className="text-slate-700 dark:text-slate-200 leading-relaxed font-sans">
-                    {complaint.actionNotes || 'No notes specified.'}
-                  </p>
+          {/* Section 3: Structured CAP Management Tree (ISO 9001 / IATF 16949 QMS) */}
+          <div className="p-4 sm:p-5 rounded-3xl bg-slate-50/90 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+            {/* CAP Header Banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800/80 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/70 dark:text-cyan-400 flex items-center justify-center font-bold border border-indigo-200 dark:border-indigo-800/60 shadow-xs">
+                  <Layers className="w-4 h-4" />
                 </div>
-
-                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <span className="font-bold text-amber-700 dark:text-amber-300 block mb-1">
-                    Root Cause & Preventive Measures:
-                  </span>
-                  <p className="text-slate-700 dark:text-slate-200 leading-relaxed font-sans">
-                    {complaint.feedbackRemarks || 'No preventive feedback logged.'}
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                      CAP Management Hierarchy
+                    </h3>
+                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                      complaint.status === 'Closed' || complaint.cap?.status === 'VERIFIED_EFFECTIVE'
+                        ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+                        : complaint.status === 'Under Verification'
+                        ? 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
+                        : 'bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-cyan-300 border border-indigo-300 dark:border-indigo-800'
+                    }`}>
+                      {complaint.status === 'Closed' ? 'Verified Effective' : complaint.cap?.status || (complaint.capRequired ? 'CAP In Progress' : 'Direct Correction')}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Non-Conformance (NC) ──► Immediate Correction ──► Root Cause ──► Corrective Action ──► Preventive Action ──► Evidence ──► Verification
                   </p>
                 </div>
               </div>
+
+              {complaint.actualCompletedAt && (
+                <div className="flex items-center gap-1.5 text-[11px] font-mono font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800/60 self-start sm:self-auto">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Closed &amp; Verified</span>
+                </div>
+              )}
             </div>
-          )}
+
+            {/* Tree Container with Vertical Branch Line */}
+            <div className="relative pl-6 sm:pl-7 space-y-3.5 before:absolute before:left-2.5 sm:before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-indigo-200 dark:before:bg-indigo-900/60">
+              
+              {/* TREE ROOT: Non-Conformance (NC) */}
+              <div className="relative group">
+                <div className="absolute -left-6 sm:-left-7 top-1.5 w-3.5 h-3.5 rounded-full bg-rose-600 border-2 border-white dark:border-slate-900 shadow-xs" />
+                <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-950/80 shadow-xs space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono font-black text-rose-600 dark:text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      NC: Non-Conformance Breached
+                    </span>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300">
+                      {complaint.category} • {complaint.department}
+                    </span>
+                  </div>
+                  <div className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                    {complaint.location} — {complaint.requirement}
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 font-sans leading-relaxed">
+                    {complaint.description}
+                  </p>
+                </div>
+              </div>
+
+              {/* BRANCH 1: Immediate Correction */}
+              <div className="relative group">
+                <div className="absolute -left-6 sm:-left-7 top-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-white dark:border-slate-900 shadow-xs" />
+                <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="w-4 h-4 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 flex items-center justify-center font-black text-[10px]">
+                        1
+                      </span>
+                      Immediate Correction (Containment)
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      Immediate Containment
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-800 dark:text-slate-200 font-sans leading-relaxed">
+                    {complaint.cap?.immediateCorrection || complaint.actionNotes || 'Pending containment action from assigned supervisor.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* BRANCH 2: Root Cause Analysis */}
+              <div className="relative group">
+                <div className="absolute -left-6 sm:-left-7 top-1.5 w-3.5 h-3.5 rounded-full bg-amber-500 border-2 border-white dark:border-slate-900 shadow-xs" />
+                <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="w-4 h-4 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 flex items-center justify-center font-black text-[10px]">
+                        2
+                      </span>
+                      Root Cause (5-Why / 6M Analysis)
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      Failure Mechanism
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-800 dark:text-slate-200 font-sans leading-relaxed">
+                    {complaint.cap?.rootCause || complaint.feedbackRemarks || 'Pending 5-Why root cause analysis from assigned supervisor.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* BRANCH 3: Corrective Action */}
+              <div className="relative group">
+                <div className="absolute -left-6 sm:-left-7 top-1.5 w-3.5 h-3.5 rounded-full bg-blue-500 border-2 border-white dark:border-slate-900 shadow-xs" />
+                <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="w-4 h-4 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 flex items-center justify-center font-black text-[10px]">
+                        3
+                      </span>
+                      Corrective Action (Permanent Fix)
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      Eradicate Cause
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-800 dark:text-slate-200 font-sans leading-relaxed">
+                    {complaint.cap?.correctiveAction || complaint.actionNotes || 'Pending corrective action execution on the shop floor.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* BRANCH 4: Preventive Action */}
+              <div className="relative group">
+                <div className="absolute -left-6 sm:-left-7 top-1.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 shadow-xs" />
+                <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="w-4 h-4 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-black text-[10px]">
+                        4
+                      </span>
+                      Preventive Action (Systemic Prevention)
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      Prevent Recurrence
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-800 dark:text-slate-200 font-sans leading-relaxed">
+                    {complaint.cap?.preventiveAction || 'Pending establishment of systemic inspection or standard operating procedure change.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* BRANCH 5: Responsible Person & Target Date */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Responsible Person */}
+                <div className="relative group">
+                  <div className="absolute -left-6 sm:-left-7 top-1.5 w-3.5 h-3.5 rounded-full bg-purple-500 border-2 border-white dark:border-slate-900 shadow-xs" />
+                  <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
+                    <span className="text-[10px] font-mono font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="w-4 h-4 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 flex items-center justify-center font-black text-[10px]">
+                        5
+                      </span>
+                      Responsible Person
+                    </span>
+                    <div className="font-extrabold text-xs text-slate-900 dark:text-white">
+                      {complaint.cap?.responsiblePerson?.name || complaint.assignedTo?.name || 'Line Supervisor'}
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                      {complaint.cap?.responsiblePerson?.department || complaint.department} • {complaint.cap?.responsiblePerson?.designation || complaint.assignedTo?.designation || 'In-Charge'} ({complaint.cap?.responsiblePerson?.employeeId || complaint.assignedTo?.employeeId})
+                    </div>
+                  </div>
+                </div>
+
+                {/* Target Date */}
+                <div className="relative group">
+                  <div className="absolute -left-6 sm:-left-7 top-1.5 w-3.5 h-3.5 rounded-full bg-indigo-500 border-2 border-white dark:border-slate-900 shadow-xs" />
+                  <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
+                    <span className="text-[10px] font-mono font-bold text-indigo-700 dark:text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="w-4 h-4 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-cyan-300 flex items-center justify-center font-black text-[10px]">
+                        6
+                      </span>
+                      Target Date / SLA
+                    </span>
+                    <div className="font-mono font-bold text-xs text-indigo-950 dark:text-cyan-200">
+                      {formatAbsoluteTime(complaint.cap?.targetDate || complaint.deadlineTimestamp)}
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Standard SLA: {complaint.deadlineHours} Hours
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* BRANCH 7: Evidence (Before vs After Photos) */}
+              <div className="relative group">
+                <div className="absolute -left-6 sm:-left-7 top-1.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 shadow-xs" />
+                <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="w-4 h-4 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-black text-[10px]">
+                        7
+                      </span>
+                      Evidence Proof (Visual Comparison)
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      {complaint.afterPhoto ? 'Evidence Submitted' : 'Awaiting Proof'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {/* Before Evidence Thumbnail */}
+                    <div
+                      onClick={() => setZoomPhoto(complaint.beforePhoto)}
+                      className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 cursor-pointer group"
+                    >
+                      <img
+                        src={complaint.beforePhoto}
+                        alt="Before Evidence"
+                        className="w-full h-28 object-cover group-hover:scale-105 transition-transform"
+                      />
+                      <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-rose-600 text-white shadow">
+                        Before Proof
+                      </span>
+                    </div>
+
+                    {/* After Evidence Thumbnail */}
+                    {complaint.afterPhoto ? (
+                      <div
+                        onClick={() => setZoomPhoto(complaint.afterPhoto)}
+                        className="relative rounded-xl overflow-hidden border border-emerald-300 dark:border-emerald-800 bg-slate-100 dark:bg-slate-950 cursor-pointer group"
+                      >
+                        <img
+                          src={complaint.afterPhoto}
+                          alt="After Evidence"
+                          className="w-full h-28 object-cover group-hover:scale-105 transition-transform"
+                        />
+                        <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-emerald-600 text-white shadow">
+                          After Proof (Rectified)
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center text-center p-2 text-slate-400">
+                        <Clock className="w-5 h-5 mb-1 animate-pulse" />
+                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                          After Photo Pending
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* BRANCH 8: Verification & Effectiveness Audit */}
+              <div className="relative group">
+                <div className={`absolute -left-6 sm:-left-7 top-1.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-900 shadow-xs ${
+                  complaint.status === 'Closed' ? 'bg-emerald-600' : 'bg-cyan-500'
+                }`} />
+                <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono font-bold text-cyan-700 dark:text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="w-4 h-4 rounded-full bg-cyan-100 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-300 flex items-center justify-center font-black text-[10px]">
+                        8
+                      </span>
+                      Verification &amp; Effectiveness Audit
+                    </span>
+                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
+                      complaint.status === 'Closed'
+                        ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
+                        : complaint.status === 'Under Verification'
+                        ? 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                    }`}>
+                      {complaint.status === 'Closed' ? 'Verified Effective' : complaint.status}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] pt-1 border-t border-slate-100 dark:border-slate-800">
+                    <div>
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Method</span>
+                      <span className="font-extrabold text-slate-800 dark:text-slate-200">
+                        {complaint.verificationMethod || complaint.cap?.verificationMethod || 'Physical Floor Re-inspection'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Criteria</span>
+                      <span className="font-extrabold text-slate-800 dark:text-slate-200">
+                        {complaint.verificationCriteria || complaint.cap?.verificationCriteria || 'Zero defect recurrence & standard adherence'}
+                      </span>
+                    </div>
+                  </div>
+                  {complaint.cap?.verificationReadinessNotes && (
+                    <div className="text-[11px] text-slate-600 dark:text-slate-300 pt-1">
+                      <span className="font-bold text-slate-700 dark:text-slate-300">Supervisor Readiness Note: </span>
+                      {complaint.cap.verificationReadinessNotes}
+                    </div>
+                  )}
+                  {complaint.status === 'Closed' && (
+                    <div className="text-[11px] text-emerald-700 dark:text-emerald-300 pt-1 flex items-center gap-1 font-semibold">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Audit Sign-off: Verified effective by QA Auditor. Closure granted.</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+          </div>
 
           {/* Rejection notice if status is Rejected */}
           {complaint.status === 'Rejected / Sent Back' && complaint.rejectionReason && (

@@ -308,6 +308,7 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
 
   // Stage 7: CAP Required
   const [capRequired, setCapRequired] = useState(true);
+  const [immediateContainment, setImmediateContainment] = useState('');
   const [capDirective, setCapDirective] = useState('');
 
   // Stage 8: Evidence Photo
@@ -528,6 +529,10 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
       formData.append('findingDescription', description.trim());
       formData.append('requirement', effectiveReq);
       formData.append('capRequired', capRequired ? 'true' : 'false');
+      if (capRequired) {
+        formData.append('immediateCorrection', immediateContainment.trim());
+        formData.append('correctiveAction', capDirective.trim());
+      }
       formData.append('verificationMethod', verificationMethod);
       formData.append('verificationCriteria', verificationCriteria);
       formData.append('assignedToUserId', assignedId);
@@ -1192,17 +1197,91 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
               </div>
 
               {capRequired && (
-                <div className="pt-2 animate-fadeIn">
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 text-xs mb-1">
-                    Auditor CAP Directives / Root Cause Guidance for Line In-Charge (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={capDirective}
-                    onChange={(e) => setCapDirective(e.target.value)}
-                    placeholder="e.g. Inspect needle bar timing, retrain collar stitcher, check interlining thickness."
-                    className="w-full p-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                  />
+                <div className="pt-3 space-y-3 animate-fadeIn">
+                  {/* Visual CAP Tree Guide */}
+                  <div className="p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/60 text-[11px] text-slate-700 dark:text-slate-300">
+                    <span className="font-mono font-bold text-indigo-700 dark:text-cyan-400 block mb-0.5">
+                      CAP Structure Activated (ISO 9001 Clause 10.2):
+                    </span>
+                    <span className="font-mono text-[10.5px] text-slate-600 dark:text-slate-400">
+                      NC ──► Immediate Correction ──► Root Cause ──► Corrective Action ──► Preventive Action ──► Responsible Person ──► Target Date ──► Evidence ──► Verification
+                    </span>
+                  </div>
+
+                  {/* Immediate Correction Directive */}
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 text-xs mb-1 flex items-center justify-between">
+                      <span>1. Immediate Correction Directive (Containment Action)</span>
+                      <span className="text-[10px] text-rose-600 dark:text-rose-400 font-mono font-semibold">Immediate Containment</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={immediateContainment}
+                      onChange={(e) => setImmediateContainment(e.target.value)}
+                      placeholder="e.g. Remove cartons immediately / Quarantine defective bundle #14B / Stop cutting table 2"
+                      className="w-full p-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  {/* Root Cause & Corrective Guidance */}
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 text-xs mb-1 flex items-center justify-between">
+                      <span>2. Auditor Root Cause &amp; Preventive Action Directives</span>
+                      <span className="text-[10px] text-indigo-600 dark:text-cyan-400 font-mono font-semibold">5-Why / Recurrence</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={capDirective}
+                      onChange={(e) => setCapDirective(e.target.value)}
+                      placeholder="e.g. Revise floor storage marking, replace needle with ballpoint, adjust felt wick oiler, conduct weekly inspection."
+                      className="w-full p-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  {/* Quick Preset Directive Buttons */}
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    <span className="text-[10px] font-mono text-slate-400 self-center mr-1">Autofill:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImmediateContainment('Remove cartons from emergency exit immediately and clear entire egress aisle.');
+                        setCapDirective('Revise storage location, repaint reflective yellow floor markings, and add weekly emergency exit inspection.');
+                      }}
+                      className="px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-400 text-[10px] font-medium text-slate-600 dark:text-slate-300"
+                    >
+                      Emergency Exit (EHS)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImmediateContainment('Quarantine defective bundle #14B and re-stitch skipped seams.');
+                        setCapDirective('Switch to Groz-Beckert 75/11 Ballpoint, recalibrate looper clearance to 0.05mm, and train operator on collar seams.');
+                      }}
+                      className="px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-400 text-[10px] font-medium text-slate-600 dark:text-slate-300"
+                    >
+                      Skipped Stitches (Production)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImmediateContainment('Spot clean soiled cuffs and wipe needle bar dry.');
+                        setCapDirective('Replace felt wick oiler, replace worn rubber seal, and add weekly wick check to preventive maintenance.');
+                      }}
+                      className="px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-400 text-[10px] font-medium text-slate-600 dark:text-slate-300"
+                    >
+                      Needle Oil Leak (Maintenance)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImmediateContainment('Segregate roll #F-4412 and halt spreading on cutting table.');
+                        setCapDirective('Perform 100% 4-point inspection, group shade bands, and mandate Delta-E spectrophotometer check prior to binning.');
+                      }}
+                      className="px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-400 text-[10px] font-medium text-slate-600 dark:text-slate-300"
+                    >
+                      Fabric Shading (Store)
+                    </button>
+                  </div>
                 </div>
               )}
             </section>
