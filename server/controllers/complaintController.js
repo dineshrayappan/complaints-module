@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { supabase, isSupabaseConfigured } = require('../config/supabase');
 const mockStore = require('../config/mockStore');
+const { computeDepartmentNCScore } = require('../utils/scoringEngine');
 
 const sampleSvgTemplates = {
   'sample-before-stitch.svg': {
@@ -2227,34 +2228,25 @@ const getDepartmentComplianceStats = async (req, res) => {
       const underReviewNC = deptComplaints.filter((c) => c.status === 'Under Review').length;
       const draftNC = deptComplaints.filter((c) => c.status === 'Draft').length;
 
-      // CAP compliance calculation:
-      // Complaints requiring CAP (or all if not flagged) that have submitted, reviewed, verified, or closed CAP
+      // ── Weighted Compliance & Risk Scoring (scoringEngine) ──────────────────
+      // Maps NC priority → severity weight; NC workflow status → point score.
+      // Compliance Score = Σ(achieved weighted pts) / Σ(max weighted pts) × 100
+      // Risk Score = Critical / High / Medium / Low based on NC severity mix.
+      const scoring = computeDepartmentNCScore(deptComplaints, now);
+      const complianceScore = scoring.complianceScore;
+
+      // CAP compliance calculation (kept for capPercent column)
       const capRequiredItems = deptComplaints.filter((c) => c.capRequired !== false);
       const capCompletedItems = capRequiredItems.filter((c) =>
         ['CAP Submitted', 'Under Review', 'Verified', 'Closed', 'Under Verification'].includes(c.status) ||
         (c.capPlan && (c.capPlan.immediateCorrection || c.capPlan.correctiveAction)) ||
         c.afterPhoto
       );
-
       const capPercent = capRequiredItems.length > 0
         ? Math.round((capCompletedItems.length / capRequiredItems.length) * 100)
         : totalNC > 0 ? 100 : 100;
 
-      // Realistic composite score matching prompt specs:
-      // Base: High CAP compliance & high SLA on-time rate
-      // Penalties: Heavy penalty for overdue tickets, mild for open backlog
-      let complianceScore = 100;
-      if (totalNC > 0) {
-        const slaOnTimeRate = totalNC > 0 ? Math.max(0, (totalNC - overdueNC) / totalNC) * 100 : 100;
-        const resolutionRate = totalNC > 0 ? ((closedNC + verifiedNC) / totalNC) * 100 : 100;
-        // 45% CAP adherence + 40% SLA on-time + 15% closure rate
-        const rawScore = (capPercent * 0.45) + (slaOnTimeRate * 0.40) + (resolutionRate * 0.15);
-        // Overdue penalty
-        const overduePenalty = overdueNC * 3.5;
-        complianceScore = Math.max(10, Math.min(100, Math.round(rawScore - overduePenalty)));
-      }
-
-      // Threshold level determination
+      // Threshold level determination (for color coding)
       let statusLevel = 'CRITICAL';
       let statusColor = 'rose';
       let statusEmoji = '🔴';
@@ -2283,6 +2275,16 @@ const getDepartmentComplianceStats = async (req, res) => {
         statusLevel,
         statusColor,
         statusEmoji,
+        // ── New weighted scoring fields ──────────────────────────────────────
+        riskScore: scoring.riskScore,           // 'Low' | 'Medium' | 'High' | 'Critical'
+        riskColor: scoring.riskColor,           // tailwind color name
+        riskEmoji: scoring.riskEmoji,           // emoji indicator
+        riskLevel: scoring.riskLevel,           // numeric 1-4 for sorting
+        criticalNC: scoring.criticalNCCount,    // count of Critical-weight NCs
+        majorNC: scoring.majorNCCount,          // count of Major-weight NCs
+        overdueCap: scoring.overdueCAPCount,    // overdue CAP tickets
+        weightedAchieved: scoring.weightedAchieved,
+        weightedMax: scoring.weightedMax,
       };
     });
 

@@ -190,6 +190,7 @@ export const DepartmentComplianceDashboard = ({ onSelectDepartment, onViewRegist
       if (sortBy === 'score-asc') return a.score - b.score;
       if (sortBy === 'overdue-desc') return b.overdueNC - a.overdueNC;
       if (sortBy === 'open-desc') return b.openNC - a.openNC;
+      if (sortBy === 'risk-desc') return (b.riskLevel || 1) - (a.riskLevel || 1);
       return 0;
     });
   }, [departmentsList, searchQuery, sortBy]);
@@ -394,6 +395,7 @@ export const DepartmentComplianceDashboard = ({ onSelectDepartment, onViewRegist
             <option value="score-asc">Score: Lowest First</option>
             <option value="overdue-desc">Most Overdue NCs</option>
             <option value="open-desc">Most Open NCs</option>
+            <option value="risk-desc">Risk: Highest First</option>
           </select>
 
           <div className="flex items-center bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
@@ -431,10 +433,12 @@ export const DepartmentComplianceDashboard = ({ onSelectDepartment, onViewRegist
               <tr>
                 <th className="py-3.5 px-4 font-bold">Department</th>
                 <th className="py-3.5 px-4 font-bold">Compliance Score</th>
-                <th className="py-3.5 px-4 font-bold text-center">Open NC</th>
-                <th className="py-3.5 px-4 font-bold text-center">Overdue</th>
+                <th className="py-3.5 px-3 font-bold text-center">Risk Score</th>
+                <th className="py-3.5 px-3 font-bold text-center">Open NC</th>
+                <th className="py-3.5 px-3 font-bold text-center">Critical NC</th>
+                <th className="py-3.5 px-3 font-bold text-center">Overdue</th>
+                <th className="py-3.5 px-3 font-bold text-center">Overdue CAP</th>
                 <th className="py-3.5 px-4 font-bold">CAP %</th>
-                <th className="py-3.5 px-4 font-bold">Status Classification</th>
                 <th className="py-3.5 px-4 font-bold text-right">Drill-Down</th>
               </tr>
             </thead>
@@ -478,18 +482,49 @@ export const DepartmentComplianceDashboard = ({ onSelectDepartment, onViewRegist
                       </div>
                     </td>
 
-                    {/* 3. Open NC */}
-                    <td className="py-4 px-4 text-center whitespace-nowrap">
+                    {/* 3. Risk Score */}
+                    <td className="py-4 px-3 text-center whitespace-nowrap">
+                      {(() => {
+                        const riskBadge = {
+                          Critical: 'bg-rose-100 text-rose-700 border-rose-300 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-700',
+                          High: 'bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-700',
+                          Medium: 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-700',
+                          Low: 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-700',
+                        };
+                        const risk = dept.riskScore || 'Low';
+                        const emoji = dept.riskEmoji || '🟢';
+                        return (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${riskBadge[risk] || riskBadge.Low}`}>
+                            <span>{emoji}</span>
+                            <span>{risk}</span>
+                          </span>
+                        );
+                      })()}
+                    </td>
+
+                    {/* 4. Open NC */}
+                    <td className="py-4 px-3 text-center whitespace-nowrap">
                       <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-blue-50 text-blue-700 dark:bg-blue-950/70 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                         {dept.openNC}
                       </span>
                     </td>
 
-                    {/* 4. Overdue */}
-                    <td className="py-4 px-4 text-center whitespace-nowrap">
+                    {/* 5. Critical NC */}
+                    <td className="py-4 px-3 text-center whitespace-nowrap">
+                      {(dept.criticalNC || 0) > 0 ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-600 text-white border border-rose-700 animate-pulse shadow-xs">
+                          🔥 {dept.criticalNC}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 font-mono text-xs font-semibold">—</span>
+                      )}
+                    </td>
+
+                    {/* 6. Overdue NC */}
+                    <td className="py-4 px-3 text-center whitespace-nowrap">
                       {dept.overdueNC > 0 ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-200 border border-rose-300 dark:border-rose-700 animate-pulse shadow-xs">
-                          <Flame className="w-3 h-3 text-rose-600 dark:text-rose-400" />
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-200 border border-rose-300 dark:border-rose-700">
+                          <Flame className="w-3 h-3" />
                           <span>{dept.overdueNC}</span>
                         </span>
                       ) : (
@@ -497,7 +532,18 @@ export const DepartmentComplianceDashboard = ({ onSelectDepartment, onViewRegist
                       )}
                     </td>
 
-                    {/* 5. CAP % */}
+                    {/* 7. Overdue CAP */}
+                    <td className="py-4 px-3 text-center whitespace-nowrap">
+                      {(dept.overdueCap || 0) > 0 ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-orange-100 text-orange-700 border border-orange-300 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-700">
+                          ⚠ {dept.overdueCap}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 font-mono text-xs font-semibold">—</span>
+                      )}
+                    </td>
+
+                    {/* 8. CAP % */}
                     <td className="py-4 px-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold font-mono text-slate-800 dark:text-slate-200 w-9">
@@ -512,17 +558,7 @@ export const DepartmentComplianceDashboard = ({ onSelectDepartment, onViewRegist
                       </div>
                     </td>
 
-                    {/* 6. Status Classification */}
-                    <td className="py-4 px-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${classification.bgColor} ${classification.textColor} ${classification.borderColor}`}
-                      >
-                        <span>{classification.dot}</span>
-                        <span>{classification.label}</span>
-                      </span>
-                    </td>
-
-                    {/* 7. Drill-Down Action */}
+                    {/* 9. Drill-Down Action */}
                     <td className="py-4 px-4 text-right whitespace-nowrap">
                       <button
                         onClick={() => {
