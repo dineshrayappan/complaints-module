@@ -49,9 +49,9 @@ export const ComplaintTable = ({
       <table className="w-full min-w-[680px] text-left text-xs border-collapse">
         <thead className="bg-slate-50/90 dark:bg-slate-950/80 text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono text-[10px] sm:text-[11px] border-b border-slate-200 dark:border-slate-800">
           <tr>
-            <th className="py-3 px-3.5 sm:py-3.5 sm:px-4 font-semibold">CMP ID</th>
+            <th className="py-3 px-3.5 sm:py-3.5 sm:px-4 font-semibold">NC / CMP ID</th>
             <th className="py-3 px-3.5 sm:py-3.5 sm:px-4 font-semibold">Priority</th>
-            <th className="py-3 px-3.5 sm:py-3.5 sm:px-4 font-semibold">Defect & Location</th>
+            <th className="py-3 px-3.5 sm:py-3.5 sm:px-4 font-semibold">NC Defect & Location</th>
             <th className="py-3 px-3.5 sm:py-3.5 sm:px-4 font-semibold">Line In-Charge</th>
             <th className="py-3 px-3.5 sm:py-3.5 sm:px-4 font-semibold">Live SLA Countdown</th>
             <th className="py-3 px-3.5 sm:py-3.5 sm:px-4 font-semibold">Status</th>
@@ -198,7 +198,7 @@ export const ComplaintTable = ({
                         className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs flex items-center gap-1 shadow-xs animate-pulse"
                       >
                         <CheckCheck className="w-3.5 h-3.5" />
-                        <span>Verify</span>
+                        <span>Verify NC</span>
                       </button>
                     )}
 
@@ -214,7 +214,7 @@ export const ComplaintTable = ({
                       <button
                         onClick={() => onDeleteComplaint(c)}
                         className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50"
-                        title="Delete Defect Log"
+                        title="Delete NC Record"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>

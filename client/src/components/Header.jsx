@@ -146,16 +146,17 @@ export const Header = ({ onOpenNewComplaint, onRefresh, isRefreshing }) => {
               <span className="hidden md:inline">Sign Out</span>
             </button>
 
-            {/* Log Defect Button (Auditors only) */}
+            {/* Log Audit Defect (NC) Button (Auditors only) */}
             {isAuditor && (
               <button
                 onClick={onOpenNewComplaint}
                 id="btn-log-new-complaint"
+                title="Log Audit Defect (Non-Conformance NC)"
                 className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-indigo-600/25 transition-all transform active:scale-95 cursor-pointer"
               >
                 <Camera className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden xs:inline">Log Defect</span>
-                <span className="xs:hidden">Log</span>
+                <span className="hidden sm:inline">Log Audit Defect (NC)</span>
+                <span className="sm:hidden">Log NC</span>
               </button>
             )}
           </div>

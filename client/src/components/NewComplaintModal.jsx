@@ -147,7 +147,7 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
     setError(null);
 
     if (!beforeFile) {
-      setError('Mandatory Before Photo proof is required to log a complaint.');
+      setError('Mandatory Before Photo proof is required to log an Audit Defect (NC).');
       return;
     }
 
@@ -208,10 +208,10 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
             </div>
             <div>
               <h2 className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight">
-                Log Audit Defect & Assign Line
+                Log Audit Defect (NC) & Assign Line
               </h2>
               <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-                Mandatory Before Photo Proof • 12–24h SLA Slider
+                Non-Conformance (NC) Before Photo Proof • 12–24h SLA Countdown
               </p>
             </div>
           </div>
@@ -237,7 +237,7 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
             <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1.5 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <Camera className="w-4 h-4 text-indigo-600 dark:text-cyan-400" />
-                Defect Proof: Before Photo (Mandatory)
+                Defect Proof: Before Photo (Mandatory NC Proof)
               </span>
               {imageMeta && (
                 <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono font-semibold">
@@ -306,7 +306,7 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Defect Category
+                NC Category / Defect Type
               </label>
               <select
                 value={category}
@@ -324,7 +324,7 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
 
             <div>
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Defect Severity / Priority
+                NC Severity / SLA Priority
               </label>
               <select
                 value={priority}
@@ -583,7 +583,7 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
             <div className="flex items-center justify-between">
               <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                 <Clock className="w-4 h-4 text-amber-500" />
-                Resolution SLA Duration (12–24 Hours)
+                Strict Closed-Loop NC Resolution SLA (12–24 Hours)
               </span>
               <span className="font-mono font-extrabold text-sm px-2.5 py-0.5 rounded-lg bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800">
                 {deadlineHours} Hours SLA
@@ -618,7 +618,7 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
           {/* 6. Description */}
           <div>
             <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Defect Description & Specific Directives
+              NC Description & Specific Rectification Directives
             </label>
             <textarea
               rows="3"
@@ -643,7 +643,7 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
               disabled={submitting || compressing}
               className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-md shadow-indigo-600/30 transition-all active:scale-95 disabled:opacity-50"
             >
-              {submitting ? 'Creating Ticket...' : 'Assign & Activate SLA'}
+              {submitting ? 'Logging NC Ticket...' : 'Log Audit Defect (NC) & Activate SLA'}
             </button>
           </div>
         </form>

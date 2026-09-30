@@ -73,7 +73,7 @@ export const ComplaintCard = ({
         <div className="flex items-start justify-between gap-2 flex-wrap mb-2.5 sm:mb-3">
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-cyan-400 border border-slate-200 dark:border-slate-800">
-              {complaint.complaintId}
+              NC: {complaint.complaintId}
             </span>
             <span
               className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md border ${getPriorityBadge(
@@ -220,7 +220,7 @@ export const ComplaintCard = ({
           className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors"
         >
           <Eye className="w-3.5 h-3.5 text-slate-500" />
-          <span>Inspect Log</span>
+          <span>Inspect NC</span>
         </button>
 
         {/* Action Button for Supervisor */}
@@ -252,7 +252,7 @@ export const ComplaintCard = ({
             className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-sm transition-all animate-pulse active:scale-95"
           >
             <CheckCheck className="w-3.5 h-3.5" />
-            <span>Verify Defect</span>
+            <span>Verify NC</span>
           </button>
         )}
 
@@ -263,7 +263,7 @@ export const ComplaintCard = ({
               e.stopPropagation();
               onDeleteComplaint(complaint);
             }}
-            title="Delete Defect Log"
+            title="Delete NC Record"
             className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 transition-colors shrink-0 cursor-pointer"
           >
             <Trash2 className="w-3.5 h-3.5" />

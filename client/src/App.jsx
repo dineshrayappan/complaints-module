@@ -166,7 +166,7 @@ export const App = () => {
       const targetId = complaint._id || complaint.id || complaint.complaintId;
       const res = await complaintService.markInProgress(targetId);
       if (res.data?.success) {
-        showToast(`Ticket ${complaint.complaintId} marked In Progress`);
+        showToast(`NC ${complaint.complaintId} marked In Progress`);
         const updatedTicket = res.data.complaint || { ...complaint, status: 'In Progress' };
         setComplaints((prev) =>
           prev.map((c) =>
@@ -236,7 +236,7 @@ export const App = () => {
 
   // On ticket created: Optimistic instant display + reset filters
   const handleNewComplaintSuccess = (newTicket) => {
-    showToast(`Defect ${newTicket?.complaintId || 'Ticket'} logged and saved successfully!`);
+    showToast(`Audit Defect (NC ${newTicket?.complaintId || ''}) logged and saved successfully!`);
 
     // Reset filters so the new ticket is immediately visible
     setCategoryFilter('');
@@ -274,7 +274,7 @@ export const App = () => {
       const targetId = complaint._id || complaint.id || complaint.complaintId;
       const res = await complaintService.deleteComplaint(targetId);
       if (res.data?.success) {
-        showToast(`Defect log ${cid} deleted successfully.`);
+        showToast(`NC ${cid} deleted successfully.`);
         setComplaints((prev) => {
           const filtered = prev.filter(
             (c) =>
@@ -298,13 +298,13 @@ export const App = () => {
         loadData(false);
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete defect log.');
+      alert(err.response?.data?.message || 'Failed to delete NC record.');
     }
   };
 
   // On action submitted: Optimistic update + silent refresh
   const handleActionSuccess = (updatedTicket) => {
-    showToast(`Proof for ${updatedTicket?.complaintId || 'Ticket'} submitted for Audit Verification!`);
+    showToast(`Proof for NC ${updatedTicket?.complaintId || ''} submitted for Audit Verification!`);
     setActiveTab('all');
     if (updatedTicket) {
       const ticketId = updatedTicket._id || updatedTicket.id;
@@ -338,7 +338,7 @@ export const App = () => {
             : c
         )
       );
-      showToast(`Ticket ${updatedTicket.complaintId} updated successfully.`);
+      showToast(`NC ${updatedTicket.complaintId} updated successfully.`);
     }
     loadData(false);
   };
@@ -486,7 +486,7 @@ export const App = () => {
               <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                 Showing{' '}
                 <span className="text-slate-900 dark:text-white font-bold">{complaints.length}</span>{' '}
-                Defect Tickets
+                NC Defects
               </div>
 
               <div className="flex items-center bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
@@ -519,7 +519,7 @@ export const App = () => {
             {loading ? (
               <div className="p-16 text-center text-slate-400 dark:text-slate-500 font-mono text-xs flex flex-col items-center justify-center">
                 <div className="w-8 h-8 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin mb-3" />
-                <span>Scanning Factory Floor Defects...</span>
+                <span>Scanning Factory Floor for NC Defects...</span>
               </div>
             ) : complaints.length === 0 ? (
               <div className="p-16 rounded-3xl bg-white dark:bg-slate-900/60 border border-slate-200/90 dark:border-slate-800/80 text-center flex flex-col items-center justify-center my-6 shadow-xs">
@@ -527,10 +527,10 @@ export const App = () => {
                   <CheckCircle2 className="w-8 h-8" />
                 </div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white mb-1">
-                  Zero Active Defects Found
+                  Zero Active NC Defects Found
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mb-5 leading-relaxed">
-                  No complaint tickets match the current filter. All production lines are operating within AQL 1.5 quality standards.
+                  No Non-Conformance (NC) tickets match the current filter. All production lines are operating within AQL 1.5 quality standards.
                 </p>
                 {isAuditor && (
                   <button
@@ -538,7 +538,7 @@ export const App = () => {
                     className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/30 transition-colors"
                   >
                     <PlusCircle className="w-4 h-4" />
-                    <span>Log New Defect</span>
+                    <span>Log Audit Defect (NC)</span>
                   </button>
                 )}
               </div>

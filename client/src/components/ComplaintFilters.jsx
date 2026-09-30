@@ -15,11 +15,11 @@ export const ComplaintFilters = ({
   counts,
 }) => {
   const tabs = [
-    { id: 'all', label: 'All Defects', count: counts?.total },
-    { id: 'action-pending', label: 'Action Pending', count: counts?.activeTickets },
-    { id: 'under-verification', label: 'Under Verification', count: counts?.underVerification },
-    { id: 'overdue', label: 'Overdue SLA', count: counts?.overdueCount, isAlert: counts?.overdueCount > 0 },
-    { id: 'closed', label: 'Closed & Sealed', count: counts?.closedTickets },
+    { id: 'all', label: 'All NC Defects', count: counts?.total },
+    { id: 'action-pending', label: 'NC Action Pending', count: counts?.activeTickets },
+    { id: 'under-verification', label: 'NC Verification', count: counts?.underVerification },
+    { id: 'overdue', label: 'Overdue NC SLA', count: counts?.overdueCount, isAlert: counts?.overdueCount > 0 },
+    { id: 'closed', label: 'Closed NCs', count: counts?.closedTickets },
   ];
 
   const categories = [
@@ -91,7 +91,7 @@ export const ComplaintFilters = ({
             type="text"
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search CMP-XXXXX, line, supervisor, defect..."
+            placeholder="Search NC / Defect ID (e.g. CMP-...), line, supervisor..."
             className="w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-xs sm:text-sm pl-10 pr-9 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-950 placeholder:text-slate-400 font-sans transition-all"
           />
           {searchTerm && (

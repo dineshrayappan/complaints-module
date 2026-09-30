@@ -158,7 +158,7 @@ export const ComplaintDetailModal = ({
   // Handle Auditor Verification (Approve or Reject)
   const handleVerify = async (decision) => {
     if (decision === 'REJECT' && !rejectionReason.trim()) {
-      setError('A rejection reason is mandatory when returning a ticket to the line.');
+      setError('A rejection reason is mandatory when returning an NC defect to the line.');
       return;
     }
 
@@ -209,7 +209,7 @@ export const ComplaintDetailModal = ({
         <div className="flex items-center justify-between px-3.5 sm:px-6 py-3 sm:py-5 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 shrink-0 gap-2">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <span className="font-mono text-xs sm:text-base font-extrabold text-slate-900 dark:text-cyan-400 bg-slate-200/80 dark:bg-slate-950 px-2 sm:px-3 py-0.5 sm:py-1 rounded-xl border border-slate-300 dark:border-slate-800 shrink-0">
-              {complaint.complaintId}
+              NC: {complaint.complaintId}
             </span>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2">
@@ -660,7 +660,7 @@ export const ComplaintDetailModal = ({
                     className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950 hover:text-rose-700 dark:hover:text-rose-300 text-slate-700 dark:text-slate-300 font-bold text-xs border border-slate-300 dark:border-slate-700 transition-all active:scale-95 shadow-xs"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Reject & Return to Line</span>
+                    <span>Reject NC & Return to Line</span>
                   </button>
 
                   <button
@@ -670,7 +670,7 @@ export const ComplaintDetailModal = ({
                     className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/30 transition-all active:scale-95"
                   >
                     <Check className="w-4 h-4" />
-                    <span>{verifying ? 'Closing...' : 'Approve & Close Defect Ticket'}</span>
+                    <span>{verifying ? 'Closing...' : 'Approve & Close NC'}</span>
                   </button>
                 </div>
               )}
@@ -680,7 +680,7 @@ export const ComplaintDetailModal = ({
           {/* Section 4: In-Ticket Chronological Audit Timeline Log */}
           <div className="border-t border-slate-200 dark:border-slate-800 pt-5 space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center justify-between">
-              <span>Closed-Loop Audit Trail & Remark Log</span>
+              <span>Closed-Loop NC Audit Trail & Remark Log</span>
               <span className="font-mono text-slate-500">
                 {complaint.timeline?.length || 0} Events Recorded
               </span>

@@ -10,7 +10,7 @@ import {
 export const KpiMetrics = ({ metrics, onSelectTab }) => {
   const cards = [
     {
-      title: 'Active Rectifications',
+      title: 'Active NC Rectifications',
       value: metrics?.activeTickets ?? 0,
       subtext: 'In Progress & Line Assigned',
       icon: Clock,
@@ -20,7 +20,7 @@ export const KpiMetrics = ({ metrics, onSelectTab }) => {
       borderStyle: 'border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500',
     },
     {
-      title: 'Under Verification',
+      title: 'NCs Under Verification',
       value: metrics?.underVerification ?? 0,
       subtext: 'After Photo Proof Submitted',
       icon: ClipboardCheck,
@@ -31,7 +31,7 @@ export const KpiMetrics = ({ metrics, onSelectTab }) => {
       borderStyle: 'border-slate-200 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-500',
     },
     {
-      title: 'Overdue SLA Alerts',
+      title: 'Overdue NC Alerts',
       value: metrics?.overdueCount ?? 0,
       subtext: 'Exceeded 12–24h Resolution Window',
       icon: Flame,
@@ -46,7 +46,7 @@ export const KpiMetrics = ({ metrics, onSelectTab }) => {
         : 'border-slate-200 dark:border-slate-800',
     },
     {
-      title: 'Rectified & Closed',
+      title: 'Rectified & Closed NCs',
       value: metrics?.closedTickets ?? 0,
       subtext: 'Auditor Approved & Sealed',
       icon: CheckCircle2,

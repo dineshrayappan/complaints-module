@@ -128,10 +128,10 @@ export const ActionTakenModal = ({ complaint, isOpen, onClose, onSuccess }) => {
             <div>
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <h2 className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight">
-                  Defect Rectification Proof
+                  NC Rectification Proof
                 </h2>
                 <span className="font-mono text-[11px] sm:text-xs font-bold text-slate-700 dark:text-cyan-400 bg-slate-200/80 dark:bg-slate-950 px-2 py-0.5 rounded border border-slate-300 dark:border-slate-800">
-                  {complaint.complaintId}
+                  NC: {complaint.complaintId}
                 </span>
               </div>
               <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
@@ -300,7 +300,7 @@ export const ActionTakenModal = ({ complaint, isOpen, onClose, onSuccess }) => {
                 Under Verification
               </span>
               . Only an authorized Internal Auditor can approve and officially
-              close this ticket.
+              close this NC defect.
             </div>
           </div>
 
@@ -318,7 +318,7 @@ export const ActionTakenModal = ({ complaint, isOpen, onClose, onSuccess }) => {
               disabled={submitting || compressing}
               className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-md shadow-emerald-600/30 transition-all active:scale-95 disabled:opacity-50"
             >
-              {submitting ? 'Submitting Proof...' : 'Submit for Verification'}
+              {submitting ? 'Submitting NC Proof...' : 'Submit NC Proof for Verification'}
             </button>
           </div>
         </form>

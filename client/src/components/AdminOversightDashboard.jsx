@@ -201,8 +201,8 @@ export const AdminOversightDashboard = ({ onViewComplaint }) => {
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-snug">
               {bottlenecks.totalUnstartedTickets > 0
-                ? 'Tickets assigned by auditor where supervisor has NOT started rectification.'
-                : 'All assigned complaints have active progress started.'}
+                ? 'NC defects assigned by auditor where supervisor has NOT started rectification.'
+                : 'All assigned NC defects have active progress started.'}
             </p>
           </div>
 
@@ -267,7 +267,7 @@ export const AdminOversightDashboard = ({ onViewComplaint }) => {
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-snug">
               {bottlenecks.totalRejectedAwaitingRework > 0
-                ? 'Auditor rejected proof & returned ticket; supervisor must re-rectify.'
+                ? 'Auditor rejected proof & returned NC defect; supervisor must re-rectify.'
                 : 'Zero active defect rejections pending line re-work.'}
             </p>
           </div>
@@ -473,7 +473,7 @@ export const AdminOversightDashboard = ({ onViewComplaint }) => {
                   </div>
                 </div>
                 <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">
-                  {aud.ticketsLogged} logged
+                  {aud.ticketsLogged} NCs logged
                 </span>
               </div>
             ))}
@@ -550,7 +550,7 @@ export const AdminOversightDashboard = ({ onViewComplaint }) => {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by ticket ID (e.g. CMP-10492), actor name, or notes..."
+            placeholder="Search by NC ID (e.g. CMP-10492), actor name, or notes..."
             className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
           />
         </div>
