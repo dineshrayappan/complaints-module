@@ -93,11 +93,17 @@ export const LoginPage = () => {
     // Role safety verification: Ensure the authenticated account belongs to the active portal tab
     if (result.user) {
       const role = result.user.role;
+      const isUniversal =
+        result.user.isUniversal ||
+        result.user.hasAllRoles ||
+        result.user.employeeId === 'ALL-001' ||
+        result.user.email === 'all@factory.com';
       const isAdminPortal = activePortal === 'ADMIN';
       const isAuditorPortal = activePortal === 'AUDITOR';
       const isSupervisorPortal = activePortal === 'SUPERVISOR';
 
       const roleMatchesPortal =
+        isUniversal ||
         (isAdminPortal && role === 'ADMIN') ||
         (isAuditorPortal && role === 'AUDITOR') ||
         (isSupervisorPortal && (role === 'SUPERVISOR' || role === 'ACTION_PERSON'));
@@ -428,6 +434,91 @@ export const LoginPage = () => {
                 )}
               </button>
             </form>
+
+            {/* Quick Credentials Guide & Autofill */}
+            <div className="mt-5 pt-4 border-t border-slate-200/80 dark:border-slate-800/80">
+              <div className="flex items-center justify-between mb-2.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Ready-to-Use Factory Logins
+                </span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                  Click to auto-fill
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {/* Current portal primary account */}
+                <button
+                  type="button"
+                  id="btn-autofill-portal-user"
+                  onClick={() => {
+                    if (activePortal === 'ADMIN') {
+                      setIdentifier('admin@factory.com');
+                      setPassword('admin123');
+                    } else if (activePortal === 'AUDITOR') {
+                      setIdentifier('auditor@factory.com');
+                      setPassword('auditor123');
+                    } else {
+                      setIdentifier('supervisor@factory.com');
+                      setPassword('supervisor123');
+                    }
+                    setErrorMessage('');
+                  }}
+                  className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-left flex items-center justify-between group cursor-pointer"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        {activePortal === 'ADMIN'
+                          ? '👑 Admin (ADM-001)'
+                          : activePortal === 'AUDITOR'
+                          ? '🛡️ Auditor (AUD-001)'
+                          : '🔧 Supervisor (SUP-001)'}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-mono truncate">
+                      {activePortal === 'ADMIN'
+                        ? 'admin@factory.com • admin123'
+                        : activePortal === 'AUDITOR'
+                        ? 'auditor@factory.com • auditor123'
+                        : 'supervisor@factory.com • supervisor123'}
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-semibold text-indigo-600 dark:text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1">
+                    Fill ↵
+                  </span>
+                </button>
+
+                {/* Universal Master User (Auditor + Admin + Supervisor) */}
+                <button
+                  type="button"
+                  id="btn-autofill-universal-user"
+                  onClick={() => {
+                    setIdentifier('all@factory.com');
+                    setPassword('master123');
+                    setErrorMessage('');
+                  }}
+                  className="p-2.5 rounded-xl border border-indigo-200/70 dark:border-indigo-900/60 bg-indigo-50/40 dark:bg-indigo-950/20 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-all text-left flex items-center justify-between group cursor-pointer"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-indigo-950 dark:text-indigo-200">
+                        🌐 Universal (Auditor/Admin/Sup)
+                      </span>
+                      <span className="text-[9px] px-1 py-0.2 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold uppercase">
+                        Super
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-indigo-800/80 dark:text-indigo-300/70 font-mono truncate">
+                      all@factory.com • master123
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-semibold text-indigo-600 dark:text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1">
+                    Fill ↵
+                  </span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </main>

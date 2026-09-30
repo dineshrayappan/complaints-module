@@ -27,7 +27,7 @@ const getLineSupervisors = async (req, res) => {
   try {
     const mockSupervisors = mockStore
       .getUsers()
-      .filter((u) => u.role === 'ACTION_PERSON' && u.isActive)
+      .filter((u) => (u.role === 'ACTION_PERSON' || u.employeeId === 'ALL-001' || u.isUniversal) && u.isActive)
       .map(formatUser);
 
     if (isSupabaseConfigured && supabase) {
@@ -35,7 +35,7 @@ const getLineSupervisors = async (req, res) => {
         const { data, error } = await supabase
           .from('users')
           .select('id, name, employeeId, department, designation, mobileNumber, email, role, isActive')
-          .eq('role', 'ACTION_PERSON')
+          .or('role.eq.ACTION_PERSON,role.eq.SUPERVISOR,employeeId.eq.ALL-001')
           .eq('isActive', true)
           .order('department', { ascending: true })
           .order('name', { ascending: true });
@@ -61,7 +61,7 @@ const getLineSupervisors = async (req, res) => {
   } catch (error) {
     const supervisors = mockStore
       .getUsers()
-      .filter((u) => u.role === 'ACTION_PERSON' && u.isActive)
+      .filter((u) => (u.role === 'ACTION_PERSON' || u.employeeId === 'ALL-001' || u.isUniversal) && u.isActive)
       .map(formatUser);
     res.status(200).json({
       success: true,

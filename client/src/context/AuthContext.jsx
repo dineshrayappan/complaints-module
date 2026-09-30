@@ -97,9 +97,14 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
-  const isAdmin = user?.role === 'ADMIN';
-  const isAuditor = user?.role === 'AUDITOR' || user?.role === 'ADMIN';
-  const isActionPerson = user?.role === 'ACTION_PERSON' || user?.role === 'SUPERVISOR';
+  const isUniversal =
+    user?.isUniversal ||
+    user?.hasAllRoles ||
+    user?.employeeId === 'ALL-001' ||
+    user?.email === 'all@factory.com';
+  const isAdmin = user?.role === 'ADMIN' || isUniversal;
+  const isAuditor = user?.role === 'AUDITOR' || user?.role === 'ADMIN' || isUniversal;
+  const isActionPerson = user?.role === 'ACTION_PERSON' || user?.role === 'SUPERVISOR' || isUniversal;
   const isSupervisor = isActionPerson;
 
   return (
