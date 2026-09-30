@@ -133,6 +133,35 @@ const formatComplaintOutput = (complaint) => {
     }
   }
 
+  // Extract audit workflow fields if embedded in description or native
+  if (!obj.requirement && obj.description && obj.description.includes('[Audit Requirement:')) {
+    const m = obj.description.match(/\[Audit Requirement:\s*(.*?)\]/);
+    if (m) obj.requirement = m[1];
+  }
+  if (!obj.requirement) {
+    obj.requirement = 'AQL 1.5 Workmanship Standard';
+  }
+
+  if (typeof obj.capRequired === 'undefined') {
+    if (obj.description && obj.description.includes('[CAP Required:')) {
+      obj.capRequired = obj.description.includes('[CAP Required: YES]');
+    } else {
+      obj.capRequired = false;
+    }
+  }
+
+  if (!obj.verificationMethod && obj.description && obj.description.includes('[Verification:')) {
+    const m = obj.description.match(/\[Verification:\s*(.*?)\]/);
+    if (m) obj.verificationMethod = m[1];
+  }
+  if (!obj.verificationMethod) {
+    obj.verificationMethod = 'Physical Floor Re-inspection';
+  }
+
+  if (!obj.riskSeverity) {
+    obj.riskSeverity = obj.priority || 'HIGH';
+  }
+
   return obj;
 };
 
@@ -201,16 +230,42 @@ const createComplaint = async (req, res) => {
       location = 'Production Floor',
       priority = 'HIGH',
       description = '',
+      findingDescription = '',
       assignedToUserId,
       deadlineHours,
+      requirement = 'AQL 1.5 Workmanship Standard',
+      riskSeverity,
+      capRequired,
+      verificationMethod = 'Physical Floor Re-inspection',
+      dueDate,
     } = req.body;
 
     const targetSupervisorId = assignedToUserId || req.body.assignedToId;
 
-    // Validate SLA bounds: strictly between 12 and 24 hours, default gracefully to 16
+    const now = new Date();
     let hours = Number(deadlineHours);
-    if (isNaN(hours) || hours < 12 || hours > 24) {
+    if (isNaN(hours) || hours < 1) {
       hours = 16;
+    }
+
+    let deadlineTimestamp;
+    if (dueDate && !isNaN(new Date(dueDate).getTime())) {
+      deadlineTimestamp = new Date(dueDate);
+      hours = Math.max(1, Math.round((deadlineTimestamp.getTime() - now.getTime()) / (1000 * 60 * 60)));
+    } else {
+      deadlineTimestamp = new Date(now.getTime() + hours * 60 * 60 * 1000);
+    }
+
+    const effectivePriority = (riskSeverity || priority || 'HIGH').toUpperCase();
+    const effectiveRequirement = requirement || 'AQL 1.5 Workmanship Standard';
+    const isCapRequired = String(capRequired) === 'true' || capRequired === true;
+    const effectiveVerification = verificationMethod || 'Physical Floor Re-inspection';
+    const rawFinding = findingDescription || description || 'Non-Conformance Observed';
+
+    // Build enriched description to permanently preserve audit criteria
+    let enrichedDescription = rawFinding;
+    if (!enrichedDescription.includes('[Audit Requirement:')) {
+      enrichedDescription = `[Audit Requirement: ${effectiveRequirement}] [Risk: ${effectivePriority}] [CAP Required: ${isCapRequired ? 'YES' : 'NO'}] [Verification: ${effectiveVerification}]\n\n${rawFinding}`;
     }
 
     // Extract Before Photo (memory buffer, disk file, base64 or URL)
@@ -287,8 +342,6 @@ const createComplaint = async (req, res) => {
       mobileNumber: supervisor.mobileNumber || '+91 98111 22334',
     };
 
-    const now = new Date();
-    const deadlineTimestamp = new Date(now.getTime() + hours * 60 * 60 * 1000);
     const randomSuffix = Math.floor(10000 + Math.random() * 90000);
     const complaintId = `CMP-${randomSuffix}`;
 
@@ -301,20 +354,20 @@ const createComplaint = async (req, res) => {
           role: createdByData.role,
           employeeId: createdByData.employeeId,
         },
-        notes: `Defect logged in ${location}. Assigned to ${assignedToData.name} (${assignedToData.designation}) with strict ${hours}h SLA deadline.`,
+        notes: `NC logged for ${department || assignedToData.department} against standard "${effectiveRequirement}". Risk: ${effectivePriority}. CAP Required: ${isCapRequired ? 'YES' : 'NO'}. Verification: ${effectiveVerification}. Assigned to ${assignedToData.name} (${assignedToData.designation}) with ${hours}h SLA.`,
         timestamp: now.toISOString(),
       },
     ];
 
     if (isSupabaseConfigured && supabase) {
       try {
-        const insertPayload = {
+        const basePayload = {
           complaintId,
           category: category || 'Stitching Fault',
           department: department || supervisor.department || 'Sewing Line 1',
           location: location || 'Production Floor',
-          priority: priority || 'HIGH',
-          description: description || 'Audit Defect Logged',
+          priority: effectivePriority,
+          description: enrichedDescription,
           beforePhoto: beforePhotoUrl,
           afterPhoto: null,
           assignedTo: assignedToData,
@@ -330,28 +383,56 @@ const createComplaint = async (req, res) => {
           updatedAt: now.toISOString(),
         };
 
-        const { data: inserted, error: insertErr } = await supabase
-          .from('complaints')
-          .insert([insertPayload])
-          .select()
-          .single();
-
-        if (insertErr) {
-          console.error('[ComplaintController:createComplaint] Supabase insert error:', insertErr);
-          return res.status(500).json({
-            success: false,
-            message: `Database failure saving complaint: ${insertErr.message}`,
-            error: insertErr.message,
-          });
+        let inserted = null;
+        try {
+          const fullPayload = {
+            ...basePayload,
+            requirement: effectiveRequirement,
+            riskSeverity: effectivePriority,
+            capRequired: isCapRequired,
+            verificationMethod: effectiveVerification,
+          };
+          const { data, error } = await supabase.from('complaints').insert([fullPayload]).select().single();
+          if (!error && data) {
+            inserted = data;
+          } else {
+            const { data: baseData, error: baseErr } = await supabase.from('complaints').insert([basePayload]).select().single();
+            if (baseErr) throw baseErr;
+            inserted = {
+              ...baseData,
+              requirement: effectiveRequirement,
+              riskSeverity: effectivePriority,
+              capRequired: isCapRequired,
+              verificationMethod: effectiveVerification,
+            };
+          }
+        } catch (supabaseErr) {
+          console.warn('[ComplaintController:createComplaint] Supabase column fallback:', supabaseErr.message);
+          const { data: fallbackData, error: fallbackErr } = await supabase.from('complaints').insert([basePayload]).select().single();
+          if (fallbackErr) throw fallbackErr;
+          inserted = fallbackData;
         }
 
         if (inserted) {
-          // Immediately sync to mockStore so in-memory store and Supabase stay identical
-          mockStore.createComplaint({ ...inserted, _id: inserted.id, complaintId: inserted.complaintId });
+          mockStore.createComplaint({
+            ...inserted,
+            _id: inserted.id,
+            complaintId: inserted.complaintId,
+            requirement: effectiveRequirement,
+            riskSeverity: effectivePriority,
+            capRequired: isCapRequired,
+            verificationMethod: effectiveVerification,
+          });
           return res.status(201).json({
             success: true,
-            message: `Complaint ${inserted.complaintId} created and assigned successfully.`,
-            complaint: formatComplaintOutput(inserted),
+            message: `NC Defect ${inserted.complaintId} created and assigned successfully.`,
+            complaint: formatComplaintOutput({
+              ...inserted,
+              requirement: effectiveRequirement,
+              riskSeverity: effectivePriority,
+              capRequired: isCapRequired,
+              verificationMethod: effectiveVerification,
+            }),
           });
         }
       } catch (dbErr) {
@@ -364,13 +445,17 @@ const createComplaint = async (req, res) => {
       }
     }
 
-    // Resilient Fallback only when Supabase is not configured
+    // Fallback when Supabase is not configured
     const fallbackTicket = mockStore.createComplaint({
       category: category || 'Stitching Fault',
       department: department || supervisor.department || 'Sewing Line 1',
       location: location || 'Production Floor',
-      priority: priority || 'HIGH',
-      description: description || 'Audit Defect Logged',
+      priority: effectivePriority,
+      description: enrichedDescription,
+      requirement: effectiveRequirement,
+      riskSeverity: effectivePriority,
+      capRequired: isCapRequired,
+      verificationMethod: effectiveVerification,
       beforePhoto: beforePhotoUrl,
       assignedTo: assignedToData,
       createdBy: createdByData,
@@ -380,7 +465,7 @@ const createComplaint = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: `Complaint ${fallbackTicket.complaintId} created and assigned successfully (offline mode).`,
+      message: `NC Defect ${fallbackTicket.complaintId} created and assigned successfully (offline mode).`,
       complaint: formatComplaintOutput(fallbackTicket),
     });
   } catch (error) {

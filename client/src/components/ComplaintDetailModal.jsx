@@ -331,7 +331,37 @@ export const ComplaintDetailModal = ({
             </div>
           </div>
 
-          {/* Section 2: Defect Details & Personnel Assignment */}
+          {/* Section 2: NC Audit Governance & Standard Compliance */}
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs shadow-2xs">
+            <div>
+              <span className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider block">
+                Audit Requirement Standard
+              </span>
+              <span className="font-extrabold text-slate-900 dark:text-white truncate block mt-0.5">
+                {complaint.requirement || 'AQL 1.5 Workmanship Standard'}
+              </span>
+            </div>
+            <div>
+              <span className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider block">
+                CAP Status
+              </span>
+              <span className={`inline-flex items-center gap-1 font-bold mt-0.5 ${
+                complaint.capRequired ? 'text-amber-600 dark:text-amber-400' : 'text-slate-600 dark:text-slate-400'
+              }`}>
+                {complaint.capRequired ? 'Mandatory CAP (Root Cause Required)' : 'Direct Rectification'}
+              </span>
+            </div>
+            <div>
+              <span className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider block">
+                Auditor Verification Protocol
+              </span>
+              <span className="font-extrabold text-indigo-600 dark:text-cyan-400 truncate block mt-0.5">
+                {complaint.verificationMethod || 'Physical Floor Re-inspection'}
+              </span>
+            </div>
+          </div>
+
+          {/* Section 3: Defect Details & Personnel Assignment */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
             {/* Defect Description */}
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">

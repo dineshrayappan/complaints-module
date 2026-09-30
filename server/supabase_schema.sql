@@ -118,6 +118,18 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='complaints' AND column_name='timeline') THEN
         ALTER TABLE public.complaints ADD COLUMN "timeline" JSONB DEFAULT '[]'::jsonb;
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='complaints' AND column_name='requirement') THEN
+        ALTER TABLE public.complaints ADD COLUMN "requirement" TEXT DEFAULT 'AQL 1.5 Workmanship Standard';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='complaints' AND column_name='riskSeverity') THEN
+        ALTER TABLE public.complaints ADD COLUMN "riskSeverity" TEXT DEFAULT 'HIGH';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='complaints' AND column_name='capRequired') THEN
+        ALTER TABLE public.complaints ADD COLUMN "capRequired" BOOLEAN DEFAULT false;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='complaints' AND column_name='verificationMethod') THEN
+        ALTER TABLE public.complaints ADD COLUMN "verificationMethod" TEXT DEFAULT 'Physical Floor Re-inspection';
+    END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='complaints' AND column_name='createdAt') THEN
         ALTER TABLE public.complaints ADD COLUMN "createdAt" TIMESTAMPTZ DEFAULT NOW();
     END IF;

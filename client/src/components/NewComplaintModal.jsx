@@ -9,62 +9,285 @@ import {
   CheckCircle2,
   Phone,
   Building2,
-  Sliders,
   Check,
   Search,
   Users,
   Briefcase,
-  Mail,
-  ChevronDown,
-  ChevronUp,
+  ChevronRight,
+  ChevronLeft,
+  ShieldAlert,
+  ShieldCheck,
+  FileText,
+  Layers,
+  Sparkles,
+  Calendar,
+  ListChecks,
+  Sliders,
+  HelpCircle,
 } from 'lucide-react';
 import { userService, complaintService } from '../services/api';
 import { compressImage, formatFileSize } from '../utils/imageCompressor';
 
-// Export empty dummy supervisors for backwards-compatibility
+// Backward compatibility export
 export const DUMMY_SUPERVISORS = [];
+
+// Industry standard garment audit departments
+const AUDIT_DEPARTMENTS = [
+  { id: 'Sewing Line 1', name: 'Sewing Line 1', group: 'Sewing & Stitching', desc: 'Main Shirt Assembly' },
+  { id: 'Sewing Line 2', name: 'Sewing Line 2', group: 'Sewing & Stitching', desc: 'Trousers & Chinos' },
+  { id: 'Sewing Line 3', name: 'Sewing Line 3', group: 'Sewing & Stitching', desc: 'Polo & Knits Line' },
+  { id: 'Sewing Line 4', name: 'Sewing Line 4', group: 'Sewing & Stitching', desc: 'Jacket & Outerwear' },
+  { id: 'Sewing Line 5', name: 'Sewing Line 5', group: 'Sewing & Stitching', desc: 'Collar & Cuff Sub-Assembly' },
+  { id: 'Cutting Section', name: 'Cutting Department', group: 'Pre-Production', desc: 'Spreading, Auto-Cutting & Bundling' },
+  { id: 'Finishing & Pressing', name: 'Finishing & Pressing', group: 'Post-Production', desc: 'Steam Pressing & Thread Trimming' },
+  { id: 'Packing & Carton Store', name: 'Packing & Carton Store', group: 'Post-Production', desc: 'Polybag, Tagging & Barcode Scan' },
+  { id: 'Fabric Inspection Store', name: 'Fabric Store (4-Point)', group: 'Raw Materials', desc: 'Roll Inspection & Shade Matching' },
+  { id: 'Washing & Dyeing Unit', name: 'Washing & Dyeing Plant', group: 'Wet Processing', desc: 'Enzyme Wash, Silicon & Tinting' },
+  { id: 'Printing & Embroidery', name: 'Printing & Embroidery', group: 'Embellishment', desc: 'Screen Print, Heat Transfer & Stitch' },
+  { id: 'Quality Assurance (Final AQL)', name: 'QA & Final AQL Room', group: 'Audit & Compliance', desc: 'Pre-Shipment Random Sampling' },
+];
+
+// Standard garment quality audit requirements & clauses
+const AUDIT_REQUIREMENTS = [
+  {
+    id: 'AQL 1.5 Workmanship Standard',
+    title: 'AQL 1.5 Workmanship Standard',
+    standard: 'AQL Level II (Major 1.5 / Minor 4.0)',
+    desc: 'Garment appearance, sewing tolerance, and buyer visual acceptance threshold.',
+  },
+  {
+    id: 'ISO 9001:2015 Clause 8.5',
+    title: 'ISO 9001:2015 Clause 8.5',
+    standard: 'Production & Service Provision',
+    desc: 'Controlled conditions, validation of stitching processes, and traceability.',
+  },
+  {
+    id: 'ISO 9001:2015 Clause 8.7',
+    title: 'ISO 9001:2015 Clause 8.7',
+    standard: 'Control of Nonconforming Outputs',
+    desc: 'Identification, segregation, and disposition of non-conforming garment units.',
+  },
+  {
+    id: 'Buyer Technical Audit Standard',
+    title: 'Buyer Technical Audit Standard',
+    standard: 'Brand SOP & Tech Pack Tolerance',
+    desc: 'Measurement chart variance, seam allowance, and technical construction rules.',
+  },
+  {
+    id: 'Needle Policy & Metal Detection Procedure',
+    title: 'Needle Policy & Metal Detection',
+    standard: 'Safety & Metal Contamination Free',
+    desc: '9-point calibration, daily log, and broken needle retrieval record.',
+  },
+  {
+    id: 'Seam Strength & SPI Standard',
+    title: 'Seam Strength & SPI Standard',
+    standard: 'Stitches Per Inch & Seam Elasticity',
+    desc: 'Minimum 10–12 SPI compliance and cross-seam burst strength testing.',
+  },
+  {
+    id: 'Fabric 4-Point System Standard',
+    title: 'Fabric 4-Point System Standard',
+    standard: 'ASTM D5430 Visual Flaw Scoring',
+    desc: 'Yarn flaws, holes, barre, and color shading within 4-point penalty limit.',
+  },
+  {
+    id: 'Safety & Factory Floor Compliance',
+    title: 'Safety & Factory Floor Compliance',
+    standard: 'PPE, Eye Shield & Needle Guards',
+    desc: 'Machine safety guards, eye protection, clean floor aisles, and ergonomics.',
+  },
+  {
+    id: 'Custom Audit Requirement',
+    title: 'Custom Audit Requirement',
+    standard: 'Specific Contract or Buyer SOP',
+    desc: 'Custom audit clause specified manually by the internal auditor.',
+  },
+];
+
+// Defect Categories
+const DEFECT_CATEGORIES = [
+  'Stitching Fault',
+  'Fabric Flaw',
+  'Measurement / Dimension',
+  'Oil & Soil Contamination',
+  'Finishing & Pressing',
+  'Label & Trim Error',
+  'Cutting Defect',
+  'Packaging & Carton',
+];
+
+// Risk / Severity Levels
+const RISK_LEVELS = [
+  {
+    level: 'CRITICAL',
+    label: 'Critical Risk (AQL 0.0)',
+    badgeColor: 'bg-rose-600 text-white',
+    borderColor: 'border-rose-500 bg-rose-50/50 dark:bg-rose-950/30',
+    description: 'Zero tolerance defect. Poses consumer injury (metal fragment/needle), mold, or immediate buyer shipment embargo.',
+  },
+  {
+    level: 'MAJOR',
+    label: 'Major Non-Conformance (AQL 1.5)',
+    badgeColor: 'bg-amber-600 text-white',
+    borderColor: 'border-amber-500 bg-amber-50/50 dark:bg-amber-950/30',
+    description: 'Obvious functional failure, measurement out of tolerance, or noticeable flaw impacting garment wearability or sales.',
+  },
+  {
+    level: 'MINOR',
+    label: 'Minor Non-Conformance (AQL 4.0)',
+    badgeColor: 'bg-blue-600 text-white',
+    borderColor: 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/30',
+    description: 'Slight aesthetic imperfection or loose thread not impairing garment performance, durability, or marketability.',
+  },
+  {
+    level: 'OBSERVATION',
+    label: 'Audit Observation / Advisory',
+    badgeColor: 'bg-purple-600 text-white',
+    borderColor: 'border-purple-500 bg-purple-50/50 dark:bg-purple-950/30',
+    description: 'Process drift, machine parameter drift, or potential risk noted during audit that could lead to non-conformance.',
+  },
+];
+
+// Auditor Verification Methods
+const VERIFICATION_METHODS = [
+  {
+    id: 'Physical Floor Re-inspection',
+    title: 'Physical Floor Re-inspection',
+    desc: 'Auditor conducts on-site 100% floor audit at the designated workstation.',
+  },
+  {
+    id: 'High-Res Photo & Video Proof Review',
+    title: 'High-Res Photo & Video Proof Review',
+    desc: 'Digital verification of supervisor after-rectification photos and machine settings.',
+  },
+  {
+    id: 'Statistical AQL 1.5 Re-sampling',
+    title: 'Statistical AQL 1.5 Re-sampling',
+    desc: 'Auditor randomly pulls a fresh sample batch (50–125 pcs) from finished output.',
+  },
+  {
+    id: 'Seam Tension & Dimension Gauge Check',
+    title: 'Seam Tension & Dimension Gauge Check',
+    desc: 'Caliper, SPI glass, and tensile gauge physical verification of rectifications.',
+  },
+];
+
+// Sample defect proofs for 1-click test capture
+const SAMPLE_PROOFS = [
+  {
+    id: 'stitch',
+    name: 'Skipped Stitches',
+    category: 'Stitching Fault',
+    department: 'Sewing Line 1',
+    requirement: 'AQL 1.5 Workmanship Standard',
+    description: 'Machine #14: 8 skipped stitches per 10cm along collar seam line. Needle deflecting on bulky interlining.',
+    svg: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="380" viewBox="0 0 600 380"><rect width="100%" height="100%" fill="%230f172a"/><rect x="20" y="20" width="560" height="340" rx="16" fill="%231e293b" stroke="%23334155" stroke-width="2"/><text x="40" y="65" fill="%23ef4444" font-family="sans-serif" font-size="18" font-weight="bold">AUDIT PROOF: SKIPPED STITCHES</text><text x="40" y="92" fill="%2394a3b8" font-family="sans-serif" font-size="12">Sewing Line 1 • Machine %2314 • Collar Join</text><line x1="60" y1="200" x2="540" y2="200" stroke="%23ef4444" stroke-width="4" stroke-dasharray="16,10"/><circle cx="300" cy="200" r="45" fill="%23ef4444" fill-opacity="0.2" stroke="%23ef4444" stroke-width="2.5"/><text x="300" y="275" fill="%23f8fafc" font-family="monospace" font-size="13" font-weight="bold" text-anchor="middle">DEFECT ZONE: 8 SKIPPED STITCHES</text><text x="300" y="325" fill="%2364748b" font-family="sans-serif" font-size="11" text-anchor="middle">QMS AUDIT EVIDENCE CAPTURED</text></svg>`,
+  },
+  {
+    id: 'oil',
+    name: 'Needle Bar Oil Stain',
+    category: 'Oil & Soil Contamination',
+    department: 'Sewing Line 2',
+    requirement: 'Buyer Technical Audit Standard',
+    description: 'Dark lubricant drip stain on right sleeve cuff panel caused by saturated felt wick on needle bar.',
+    svg: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="380" viewBox="0 0 600 380"><rect width="100%" height="100%" fill="%230f172a"/><rect x="20" y="20" width="560" height="340" rx="16" fill="%231e293b" stroke="%23334155" stroke-width="2"/><text x="40" y="65" fill="%23f59e0b" font-family="sans-serif" font-size="18" font-weight="bold">AUDIT PROOF: NEEDLE BAR OIL DRIP</text><text x="40" y="92" fill="%2394a3b8" font-family="sans-serif" font-size="12">Sewing Line 2 • Sleeve Assembly</text><ellipse cx="300" cy="200" rx="60" ry="40" fill="%23d97706" fill-opacity="0.7"/><circle cx="300" cy="200" r="55" fill="none" stroke="%23f59e0b" stroke-width="2" stroke-dasharray="6,4"/><text x="300" y="275" fill="%23f8fafc" font-family="monospace" font-size="13" font-weight="bold" text-anchor="middle">DEFECT ZONE: LUBRICANT CONTAMINATION</text><text x="300" y="325" fill="%2364748b" font-family="sans-serif" font-size="11" text-anchor="middle">QMS AUDIT EVIDENCE CAPTURED</text></svg>`,
+  },
+  {
+    id: 'tear',
+    name: 'Needle Seam Cut',
+    category: 'Cutting Defect',
+    department: 'Cutting Section',
+    requirement: 'ISO 9001:2015 Clause 8.7',
+    description: 'Blunt needle / blade notch cut at seam allowance of armhole rib causing micro runs under stretch test.',
+    svg: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="380" viewBox="0 0 600 380"><rect width="100%" height="100%" fill="%230f172a"/><rect x="20" y="20" width="560" height="340" rx="16" fill="%231e293b" stroke="%23334155" stroke-width="2"/><text x="40" y="65" fill="%23ef4444" font-family="sans-serif" font-size="18" font-weight="bold">AUDIT PROOF: NEEDLE CUT / KNIT RUN</text><text x="40" y="92" fill="%2394a3b8" font-family="sans-serif" font-size="12">Spreading &amp; Cutting • Armhole Notch</text><path d="M 220 185 Q 300 240 380 185" fill="none" stroke="%23ef4444" stroke-width="4"/><circle cx="300" cy="215" r="40" fill="%23ef4444" fill-opacity="0.2" stroke="%23ef4444" stroke-width="2"/><text x="300" y="280" fill="%23f8fafc" font-family="monospace" font-size="13" font-weight="bold" text-anchor="middle">DEFECT ZONE: SEAM ALLOWANCE TEAR</text><text x="300" y="325" fill="%2364748b" font-family="sans-serif" font-size="11" text-anchor="middle">QMS AUDIT EVIDENCE CAPTURED</text></svg>`,
+  },
+];
+
+// Workflow Stage Definitions matching the requested flow
+const WORKFLOW_STEPS = [
+  { id: 1, label: 'Department', short: 'Dept' },
+  { id: 2, label: 'Requirement', short: 'Standard' },
+  { id: 3, label: 'Describe Finding', short: 'Finding' },
+  { id: 4, label: 'Risk / Severity', short: 'Severity' },
+  { id: 5, label: 'Responsible Person', short: 'Assignee' },
+  { id: 6, label: 'Set Due Date', short: 'Due Date' },
+  { id: 7, label: 'CAP Required', short: 'CAPA' },
+  { id: 8, label: 'Evidence', short: 'Proof' },
+  { id: 9, label: 'Verification', short: 'Verify' },
+  { id: 10, label: 'Close NC Protocol', short: 'Issue NC' },
+];
 
 export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
   const fileInputRef = useRef(null);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [viewMode, setViewMode] = useState('wizard'); // 'wizard' (step-by-step) or 'all' (complete audit sheet)
+
+  // Supervisors from server
   const [supervisors, setSupervisors] = useState([]);
   const [loadingSupervisors, setLoadingSupervisors] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  // Form State
+  // Form State corresponding to the 10 workflow stages
+  // Stage 1: Select Department & Location
+  const [department, setDepartment] = useState('Sewing Line 1');
+  const [location, setLocation] = useState('Line 1 - Machine #14 (Collar Seam)');
+
+  // Stage 2: Select Requirement
+  const [requirement, setRequirement] = useState('AQL 1.5 Workmanship Standard');
+  const [customRequirement, setCustomRequirement] = useState('');
+
+  // Stage 3: Describe Finding & Category
   const [category, setCategory] = useState('Stitching Fault');
-  const [location, setLocation] = useState('');
-  const [priority, setPriority] = useState('HIGH');
   const [description, setDescription] = useState('');
+
+  // Stage 4: Risk / Severity
+  const [priority, setPriority] = useState('HIGH');
+
+  // Stage 5: Assign Responsible Person
   const [assignedToUserId, setAssignedToUserId] = useState('');
-  // Strictly bounded 12 to 24 hours SLA slider
-  const [deadlineHours, setDeadlineHours] = useState(16);
-
-  // Contact Selection Controls
   const [contactSearch, setContactSearch] = useState('');
-  const [showContactGrid, setShowContactGrid] = useState(true);
+  const [filterDeptOnly, setFilterDeptOnly] = useState(false);
 
-  // Photo State
+  // Stage 6: Set Due Date & SLA
+  const [deadlineHours, setDeadlineHours] = useState(16);
+  const [customDueDate, setCustomDueDate] = useState('');
+  const [useCustomDate, setUseCustomDate] = useState(false);
+
+  // Stage 7: CAP Required
+  const [capRequired, setCapRequired] = useState(true);
+  const [capDirective, setCapDirective] = useState('');
+
+  // Stage 8: Evidence Photo
   const [beforeFile, setBeforeFile] = useState(null);
   const [photoBase64, setPhotoBase64] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [imageMeta, setImageMeta] = useState(null);
   const [compressing, setCompressing] = useState(false);
 
-  // Fetch Master Contact List of Line Supervisors
+  // Stage 9: Verification Method
+  const [verificationMethod, setVerificationMethod] = useState('Physical Floor Re-inspection');
+  const [verificationCriteria, setVerificationCriteria] = useState(
+    'Line supervisor must present 20 consecutive defect-free garments with verified tension balance.'
+  );
+
+  // Load supervisors on open
   useEffect(() => {
     if (isOpen) {
+      setCurrentStep(1);
+      setError(null);
       const loadSupervisors = async () => {
         setLoadingSupervisors(true);
         try {
           const res = await userService.getLineSupervisors();
           if (res.data?.success && Array.isArray(res.data.supervisors)) {
-            const serverList = res.data.supervisors;
-            setSupervisors(serverList);
-            if (serverList.length > 0) {
+            const list = res.data.supervisors;
+            setSupervisors(list);
+            if (list.length > 0) {
               setAssignedToUserId((prev) => {
-                const found = serverList.some((s) => (s._id || s.id) === prev);
-                return found ? prev : (serverList[0]._id || serverList[0].id);
+                const found = list.some((s) => (s._id || s.id) === prev);
+                return found ? prev : list[0]._id || list[0].id;
               });
             }
           }
@@ -78,9 +301,15 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  // When department changes, sync location suggestion if empty
+  const handleDepartmentChange = (deptId) => {
+    setDepartment(deptId);
+    if (!location || location.includes('Line') || location.includes('Floor')) {
+      setLocation(`${deptId} - Inspection Zone`);
+    }
+  };
 
-  // Handle Rear Camera / Photo Selection with Client Canvas Compression
+  // Quick photo capture with client-side canvas WebP compression
   const handlePhotoCapture = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -115,8 +344,50 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
     }
   };
 
-  // Target deadline calculation display
-  const targetTime = new Date(Date.now() + deadlineHours * 60 * 60 * 1000);
+  // Apply a sample defect proof preset for instant auditing
+  const applySampleProof = (sample) => {
+    setPreviewUrl(sample.svg);
+    setPhotoBase64(sample.svg);
+    setBeforeFile(null);
+    setCategory(sample.category);
+    setDepartment(sample.department);
+    setRequirement(sample.requirement);
+    if (!description.trim()) {
+      setDescription(sample.description);
+    }
+    setImageMeta({ originalSize: 32000, compressedSize: 18000 });
+  };
+
+  if (!isOpen) return null;
+
+  // Selected supervisor lookup
+  const effectiveAssignedId = assignedToUserId || supervisors[0]?._id || supervisors[0]?.id || '';
+  const selectedSupervisor = supervisors.find((s) => (s._id || s.id) === effectiveAssignedId) || supervisors[0] || null;
+
+  // Filter supervisors for contact directory
+  const filteredSupervisors = supervisors.filter((s) => {
+    if (filterDeptOnly && department) {
+      const d = (s.department || '').toLowerCase();
+      if (!d.includes(department.toLowerCase().split(' ')[0])) {
+        return false;
+      }
+    }
+    if (!contactSearch.trim()) return true;
+    const term = contactSearch.toLowerCase();
+    return (
+      s.name?.toLowerCase().includes(term) ||
+      s.employeeId?.toLowerCase().includes(term) ||
+      s.department?.toLowerCase().includes(term) ||
+      s.designation?.toLowerCase().includes(term) ||
+      s.mobileNumber?.toLowerCase().includes(term)
+    );
+  });
+
+  // Calculate SLA due date timestamp
+  const targetTime = useCustomDate && customDueDate
+    ? new Date(customDueDate)
+    : new Date(Date.now() + deadlineHours * 60 * 60 * 1000);
+
   const formattedTargetDeadline = targetTime.toLocaleString('en-US', {
     weekday: 'short',
     month: 'short',
@@ -126,54 +397,84 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
     hour12: true,
   });
 
-  const effectiveAssignedId = assignedToUserId || supervisors[0]?._id || supervisors[0]?.id || "";
-  const selectedSupervisor = supervisors.find((s) => (s._id || s.id) === effectiveAssignedId) || supervisors[0] || null;
+  // Step validation before advancing in wizard mode
+  const validateStep = (step) => {
+    setError(null);
+    if (step === 1 && !department) {
+      setError('Please select a department.');
+      return false;
+    }
+    if (step === 2 && requirement === 'Custom Audit Requirement' && !customRequirement.trim()) {
+      setError('Please enter your custom audit requirement standard.');
+      return false;
+    }
+    if (step === 3 && !description.trim()) {
+      setError('Please provide a description of the defect finding.');
+      return false;
+    }
+    if (step === 8 && !previewUrl && !beforeFile) {
+      setError('Mandatory Before Photo proof is required to document this audit defect.');
+      return false;
+    }
+    return true;
+  };
 
-  const filteredSupervisors = supervisors.filter((s) => {
-    if (!contactSearch.trim()) return true;
-    const term = contactSearch.toLowerCase();
-    return (
-      s.name?.toLowerCase().includes(term) ||
-      s.employeeId?.toLowerCase().includes(term) ||
-      s.department?.toLowerCase().includes(term) ||
-      s.designation?.toLowerCase().includes(term) ||
-      s.mobileNumber?.toLowerCase().includes(term) ||
-      s.workstation?.toLowerCase().includes(term)
-    );
-  });
+  const handleNext = () => {
+    if (validateStep(currentStep)) {
+      setCurrentStep((prev) => Math.min(10, prev + 1));
+    }
+  };
 
+  const handlePrev = () => {
+    setError(null);
+    setCurrentStep((prev) => Math.max(1, prev - 1));
+  };
+
+  // Submit NC Defect to Backend
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     setError(null);
 
-    if (!beforeFile) {
-      setError('Mandatory Before Photo proof is required to log an Audit Defect (NC).');
-      return;
-    }
-
-    if (!location.trim()) {
-      setError('Please specify the machine or workstation location.');
+    // Final checks
+    if (!previewUrl && !beforeFile) {
+      setCurrentStep(8);
+      setError('Mandatory Before Photo proof is required to document this audit defect.');
       return;
     }
 
     if (!description.trim()) {
-      setError('Please provide a detailed defect description.');
+      setCurrentStep(3);
+      setError('Please provide a description of the defect finding.');
       return;
     }
 
-    const assignedId = assignedToUserId || selectedSupervisor._id;
+    const effectiveReq = requirement === 'Custom Audit Requirement'
+      ? customRequirement.trim() || 'Custom Quality Requirement'
+      : requirement;
+
+    const assignedId = assignedToUserId || selectedSupervisor?._id || selectedSupervisor?.id;
 
     try {
       setSubmitting(true);
       const formData = new FormData();
       formData.append('category', category || 'Stitching Fault');
-      formData.append('department', selectedSupervisor?.department || 'Sewing Line 1');
-      formData.append('location', location.trim() || 'Floor 1');
+      formData.append('department', department || 'Sewing Line 1');
+      formData.append('location', location.trim() || `${department} - Production Floor`);
       formData.append('priority', priority || 'HIGH');
+      formData.append('riskSeverity', priority || 'HIGH');
       formData.append('description', description.trim());
+      formData.append('findingDescription', description.trim());
+      formData.append('requirement', effectiveReq);
+      formData.append('capRequired', capRequired ? 'true' : 'false');
+      formData.append('verificationMethod', verificationMethod);
+      formData.append('verificationCriteria', verificationCriteria);
       formData.append('assignedToUserId', assignedId);
       formData.append('assignedToId', assignedId);
-      formData.append('deadlineHours', (deadlineHours || 16).toString());
+      formData.append('deadlineHours', deadlineHours.toString());
+      if (useCustomDate && customDueDate) {
+        formData.append('dueDate', new Date(customDueDate).toISOString());
+      }
+
       if (photoBase64) {
         formData.append('beforePhotoBase64', photoBase64);
       } else if (previewUrl && previewUrl.startsWith('data:')) {
@@ -190,7 +491,7 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
     } catch (err) {
       console.error(err);
       setError(
-        err.response?.data?.message || 'Failed to submit complaint. Check all fields.'
+        err.response?.data?.message || 'Failed to submit NC Defect. Please check required fields.'
       );
     } finally {
       setSubmitting(false);
@@ -199,452 +500,953 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm overflow-y-auto">
-      <div className="relative w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col transition-colors">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-5 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 shrink-0">
-          <div className="flex items-center gap-2.5 sm:gap-3">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400 flex items-center justify-center border border-indigo-200 dark:border-indigo-800/80 shrink-0">
-              <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
+      <div className="relative w-full max-w-4xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden my-auto max-h-[94vh] flex flex-col transition-colors">
+        
+        {/* MODAL HEADER */}
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/25 shrink-0">
+              <ShieldAlert className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight">
-                Log Audit Defect (NC) & Assign Line
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight">
+                  Create NC (Non-Conformance Defect)
+                </h2>
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                  <Sparkles className="w-3 h-3 text-indigo-500" />
+                  Auditor Flow
+                </span>
+              </div>
               <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-                Non-Conformance (NC) Before Photo Proof • 12–24h SLA Countdown
+                10-Stage Closed-Loop Garment Audit Rectification Workflow
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+
+          <div className="flex items-center gap-2">
+            {/* Toggle view mode between step wizard and full audit sheet */}
+            <button
+              type="button"
+              onClick={() => setViewMode(viewMode === 'wizard' ? 'all' : 'wizard')}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              title="Switch between Guided Step Wizard and All-in-One Audit Sheet"
+            >
+              <Sliders className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
+              <span>{viewMode === 'wizard' ? 'Full Audit Sheet' : 'Step Wizard'}</span>
+            </button>
+
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
-        {/* Form Body - Smooth Scrollable on Mobile Viewport */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-3.5 sm:space-y-4 text-xs sm:text-sm overflow-y-auto flex-1">
+        {/* WORKFLOW STEPPER BAR (Horizontal Scrollable Tabs showing the user-requested flow) */}
+        <div className="bg-slate-100/80 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800 px-3 sm:px-6 py-2 overflow-x-auto no-scrollbar shrink-0">
+          <div className="flex items-center gap-1 min-w-max">
+            {WORKFLOW_STEPS.map((step, idx) => {
+              const isActive = currentStep === step.id;
+              const isPast = currentStep > step.id;
+              return (
+                <React.Fragment key={step.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (validateStep(currentStep) || step.id < currentStep) {
+                        setCurrentStep(step.id);
+                      }
+                    }}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : isPast
+                        ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 border border-slate-200 dark:border-slate-700'
+                        : 'text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-800/50'
+                    }`}
+                  >
+                    <span
+                      className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-black ${
+                        isActive
+                          ? 'bg-white/25 text-white'
+                          : isPast
+                          ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-600'
+                          : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      {isPast ? <Check className="w-2.5 h-2.5" /> : step.id}
+                    </span>
+                    <span className="hidden md:inline">{step.label}</span>
+                    <span className="md:hidden">{step.short}</span>
+                  </button>
+                  {idx < WORKFLOW_STEPS.length - 1 && (
+                    <ChevronRight className="w-3 h-3 text-slate-300 dark:text-slate-700 shrink-0" />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* MODAL BODY */}
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-6 text-xs sm:text-sm">
           {error && (
-            <div className="p-3 sm:p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-200 flex items-center gap-2 text-xs">
+            <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-200 flex items-center gap-2 text-xs font-medium animate-fadeIn">
               <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
               <span>{error}</span>
             </div>
           )}
 
-          {/* 1. Mandatory Before Photo Camera Capture */}
-          <div>
-            <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1.5 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <Camera className="w-4 h-4 text-indigo-600 dark:text-cyan-400" />
-                Defect Proof: Before Photo (Mandatory NC Proof)
-              </span>
-              {imageMeta && (
-                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono font-semibold">
-                  Compressed: {formatFileSize(imageMeta.compressedSize)} (Saved{' '}
-                  {Math.round(
-                    (1 - imageMeta.compressedSize / imageMeta.originalSize) * 100
-                  )}
-                  %)
+          {/* ---------------- STAGE 1: SELECT DEPARTMENT ---------------- */}
+          {(viewMode === 'all' || currentStep === 1) && (
+            <section className="space-y-3 p-4 sm:p-5 rounded-2xl bg-slate-50/70 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
+                    1
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">
+                      Select Department
+                    </h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Production zone or processing section where non-conformance was identified.
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                  {department}
                 </span>
+              </div>
+
+              {/* Department Cards Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 pt-2">
+                {AUDIT_DEPARTMENTS.map((dept) => {
+                  const isSelected = department === dept.id;
+                  return (
+                    <button
+                      key={dept.id}
+                      type="button"
+                      onClick={() => handleDepartmentChange(dept.id)}
+                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        isSelected
+                          ? 'border-indigo-600 bg-indigo-50/80 dark:bg-indigo-950/60 text-indigo-950 dark:text-indigo-100 ring-2 ring-indigo-500/20 shadow-xs'
+                          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">
+                          {dept.group}
+                        </span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />}
+                      </div>
+                      <div className="font-bold text-xs truncate">{dept.name}</div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                        {dept.desc}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Workstation / Specific Machine Location */}
+              <div className="pt-2">
+                <label className="block font-bold text-slate-700 dark:text-slate-300 text-xs mb-1">
+                  Specific Machine / Workstation Location
+                </label>
+                <div className="relative">
+                  <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="e.g. Sewing Line 1 - Machine #14 (Collar Seam) or Table 3"
+                    className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* ---------------- STAGE 2: SELECT REQUIREMENT ---------------- */}
+          {(viewMode === 'all' || currentStep === 2) && (
+            <section className="space-y-3 p-4 sm:p-5 rounded-2xl bg-slate-50/70 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
+                    2
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">
+                      Select Requirement
+                    </h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Standard quality clause, buyer SOP, or ISO compliance requirement breached.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-2">
+                {AUDIT_REQUIREMENTS.map((req) => {
+                  const isSelected = requirement === req.id;
+                  return (
+                    <div
+                      key={req.id}
+                      onClick={() => setRequirement(req.id)}
+                      className={`p-3 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
+                        isSelected
+                          ? 'border-indigo-600 bg-indigo-50/90 dark:bg-indigo-950/70 text-indigo-950 dark:text-indigo-100 ring-2 ring-indigo-500/20 shadow-xs'
+                          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] font-mono font-bold text-indigo-600 dark:text-cyan-400">
+                            {req.standard}
+                          </span>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />}
+                        </div>
+                        <div className="font-bold text-xs text-slate-900 dark:text-white">
+                          {req.title}
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                          {req.desc}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {requirement === 'Custom Audit Requirement' && (
+                <div className="pt-2 animate-fadeIn">
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 text-xs mb-1">
+                    Custom Audit Standard / Contract Clause Details
+                  </label>
+                  <input
+                    type="text"
+                    value={customRequirement}
+                    onChange={(e) => setCustomRequirement(e.target.value)}
+                    placeholder="e.g. Buyer Specific Tolerance Manual Rev 4.2 - Seam Integrity Sec 3"
+                    className="w-full p-2.5 text-xs rounded-xl border border-indigo-300 dark:border-indigo-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
               )}
-            </label>
+            </section>
+          )}
 
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept="image/*"
-              capture="environment"
-              onChange={handlePhotoCapture}
-              onClick={(e) => {
-                e.target.value = null;
-              }}
-              className="hidden"
-              id="camera-before-photo"
-            />
+          {/* ---------------- STAGE 3: DESCRIBE FINDING ---------------- */}
+          {(viewMode === 'all' || currentStep === 3) && (
+            <section className="space-y-3 p-4 sm:p-5 rounded-2xl bg-slate-50/70 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
+                  3
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">
+                    Describe Finding
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Defect category and objective description of observed non-conformance.
+                  </p>
+                </div>
+              </div>
 
-            {previewUrl ? (
-              <div className="relative rounded-2xl overflow-hidden border border-emerald-300 dark:border-emerald-600/80 bg-slate-100 dark:bg-slate-950 group shadow-xs">
-                <img
-                  src={previewUrl}
-                  alt="Defect Preview"
-                  className="w-full h-48 sm:h-52 object-cover"
+              {/* Defect Category Pills */}
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 text-xs mb-1.5">
+                  Defect Category / Classification
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {DEFECT_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setCategory(cat)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        category === cat
+                          ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+                          : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Text Description with Quick Tags */}
+              <div className="pt-2">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="font-bold text-slate-700 dark:text-slate-300 text-xs">
+                    Objective Audit Finding Details & Rectification Directives
+                  </label>
+                  <span className="text-[10px] text-slate-400">Mandatory audit observation</span>
+                </div>
+                <textarea
+                  rows="3"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="e.g. Machine #14 observed with 8 skipped stitches per 10cm along the collar joint seam. Thread tension disc is clogged with lint. Immediate re-stitching and looper recalibration required."
+                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 text-xs leading-relaxed font-sans"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end justify-between p-3.5">
-                  <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-600 text-white shadow">
-                    Photo Captured & Compressed
+
+                {/* Quick Observation Preset Tags */}
+                <div className="flex items-center gap-1.5 mt-2 flex-wrap text-[11px]">
+                  <span className="text-slate-400 text-[10px] font-semibold">Quick insert:</span>
+                  {[
+                    'Skipped stitches on collar seam',
+                    'Lubricant drip stain on cuff',
+                    'SPI below Tech Pack spec',
+                    'Mismatched plaid grain line',
+                  ].map((phrase) => (
+                    <button
+                      key={phrase}
+                      type="button"
+                      onClick={() =>
+                        setDescription((prev) => (prev ? `${prev} ${phrase}.` : `${phrase}.`))
+                      }
+                      className="px-2 py-0.5 rounded-md bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-indigo-100 dark:hover:bg-indigo-950 hover:text-indigo-600 transition-colors text-[10px]"
+                    >
+                      + {phrase}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* ---------------- STAGE 4: RISK / SEVERITY ---------------- */}
+          {(viewMode === 'all' || currentStep === 4) && (
+            <section className="space-y-3 p-4 sm:p-5 rounded-2xl bg-slate-50/70 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
+                  4
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">
+                    Risk / Severity Level
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Determine consumer risk level, AQL threshold, and urgency of rectification.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
+                {RISK_LEVELS.map((risk) => {
+                  const isSelected = priority === risk.level;
+                  return (
+                    <div
+                      key={risk.level}
+                      onClick={() => setPriority(risk.level)}
+                      className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                        isSelected
+                          ? `${risk.borderColor} ring-2 ring-indigo-500/30 shadow-xs`
+                          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${risk.badgeColor}`}>
+                          {risk.label}
+                        </span>
+                        {isSelected && <CheckCircle2 className="w-4 h-4 text-indigo-600 dark:text-cyan-400" />}
+                      </div>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                        {risk.description}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* ---------------- STAGE 5: ASSIGN RESPONSIBLE PERSON ---------------- */}
+          {(viewMode === 'all' || currentStep === 5) && (
+            <section className="space-y-3 p-4 sm:p-5 rounded-2xl bg-slate-50/70 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
+                    5
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">
+                      Assign Responsible Person
+                    </h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Line supervisor or department in-charge held accountable for root cause and rectification.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Selected Assignee Banner */}
+              {selectedSupervisor && (
+                <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm">
+                      {selectedSupervisor.name?.charAt(0) || 'S'}
+                    </div>
+                    <div>
+                      <div className="font-extrabold text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
+                        <span>{selectedSupervisor.name}</span>
+                        <span className="font-mono text-[10px] text-indigo-700 dark:text-indigo-300">
+                          ({selectedSupervisor.employeeId})
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                        {selectedSupervisor.department} • {selectedSupervisor.designation} • {selectedSupervisor.mobileNumber}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                    Accountable In-Charge
                   </span>
+                </div>
+              )}
+
+              {/* Supervisor Directory Search & List */}
+              <div className="pt-1 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                    <input
+                      type="text"
+                      value={contactSearch}
+                      onChange={(e) => setContactSearch(e.target.value)}
+                      placeholder="Search supervisor by name, employee ID, line, or mobile..."
+                      className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="px-3 py-1.5 rounded-lg bg-white/90 dark:bg-slate-900/90 text-slate-800 dark:text-slate-200 text-xs font-semibold hover:bg-white dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-1.5"
+                    onClick={() => setFilterDeptOnly(!filterDeptOnly)}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition-colors cursor-pointer whitespace-nowrap ${
+                      filterDeptOnly
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                    }`}
                   >
-                    <Camera className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
-                    Retake
+                    {filterDeptOnly ? `Only ${department}` : 'All Lines'}
                   </button>
                 </div>
-              </div>
-            ) : (
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full h-36 sm:h-40 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-blue-500 rounded-2xl bg-slate-50 dark:bg-slate-950/60 flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-slate-100 dark:hover:bg-slate-900/50 group"
-              >
-                <div className="w-11 h-11 rounded-full bg-white dark:bg-slate-800 group-hover:bg-indigo-50 dark:group-hover:bg-blue-600/20 flex items-center justify-center mb-1.5 transition-colors border border-slate-200 dark:border-slate-700 shadow-xs">
-                  <Camera className="w-5 h-5 text-indigo-600 dark:text-blue-400" />
-                </div>
-                <span className="font-bold text-slate-800 dark:text-slate-200 text-xs sm:text-sm">
-                  {compressing ? 'Compressing WebP Photo...' : 'Tap to Open Camera / Upload Photo'}
-                </span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-mono">
-                  Triggers Rear Camera on Mobile • Canvas WebP &lt; 400KB
-                </span>
-              </div>
-            )}
-          </div>
 
-          {/* 2. Category & Priority */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                NC Category / Defect Type
-              </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-indigo-500 cursor-pointer font-sans"
-              >
-                <option value="Stitching Fault">Stitching Fault (Skipped, Puckering, Open Seam)</option>
-                <option value="Fabric Defect">Fabric Defect (Needle cut, Slub, Hole)</option>
-                <option value="Oil / Stain">Oil / Stain (Lubricant drip, Dirt mark)</option>
-                <option value="Measurement / Fit">Measurement / Fit (Out of tolerance)</option>
-                <option value="Trims / Accessories">Trims / Accessories (Zipper, Snap button)</option>
-                <option value="Finishing / Pressing">Finishing / Pressing (Iron shine, Wrinkle)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                NC Severity / SLA Priority
-              </label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-indigo-500 cursor-pointer font-sans"
-              >
-                <option value="CRITICAL">🔥 CRITICAL (Shipment Risk / Halt Line)</option>
-                <option value="HIGH">⚠️ HIGH (AQL Failure Risk)</option>
-                <option value="MEDIUM">🔷 MEDIUM (Standard Rework)</option>
-                <option value="LOW">◽ LOW (Minor Cosmetic Correction)</option>
-              </select>
-            </div>
-          </div>
-
-          {/* 3. Machine / Location */}
-          <div>
-            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Machine Location & Station
-            </label>
-            <div className="relative">
-              <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="e.g. Machine #14 - 4-Thread Overlock, Table #2"
-                className="w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-indigo-500 font-sans"
-              />
-            </div>
-          </div>
-
-          {/* 4. Pre-configured Master Contact List for Line In-Charge (10 Factory Contacts) */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Users className="w-4 h-4 text-indigo-600 dark:text-cyan-400" />
-                <span>Assign Line In-Charge (10 Factory Contacts)</span>
-              </label>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-cyan-300 font-semibold border border-indigo-200 dark:border-indigo-800">
-                  {supervisors.length} Contacts
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setShowContactGrid((prev) => !prev)}
-                  className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 dark:text-cyan-400 dark:hover:text-cyan-300 flex items-center gap-1 cursor-pointer transition-colors"
-                >
-                  {showContactGrid ? (
-                    <>
-                      <span>Compact Select</span>
-                      <ChevronUp className="w-3.5 h-3.5" />
-                    </>
-                  ) : (
-                    <>
-                      <span>Browse 10 Cards</span>
-                      <ChevronDown className="w-3.5 h-3.5" />
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Quick Search across the 10 contacts */}
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={contactSearch}
-                onChange={(e) => setContactSearch(e.target.value)}
-                placeholder="Search by name, employee ID, line, or department (e.g. Arif, Line 3, SUP-105)..."
-                className="w-full pl-8.5 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 font-sans"
-              />
-              {contactSearch && (
-                <button
-                  type="button"
-                  onClick={() => setContactSearch('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-
-            {/* Visual Contact Cards Grid View */}
-            {showContactGrid ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1 no-scrollbar border border-slate-200 dark:border-slate-800/80 rounded-2xl p-2 bg-slate-50/60 dark:bg-slate-950/60">
-                {filteredSupervisors.length > 0 ? (
-                  filteredSupervisors.map((s) => {
-                    const isSelected = s._id === effectiveAssignedId;
-                    const initials = s.name
-                      ? s.name
-                          .split(' ')
-                          .map((n) => n[0])
-                          .slice(0, 2)
-                          .join('')
-                          .toUpperCase()
-                      : 'AP';
-
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                  {filteredSupervisors.map((s) => {
+                    const isSelected = (s._id || s.id) === effectiveAssignedId;
                     return (
-                      <button
-                        key={s._id}
-                        type="button"
-                        onClick={() => {
-                          setAssignedToUserId(s._id);
-                          if (s.department && !location) {
-                            setLocation(`${s.department} Workstation`);
-                          }
-                        }}
-                        className={`text-left p-2.5 rounded-xl border transition-all cursor-pointer flex items-start gap-2.5 relative group ${
+                      <div
+                        key={s._id || s.employeeId}
+                        onClick={() => setAssignedToUserId(s._id || s.id)}
+                        className={`p-2.5 rounded-xl border cursor-pointer transition-all flex items-center justify-between text-xs ${
                           isSelected
-                            ? 'bg-indigo-50/90 dark:bg-indigo-950/70 border-indigo-500 dark:border-indigo-400 ring-2 ring-indigo-500/30 shadow-xs'
-                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-xs'
+                            ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/70 font-semibold'
+                            : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300'
                         }`}
                       >
-                        {/* Avatar */}
-                        <div
-                          className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white text-xs shrink-0 shadow-xs ${
-                            s.avatarColor || 'bg-indigo-600'
-                          }`}
-                        >
-                          {initials}
-                        </div>
-
-                        {/* Details */}
-                        <div className="flex-1 min-w-0 pr-4">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-xs text-slate-900 dark:text-white truncate">
-                              {s.name}
-                            </span>
-                            <span className="font-mono text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0">
-                              {s.employeeId}
-                            </span>
+                        <div className="min-w-0 pr-2">
+                          <div className="font-bold text-slate-900 dark:text-white truncate">
+                            {s.name} <span className="font-mono text-[10px] text-slate-400">({s.employeeId})</span>
                           </div>
-
-                          <div className="text-[11px] font-semibold text-indigo-600 dark:text-cyan-400 truncate">
-                            {s.department}
-                          </div>
-
                           <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                            {s.designation}
-                          </div>
-
-                          <div className="text-[10px] font-mono text-slate-600 dark:text-slate-400 flex items-center gap-1 mt-0.5">
-                            <Phone className="w-2.5 h-2.5 text-slate-400 shrink-0" />
-                            <span>{s.mobileNumber}</span>
+                            {s.department} • {s.designation}
                           </div>
                         </div>
-
-                        {/* Selected Checkmark Indicator */}
-                        {isSelected && (
-                          <div className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-xs">
-                            <Check className="w-3 h-3 stroke-[3]" />
-                          </div>
-                        )}
-                      </button>
+                        <div className="shrink-0 flex items-center gap-1.5">
+                          <span className="font-mono text-[10px] text-slate-400">{s.mobileNumber}</span>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />}
+                        </div>
+                      </div>
                     );
-                  })
-                ) : (
-                  <div className="col-span-full py-4 text-center text-xs text-slate-500">
-                    No contacts matching "{contactSearch}"
+                  })}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* ---------------- STAGE 6: SET DUE DATE ---------------- */}
+          {(viewMode === 'all' || currentStep === 6) && (
+            <section className="space-y-3 p-4 sm:p-5 rounded-2xl bg-slate-50/70 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
+                  6
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">
+                    Set Due Date & SLA
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Resolution timeline within which supervisor must rectify defect and submit photo proof.
+                  </p>
+                </div>
+              </div>
+
+              {/* Due Date Indicator Banner */}
+              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                  <div>
+                    <div className="font-extrabold text-amber-900 dark:text-amber-200 text-xs">
+                      Target Due Date: {formattedTargetDeadline}
+                    </div>
+                    <div className="text-[10px] text-amber-700 dark:text-amber-300">
+                      Countdown clock activates immediately upon issuance. Overdue penalty triggers at expiry.
+                    </div>
+                  </div>
+                </div>
+                <span className="font-mono font-bold text-xs px-2.5 py-1 rounded bg-amber-200/80 dark:bg-amber-900 text-amber-900 dark:text-amber-100">
+                  {deadlineHours}h SLA
+                </span>
+              </div>
+
+              {/* Quick SLA Presets */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                {[
+                  { hours: 12, label: '12 Hours', desc: 'Urgent Same-Day Line Fix' },
+                  { hours: 16, label: '16 Hours (Standard)', desc: 'Next Shift Handoff' },
+                  { hours: 24, label: '24 Hours', desc: 'Full Production Cycle' },
+                  { hours: 48, label: '48 Hours', desc: 'Fabric / Trim Rework' },
+                ].map((preset) => (
+                  <button
+                    key={preset.hours}
+                    type="button"
+                    onClick={() => {
+                      setDeadlineHours(preset.hours);
+                      setUseCustomDate(false);
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      !useCustomDate && deadlineHours === preset.hours
+                        ? 'border-amber-500 bg-amber-50/80 dark:bg-amber-950/60 ring-2 ring-amber-500/20 font-bold'
+                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <div className="text-xs font-extrabold">{preset.label}</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">{preset.desc}</div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Custom Date / Time Toggle */}
+              <div className="pt-2">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={useCustomDate}
+                    onChange={(e) => setUseCustomDate(e.target.checked)}
+                    className="rounded text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span>Set Custom Calendar Due Date & Time</span>
+                </label>
+
+                {useCustomDate && (
+                  <div className="mt-2 animate-fadeIn">
+                    <input
+                      type="datetime-local"
+                      value={customDueDate}
+                      onChange={(e) => setCustomDueDate(e.target.value)}
+                      className="p-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                    />
                   </div>
                 )}
               </div>
-            ) : (
-              /* Dropdown Select Option */
-              <select
-                value={effectiveAssignedId}
-                onChange={(e) => setAssignedToUserId(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-indigo-500 cursor-pointer font-sans"
-              >
-                {supervisors.map((s) => (
-                  <option key={s._id} value={s._id}>
-                    {s.name} ({s.employeeId}) — {s.department} [{s.designation}] • 📞{' '}
-                    {s.mobileNumber}
-                  </option>
-                ))}
-              </select>
-            )}
+            </section>
+          )}
 
-            {/* Comprehensive Active In-Charge Profile Card */}
-            {selectedSupervisor && (
-              <div className="p-3 rounded-2xl bg-gradient-to-r from-indigo-50/70 to-blue-50/50 dark:from-indigo-950/40 dark:to-slate-900 border border-indigo-200/80 dark:border-indigo-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2.5">
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center font-extrabold text-white text-sm shrink-0 shadow-sm ${
-                      selectedSupervisor.avatarColor || 'bg-indigo-600'
-                    }`}
-                  >
-                    {selectedSupervisor.name
-                      ? selectedSupervisor.name
-                          .split(' ')
-                          .map((n) => n[0])
-                          .slice(0, 2)
-                          .join('')
-                          .toUpperCase()
-                      : 'AP'}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-extrabold text-slate-900 dark:text-white">
-                        {selectedSupervisor.name}
-                      </span>
-                      <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-cyan-300">
-                        {selectedSupervisor.employeeId}
-                      </span>
-                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" />
-                        Selected for SLA
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">
-                      <span className="font-semibold text-indigo-700 dark:text-cyan-400">
-                        {selectedSupervisor.department}
-                      </span>{' '}
-                      • {selectedSupervisor.designation}
-                      {selectedSupervisor.workstation && (
-                        <span className="text-slate-500 dark:text-slate-400 font-normal">
-                          {' '}
-                          [{selectedSupervisor.workstation}]
-                        </span>
-                      )}
-                    </div>
-                    {selectedSupervisor.shift && (
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
-                        Shift: {selectedSupervisor.shift}
-                      </div>
-                    )}
-                  </div>
+          {/* ---------------- STAGE 7: CAP REQUIRED ---------------- */}
+          {(viewMode === 'all' || currentStep === 7) && (
+            <section className="space-y-3 p-4 sm:p-5 rounded-2xl bg-slate-50/70 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
+                  7
                 </div>
-
-                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                  <a
-                    href={`tel:${selectedSupervisor.mobileNumber}`}
-                    className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-mono text-[11px] font-bold flex items-center gap-1 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-xs"
-                    title="Direct Phone Call"
-                  >
-                    <Phone className="w-3 h-3 text-emerald-600" />
-                    <span>{selectedSupervisor.mobileNumber}</span>
-                  </a>
-                  {selectedSupervisor.email && (
-                    <a
-                      href={`mailto:${selectedSupervisor.email}`}
-                      className="p-1.5 rounded-xl bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:text-slate-800 dark:hover:text-white transition-colors"
-                      title={selectedSupervisor.email}
-                    >
-                      <Mail className="w-3.5 h-3.5" />
-                    </a>
-                  )}
+                <div>
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">
+                    CAP (Corrective & Preventive Action) Required
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Mandate whether supervisor must submit formal root cause analysis to avoid recurrence.
+                  </p>
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* 5. Strictly Bounded 12–24h Resolution SLA Slider */}
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-amber-500" />
-                Strict Closed-Loop NC Resolution SLA (12–24 Hours)
-              </span>
-              <span className="font-mono font-extrabold text-sm px-2.5 py-0.5 rounded-lg bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800">
-                {deadlineHours} Hours SLA
-              </span>
+              {/* Two Option Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <div
+                  onClick={() => setCapRequired(true)}
+                  className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                    capRequired
+                      ? 'border-indigo-600 bg-indigo-50/80 dark:bg-indigo-950/60 ring-2 ring-indigo-500/20'
+                      : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <ShieldAlert className="w-4 h-4 text-indigo-600 dark:text-cyan-400" />
+                      <span className="font-extrabold text-xs text-slate-900 dark:text-white">
+                        YES — Mandatory CAP Required
+                      </span>
+                    </div>
+                    {capRequired && <CheckCircle2 className="w-4 h-4 text-indigo-600 dark:text-cyan-400" />}
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Supervisor must submit 5-Why Root Cause Analysis and preventive measures across the batch before closure is granted.
+                  </p>
+                </div>
+
+                <div
+                  onClick={() => setCapRequired(false)}
+                  className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                    !capRequired
+                      ? 'border-slate-800 bg-slate-100 dark:border-slate-600 dark:bg-slate-800/80 ring-2 ring-slate-500/20'
+                      : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-emerald-600" />
+                      <span className="font-extrabold text-xs text-slate-900 dark:text-white">
+                        NO — Direct Rectification Only
+                      </span>
+                    </div>
+                    {!capRequired && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                    One-time rework or spot cleaning sufficient. Formal root cause documentation is not required for closure.
+                  </p>
+                </div>
+              </div>
+
+              {capRequired && (
+                <div className="pt-2 animate-fadeIn">
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 text-xs mb-1">
+                    Auditor CAP Directives / Root Cause Guidance for Line In-Charge (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={capDirective}
+                    onChange={(e) => setCapDirective(e.target.value)}
+                    placeholder="e.g. Inspect needle bar timing, retrain collar stitcher, check interlining thickness."
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* ---------------- STAGE 8: EVIDENCE ---------------- */}
+          {(viewMode === 'all' || currentStep === 8) && (
+            <section className="space-y-3 p-4 sm:p-5 rounded-2xl bg-slate-50/70 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
+                    8
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">
+                      Evidence (Mandatory Before Photo Proof)
+                    </h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      High-resolution visual evidence of non-conformance before rectification begins.
+                    </p>
+                  </div>
+                </div>
+
+                {imageMeta && (
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-semibold">
+                    Compressed: {formatFileSize(imageMeta.compressedSize)}
+                  </span>
+                )}
+              </div>
+
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                capture="environment"
+                onChange={handlePhotoCapture}
+                className="hidden"
+                id="camera-before-photo"
+              />
+
+              {previewUrl ? (
+                <div className="relative rounded-2xl overflow-hidden border border-emerald-300 dark:border-emerald-600 bg-slate-900 shadow-md">
+                  <img
+                    src={previewUrl}
+                    alt="Defect Evidence"
+                    className="w-full h-56 sm:h-64 object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end justify-between p-3.5">
+                    <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-600 text-white shadow">
+                      Audit Evidence Captured
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-3 py-1.5 rounded-lg bg-white/90 dark:bg-slate-900/90 text-slate-800 dark:text-slate-200 text-xs font-semibold hover:bg-white border border-slate-300 shadow-sm flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
+                      Retake Photo
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full h-44 sm:h-48 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 rounded-2xl bg-white dark:bg-slate-900 flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-slate-800/40 group"
+                >
+                  <div className="w-12 h-12 rounded-full bg-indigo-50 dark:bg-indigo-950/80 group-hover:scale-105 flex items-center justify-center mb-2 transition-transform border border-indigo-200 dark:border-indigo-800">
+                    <Camera className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <span className="font-bold text-slate-800 dark:text-slate-200 text-xs sm:text-sm">
+                    {compressing ? 'Compressing WebP Photo...' : 'Tap to Open Camera / Upload Evidence Photo'}
+                  </span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-mono">
+                    Direct Rear Camera on Mobile • Auto-Compress WebP
+                  </span>
+                </div>
+              )}
+
+              {/* 1-Click Sample Defect Proofs for Fast Auditing */}
+              <div className="pt-2">
+                <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 flex items-center justify-between">
+                  <span>Fast Audit Test Samples (1-Click Defect Proof):</span>
+                  <span className="font-mono text-[10px]">Desktop / Testing Preset</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {SAMPLE_PROOFS.map((sample) => (
+                    <button
+                      key={sample.id}
+                      type="button"
+                      onClick={() => applySampleProof(sample)}
+                      className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-400 text-left transition-all cursor-pointer flex items-center gap-2.5"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center shrink-0 text-xs font-bold font-mono">
+                        SVG
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                          {sample.name}
+                        </div>
+                        <div className="text-[10px] text-slate-400 truncate">
+                          {sample.category}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* ---------------- STAGE 9: VERIFICATION ---------------- */}
+          {(viewMode === 'all' || currentStep === 9) && (
+            <section className="space-y-3 p-4 sm:p-5 rounded-2xl bg-slate-50/70 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
+                  9
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">
+                    Auditor Verification Protocol
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Define how you (the Auditor) will inspect and verify rectification before final closure.
+                  </p>
+                </div>
+              </div>
+
+              {/* Verification Method Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
+                {VERIFICATION_METHODS.map((method) => {
+                  const isSelected = verificationMethod === method.id;
+                  return (
+                    <div
+                      key={method.id}
+                      onClick={() => setVerificationMethod(method.id)}
+                      className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                        isSelected
+                          ? 'border-indigo-600 bg-indigo-50/80 dark:bg-indigo-950/60 ring-2 ring-indigo-500/20'
+                          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-bold text-xs text-slate-900 dark:text-white">
+                          {method.title}
+                        </span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />}
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                        {method.desc}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Auditor Sign-off Criteria / Verification Notes */}
+              <div className="pt-2">
+                <label className="block font-bold text-slate-700 dark:text-slate-300 text-xs mb-1">
+                  Auditor Verification Sign-off Criteria
+                </label>
+                <input
+                  type="text"
+                  value={verificationCriteria}
+                  onChange={(e) => setVerificationCriteria(e.target.value)}
+                  placeholder="e.g. Line supervisor must present 20 consecutive defect-free garments with verified tension balance."
+                  className="w-full p-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </section>
+          )}
+
+          {/* ---------------- STAGE 10: CLOSE NC PROTOCOL ---------------- */}
+          {(viewMode === 'all' || currentStep === 10) && (
+            <section className="space-y-4 p-4 sm:p-5 rounded-2xl bg-slate-50/70 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-emerald-600 to-teal-600 text-white flex items-center justify-center font-bold text-xs">
+                  10
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">
+                    Close NC Protocol & Review Summary
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Review all 10 stages of the Non-Conformance defect ticket prior to issuing.
+                  </p>
+                </div>
+              </div>
+
+              {/* Comprehensive NC Summary Review Card */}
+              <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-xs text-indigo-600 dark:text-cyan-400 bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 rounded">
+                      NC: NEW DEFECT
+                    </span>
+                    <span className="font-bold text-xs text-slate-900 dark:text-white">
+                      {department}
+                    </span>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                    priority === 'CRITICAL' ? 'bg-rose-600 text-white' : priority === 'MAJOR' ? 'bg-amber-600 text-white' : 'bg-blue-600 text-white'
+                  }`}>
+                    {priority}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Requirement Standard
+                    </span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      {requirement === 'Custom Audit Requirement' ? customRequirement || requirement : requirement}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Assigned Line In-Charge
+                    </span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      {selectedSupervisor ? `${selectedSupervisor.name} (${selectedSupervisor.employeeId})` : 'Unassigned'}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Target SLA Due Date
+                    </span>
+                    <span className="font-semibold text-amber-700 dark:text-amber-400">
+                      {formattedTargetDeadline} ({deadlineHours}h)
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      CAP & Verification Method
+                    </span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      {capRequired ? 'CAP Mandatory' : 'Direct Rework'} • {verificationMethod}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Finding Observation
+                  </span>
+                  <p className="text-xs text-slate-700 dark:text-slate-300 mt-0.5 leading-relaxed">
+                    {description || 'No defect description entered.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Strict Auditor Closure Notice */}
+              <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/80 flex items-start gap-3 text-xs text-slate-700 dark:text-slate-300">
+                <ShieldCheck className="w-5 h-5 text-indigo-600 dark:text-cyan-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <div className="font-extrabold text-slate-900 dark:text-white">
+                    Closed-Loop NC Verification & Closure Protocol
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+                    Issuing this NC moves its status to <span className="font-bold text-indigo-600 dark:text-indigo-400">Assigned</span> and initiates the SLA timer. The line in-charge must complete rectification and submit After Photo proof. <strong className="text-slate-900 dark:text-white">This NC defect can ONLY be officially closed after you (the Auditor) approve verification.</strong>
+                  </p>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* WIZARD NAVIGATION FOOTER */}
+          <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0">
+            <div>
+              {viewMode === 'wizard' && currentStep > 1 && (
+                <button
+                  type="button"
+                  onClick={handlePrev}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-bold text-xs transition-colors cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>Previous</span>
+                </button>
+              )}
             </div>
 
-            {/* Range Slider strictly locked with min 12, max 24 */}
-            <input
-              type="range"
-              min="12"
-              max="24"
-              step="1"
-              value={deadlineHours}
-              onChange={(e) => setDeadlineHours(Number(e.target.value))}
-              className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-            />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2.5 rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white font-bold text-xs transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
 
-            <div className="flex justify-between text-[11px] font-mono text-slate-500 dark:text-slate-400">
-              <span>Min: 12 Hours</span>
-              <span>Standard: 16 Hours</span>
-              <span>Max: 24 Hours</span>
+              {viewMode === 'wizard' && currentStep < 10 ? (
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/30 transition-all active:scale-95 cursor-pointer"
+                >
+                  <span>Continue to {WORKFLOW_STEPS[currentStep]?.short || 'Next'}</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={submitting || compressing}
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm shadow-lg shadow-emerald-600/30 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>{submitting ? 'Creating & Issuing NC...' : 'Create & Issue NC (Log Defect)'}</span>
+                </button>
+              )}
             </div>
-
-            <div className="pt-2 border-t border-slate-200 dark:border-slate-900 text-xs flex items-center justify-between text-slate-600 dark:text-slate-400">
-              <span>Calculated SLA Deadline:</span>
-              <span className="font-bold text-indigo-700 dark:text-cyan-300 font-mono">
-                {formattedTargetDeadline} UTC
-              </span>
-            </div>
-          </div>
-
-          {/* 6. Description */}
-          <div>
-            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              NC Description & Specific Rectification Directives
-            </label>
-            <textarea
-              rows="3"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Detail the defect, order/bundle number, piece count, and immediate correction requirements..."
-              className="w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-3 rounded-xl border border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-indigo-500 font-sans"
-            />
-          </div>
-
-          {/* Footer Buttons */}
-          <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-xl text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitting || compressing}
-              className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-md shadow-indigo-600/30 transition-all active:scale-95 disabled:opacity-50"
-            >
-              {submitting ? 'Logging NC Ticket...' : 'Log Audit Defect (NC) & Activate SLA'}
-            </button>
           </div>
         </form>
       </div>
