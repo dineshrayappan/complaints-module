@@ -83,6 +83,8 @@ export const complaintService = {
     api.post(`/complaints/${id}/timeline`, { comment }),
   deleteComplaint: (id) => api.delete(`/complaints/${id}`),
   getAdminOversight: () => api.get('/complaints/admin/oversight'),
+  getDepartmentCompliance: () => api.get('/complaints/admin/department-compliance'),
+  updateComplianceThresholds: (thresholds) => api.put('/complaints/admin/compliance-thresholds', thresholds),
 };
 
 export default api;

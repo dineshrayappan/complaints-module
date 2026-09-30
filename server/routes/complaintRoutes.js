@@ -12,6 +12,8 @@ const {
   getAdminOversightStats,
   reassignComplaint,
   deleteComplaint,
+  getDepartmentComplianceStats,
+  updateComplianceThresholds,
 } = require('../controllers/complaintController');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -51,6 +53,10 @@ const safeUploadAfterPhoto = (req, res, next) => {
 
 // Admin executive oversight & monitoring endpoint (must be declared before :id)
 router.get('/admin/oversight', verifyToken, requireRole(['ADMIN', 'AUDITOR']), getAdminOversightStats);
+
+// Department-wise compliance scoreboard & configurable thresholds (must be declared before :id)
+router.get('/admin/department-compliance', verifyToken, getDepartmentComplianceStats);
+router.put('/admin/compliance-thresholds', verifyToken, requireRole(['ADMIN']), updateComplianceThresholds);
 
 // KPI Stats endpoint (must be declared before :id)
 router.get('/stats/kpi', verifyToken, getKpiStats);

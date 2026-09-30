@@ -2158,6 +2158,210 @@ const deleteComplaint = async (req, res) => {
   }
 };
 
+const getDepartmentComplianceStats = async (req, res) => {
+  try {
+    let allComplaints = [];
+
+    // Fetch complaints from Supabase if configured
+    if (isSupabaseConfigured()) {
+      try {
+        const { data: dbTickets, error: dbErr } = await supabase
+          .from('complaints')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!dbErr && Array.isArray(dbTickets)) {
+          allComplaints = dbTickets.map(formatComplaintOutput);
+        }
+      } catch (err) {
+        console.warn('[ComplaintController:getDepartmentComplianceStats] Supabase notice:', err.message);
+      }
+    }
+
+    if (allComplaints.length === 0) {
+      allComplaints = mockStore.getComplaints().map(formatComplaintOutput);
+    }
+
+    const thresholds = mockStore.getComplianceThresholds();
+    const now = new Date();
+
+    // Standard Factory Departments master list
+    const standardDepts = ['HR', 'Production', 'EHS', 'Stores', 'Maintenance', 'Quality', 'EDP'];
+
+    // Normalized map to canonical department names
+    const normalizeDeptName = (name) => {
+      const lower = (name || '').trim().toLowerCase();
+      if (lower === 'store' || lower === 'stores') return 'Stores';
+      if (lower === 'hr' || lower === 'human resources') return 'HR';
+      if (lower === 'ehs' || lower === 'environment health & safety' || lower === 'safety') return 'EHS';
+      if (lower === 'maintenance' || lower === 'maintannce') return 'Maintenance';
+      if (lower === 'production' || lower === 'prod') return 'Production';
+      if (lower === 'quality' || lower === 'qa' || lower === 'qc') return 'Quality';
+      if (lower === 'edp' || lower === 'it' || lower === 'systems') return 'EDP';
+      return (name || '').trim() || 'General';
+    };
+
+    // Discover any other departments in complaints
+    const foundDepts = new Set();
+    allComplaints.forEach((c) => {
+      if (c.department && c.department.trim()) {
+        foundDepts.add(normalizeDeptName(c.department));
+      }
+    });
+
+    const combinedDepts = Array.from(new Set([...standardDepts, ...Array.from(foundDepts)]));
+
+    const departmentStats = combinedDepts.map((deptName) => {
+      const deptComplaints = allComplaints.filter((c) => {
+        return normalizeDeptName(c.department).toLowerCase() === deptName.toLowerCase();
+      });
+
+      const totalNC = deptComplaints.length;
+      const openNC = deptComplaints.filter((c) => c.status !== 'Closed').length;
+      const overdueNC = deptComplaints.filter((c) => {
+        return c.status !== 'Closed' && new Date(c.deadlineTimestamp) < now;
+      }).length;
+      const closedNC = deptComplaints.filter((c) => c.status === 'Closed').length;
+      const verifiedNC = deptComplaints.filter((c) => c.status === 'Verified').length;
+      const capSubmittedNC = deptComplaints.filter((c) => c.status === 'CAP Submitted').length;
+      const underReviewNC = deptComplaints.filter((c) => c.status === 'Under Review').length;
+      const draftNC = deptComplaints.filter((c) => c.status === 'Draft').length;
+
+      // CAP compliance calculation:
+      // Complaints requiring CAP (or all if not flagged) that have submitted, reviewed, verified, or closed CAP
+      const capRequiredItems = deptComplaints.filter((c) => c.capRequired !== false);
+      const capCompletedItems = capRequiredItems.filter((c) =>
+        ['CAP Submitted', 'Under Review', 'Verified', 'Closed', 'Under Verification'].includes(c.status) ||
+        (c.capPlan && (c.capPlan.immediateCorrection || c.capPlan.correctiveAction)) ||
+        c.afterPhoto
+      );
+
+      const capPercent = capRequiredItems.length > 0
+        ? Math.round((capCompletedItems.length / capRequiredItems.length) * 100)
+        : totalNC > 0 ? 100 : 100;
+
+      // Realistic composite score matching prompt specs:
+      // Base: High CAP compliance & high SLA on-time rate
+      // Penalties: Heavy penalty for overdue tickets, mild for open backlog
+      let complianceScore = 100;
+      if (totalNC > 0) {
+        const slaOnTimeRate = totalNC > 0 ? Math.max(0, (totalNC - overdueNC) / totalNC) * 100 : 100;
+        const resolutionRate = totalNC > 0 ? ((closedNC + verifiedNC) / totalNC) * 100 : 100;
+        // 45% CAP adherence + 40% SLA on-time + 15% closure rate
+        const rawScore = (capPercent * 0.45) + (slaOnTimeRate * 0.40) + (resolutionRate * 0.15);
+        // Overdue penalty
+        const overduePenalty = overdueNC * 3.5;
+        complianceScore = Math.max(10, Math.min(100, Math.round(rawScore - overduePenalty)));
+      }
+
+      // Threshold level determination
+      let statusLevel = 'CRITICAL';
+      let statusColor = 'rose';
+      let statusEmoji = '🔴';
+      if (complianceScore >= thresholds.highThreshold) {
+        statusLevel = 'HIGH';
+        statusColor = 'emerald';
+        statusEmoji = '🟢';
+      } else if (complianceScore >= thresholds.moderateThreshold) {
+        statusLevel = 'MODERATE';
+        statusColor = 'amber';
+        statusEmoji = '🟡';
+      }
+
+      return {
+        department: deptName,
+        score: complianceScore,
+        openNC,
+        overdueNC,
+        capPercent,
+        totalNC,
+        closedNC,
+        verifiedNC,
+        capSubmittedNC,
+        underReviewNC,
+        draftNC,
+        statusLevel,
+        statusColor,
+        statusEmoji,
+      };
+    });
+
+    // Sort by score descending (top performing first)
+    departmentStats.sort((a, b) => b.score - a.score);
+
+    // Factory Overall Compliance Score (average of departments)
+    const validScores = departmentStats.filter((d) => d.totalNC > 0);
+    const overallScore = validScores.length > 0
+      ? Math.round(validScores.reduce((acc, d) => acc + d.score, 0) / validScores.length)
+      : 92;
+
+    const totalOpenNC = departmentStats.reduce((sum, d) => sum + d.openNC, 0);
+    const totalOverdueNC = departmentStats.reduce((sum, d) => sum + d.overdueNC, 0);
+    const avgCapPercent = departmentStats.length > 0
+      ? Math.round(departmentStats.reduce((sum, d) => sum + d.capPercent, 0) / departmentStats.length)
+      : 90;
+
+    return res.status(200).json({
+      success: true,
+      thresholds,
+      overallScore,
+      totalOpenNC,
+      totalOverdueNC,
+      avgCapPercent,
+      departments: departmentStats,
+    });
+  } catch (error) {
+    console.error('[ComplaintController:getDepartmentComplianceStats] Error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to calculate department compliance statistics.',
+      error: error.message,
+    });
+  }
+};
+
+const updateComplianceThresholds = async (req, res) => {
+  try {
+    const { highThreshold, moderateThreshold } = req.body;
+
+    const high = Number(highThreshold);
+    const mod = Number(moderateThreshold);
+
+    if (isNaN(high) || high < 50 || high > 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'High Compliance Threshold (Green) must be a number between 50 and 100.',
+      });
+    }
+
+    if (isNaN(mod) || mod < 20 || mod >= high) {
+      return res.status(400).json({
+        success: false,
+        message: `Moderate Threshold (Amber) must be between 20 and ${high - 1}.`,
+      });
+    }
+
+    const updated = mockStore.updateComplianceThresholds({
+      highThreshold: high,
+      moderateThreshold: mod,
+      updatedBy: req.user?.name || 'Administrator',
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Department compliance thresholds updated successfully.',
+      thresholds: updated,
+    });
+  } catch (error) {
+    console.error('[ComplaintController:updateComplianceThresholds] Error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update compliance thresholds.',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createComplaint,
   getComplaints,
@@ -2170,4 +2374,6 @@ module.exports = {
   getAdminOversightStats,
   reassignComplaint,
   deleteComplaint,
+  getDepartmentComplianceStats,
+  updateComplianceThresholds,
 };

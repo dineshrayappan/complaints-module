@@ -23,7 +23,8 @@ import ComplaintDetailModal from './components/ComplaintDetailModal';
 import LoginPage from './components/LoginPage';
 import AdminOversightDashboard from './components/AdminOversightDashboard';
 import AdminUserManagement from './components/AdminUserManagement';
-import { Crown, BarChart3, Users } from 'lucide-react';
+import DepartmentComplianceDashboard from './components/DepartmentComplianceDashboard';
+import { Crown, BarChart3, Users, Building2 } from 'lucide-react';
 
 // Safe localStorage caching helper namespaced by user to prevent QuotaExceededError and cross-account data leaks
 const getCacheKey = (user) => `garment_qms_cached_complaints_${user?.employeeId || user?.id || user?._id || 'guest'}`;
@@ -80,7 +81,8 @@ export const App = () => {
   // Filter States
   const [activeTab, setActiveTab] = useState('all');
   const [deadlineFilter, setDeadlineFilter] = useState(''); // '' (all), 'Overdue', 'Due Soon', 'Open', 'Closed'
-  const [adminActiveTab, setAdminActiveTab] = useState('oversight'); // 'oversight' or 'register'
+  const [adminActiveTab, setAdminActiveTab] = useState('departments'); // 'departments', 'oversight', 'users', 'register'
+  const [showDeptCompliance, setShowDeptCompliance] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
@@ -345,6 +347,21 @@ export const App = () => {
     loadData(false);
   };
 
+  // Quick drill-down from Department Compliance Dashboard directly into filtered Defect Register
+  const handleDrilldownDepartment = (deptName) => {
+    setSearchTerm(deptName);
+    setActiveTab('all');
+    setDeadlineFilter('');
+    setCategoryFilter('');
+    setPriorityFilter('');
+    if (isAdmin) {
+      setAdminActiveTab('register');
+    } else {
+      setShowDeptCompliance(false);
+    }
+    showToast(`Filtered NC register for ${deptName} department.`);
+  };
+
   // Instant client-side filtering for smooth tab switches and deadline filtering
   const displayedComplaints = useMemo(() => {
     return complaints.filter((c) => {
@@ -428,6 +445,23 @@ export const App = () => {
             </span>
             <span>•</span>
             <span>12–24h SLA</span>
+            {!isAdmin && (
+              <>
+                <span>•</span>
+                <button
+                  type="button"
+                  onClick={() => setShowDeptCompliance((prev) => !prev)}
+                  className={`px-2 py-0.5 rounded-md font-bold text-[10px] uppercase transition-colors flex items-center gap-1 cursor-pointer ${
+                    showDeptCompliance
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 border border-emerald-200 dark:border-emerald-800/60'
+                  }`}
+                >
+                  <Building2 className="w-3 h-3" />
+                  {showDeptCompliance ? 'Back to NCs' : 'Dept Scorecard'}
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -446,7 +480,7 @@ export const App = () => {
                   </span>
                 </h2>
                 <p className="text-[10px] sm:text-[11px] text-amber-900/80 dark:text-amber-400/80 hidden sm:block">
-                  Real-time accountability tracking for Auditors & Supervisors, SLA breaches, and audit trails
+                  Department compliance scorecards, personnel, and plant-wide audit defect registers
                 </p>
               </div>
             </div>
@@ -454,8 +488,22 @@ export const App = () => {
             {/* Horizontally scrollable on mobile */}
             <div className="flex items-center gap-1 bg-white dark:bg-slate-900 p-1 rounded-xl border border-amber-500/20 shadow-xs overflow-x-auto no-scrollbar w-full md:w-auto">
               <button
+                type="button"
+                onClick={() => setAdminActiveTab('departments')}
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+                  adminActiveTab === 'departments'
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                <span>Department Scores</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setAdminActiveTab('oversight')}
-                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
                   adminActiveTab === 'oversight'
                     ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -466,8 +514,9 @@ export const App = () => {
               </button>
 
               <button
+                type="button"
                 onClick={() => setAdminActiveTab('users')}
-                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
                   adminActiveTab === 'users'
                     ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -478,8 +527,9 @@ export const App = () => {
               </button>
 
               <button
+                type="button"
                 onClick={() => setAdminActiveTab('register')}
-                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
                   adminActiveTab === 'register'
                     ? 'bg-gradient-to-r from-indigo-600 to-cyan-600 text-white shadow-xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -492,8 +542,16 @@ export const App = () => {
           </div>
         )}
 
-        {/* View Selection: Executive Oversight, User Management, or Plant Defect Register */}
-        {isAdmin && adminActiveTab === 'oversight' ? (
+        {/* View Selection: Department Compliance, Executive Oversight, User Management, or Plant Defect Register */}
+        {(isAdmin && adminActiveTab === 'departments') || (!isAdmin && showDeptCompliance) ? (
+          <DepartmentComplianceDashboard
+            onSelectDepartment={handleDrilldownDepartment}
+            onClose={() => {
+              if (isAdmin) setAdminActiveTab('register');
+              else setShowDeptCompliance(false);
+            }}
+          />
+        ) : isAdmin && adminActiveTab === 'oversight' ? (
           <AdminOversightDashboard onViewComplaint={handleOpenDetailModal} />
         ) : isAdmin && adminActiveTab === 'users' ? (
           <AdminUserManagement />

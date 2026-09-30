@@ -329,4 +329,24 @@ module.exports = {
     }
     return mockUsers;
   },
+  getComplianceThresholds: () => ({ ...complianceThresholds }),
+  updateComplianceThresholds: (updates = {}) => {
+    const high = updates.highThreshold != null ? Number(updates.highThreshold) : complianceThresholds.highThreshold;
+    const mod = updates.moderateThreshold != null ? Number(updates.moderateThreshold) : complianceThresholds.moderateThreshold;
+    complianceThresholds = {
+      ...complianceThresholds,
+      highThreshold: high,
+      moderateThreshold: mod,
+      updatedAt: new Date().toISOString(),
+      updatedBy: updates.updatedBy || complianceThresholds.updatedBy,
+    };
+    return complianceThresholds;
+  },
+};
+
+let complianceThresholds = {
+  highThreshold: 90,     // >= 90% is Green
+  moderateThreshold: 75, // 75 - 89% is Amber, < 75% is Red
+  updatedAt: new Date().toISOString(),
+  updatedBy: 'Administrator',
 };
