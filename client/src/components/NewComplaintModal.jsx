@@ -269,7 +269,7 @@ const WORKFLOW_STEPS = [
   { id: 10, label: 'Close NC Protocol', short: 'Issue NC' },
 ];
 
-export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
+export const NewComplaintModal = ({ isOpen, onClose, onSuccess, prefillData = null }) => {
   const fileInputRef = useRef(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [viewMode, setViewMode] = useState('wizard'); // 'wizard' (step-by-step) or 'all' (complete audit sheet)
@@ -352,6 +352,22 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess }) => {
       loadSupervisors();
     }
   }, [isOpen]);
+
+  // Apply prefill data from audit checklist (department, requirement, description)
+  useEffect(() => {
+    if (isOpen && prefillData) {
+      if (prefillData.department) {
+        handleDepartmentChange(prefillData.department);
+      }
+      if (prefillData.requirement) {
+        setRequirement(prefillData.requirement);
+      }
+      if (prefillData.description) {
+        setDescription(prefillData.description);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, prefillData]);
 
   // When department changes, sync location suggestion & auto-suggest matching supervisor
   const handleDepartmentChange = (deptId) => {

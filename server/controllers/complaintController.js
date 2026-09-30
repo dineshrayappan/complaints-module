@@ -2379,6 +2379,98 @@ const updateComplianceThresholds = async (req, res) => {
   }
 };
 
+// @desc    Get all audit rounds and top metrics
+// @route   GET /api/complaints/admin/audits
+// @access  Private
+const getAudits = async (req, res) => {
+  try {
+    const audits = mockStore.getAudits();
+    return res.status(200).json({
+      success: true,
+      stats: {
+        completedAudits: 24,
+        openAudits: audits.filter((a) => a.status !== 'Completed').length || 3,
+        ncsFound: 87,
+        ncClosureRate: 91,
+      },
+      audits,
+    });
+  } catch (error) {
+    console.error('[ComplaintController:getAudits] Error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch audits.',
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Update checklist item status in an audit round
+// @route   PUT /api/complaints/admin/audits/:id/checklist
+// @access  Private
+const updateAuditChecklist = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { department, itemId, status, notes } = req.body;
+
+    const updated = mockStore.updateAuditChecklist(id, department, itemId, status, notes);
+    if (!updated) {
+      return res.status(404).json({
+        success: false,
+        message: 'Audit round not found or invalid item ID.',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Audit checklist item updated.',
+      audit: updated,
+    });
+  } catch (error) {
+    console.error('[ComplaintController:updateAuditChecklist] Error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update checklist item.',
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Create a new audit round
+// @route   POST /api/complaints/admin/audits
+// @access  Private (AUDITOR or ADMIN)
+const createAuditRound = async (req, res) => {
+  try {
+    const { title, date, departments, leadAuditor } = req.body;
+    if (!title || !date) {
+      return res.status(400).json({
+        success: false,
+        message: 'Audit title and date are required.',
+      });
+    }
+
+    const newAudit = mockStore.createAudit({
+      title,
+      date,
+      departments: departments || ['HR', 'Production', 'EHS'],
+      leadAuditor: leadAuditor || req.user?.name || 'Auditor',
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'New audit round created successfully.',
+      audit: newAudit,
+    });
+  } catch (error) {
+    console.error('[ComplaintController:createAuditRound] Error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to create audit round.',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createComplaint,
   getComplaints,
@@ -2393,4 +2485,7 @@ module.exports = {
   deleteComplaint,
   getDepartmentComplianceStats,
   updateComplianceThresholds,
+  getAudits,
+  updateAuditChecklist,
+  createAuditRound,
 };

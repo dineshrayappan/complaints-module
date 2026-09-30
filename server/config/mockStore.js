@@ -342,7 +342,152 @@ module.exports = {
     };
     return complianceThresholds;
   },
+  getAudits: () => [...mockAudits],
+  getAuditById: (id) => mockAudits.find((a) => a.id === id),
+  updateAuditChecklist: (auditId, dept, itemId, newStatus, notes) => {
+    const audit = mockAudits.find((a) => a.id === auditId);
+    if (!audit) return null;
+    if (audit.checklist && audit.checklist[dept]) {
+      const item = audit.checklist[dept].find((i) => i.id === itemId);
+      if (item) {
+        if (newStatus !== undefined) item.status = newStatus;
+        if (notes !== undefined) item.notes = notes;
+      }
+    }
+    return audit;
+  },
+  createAudit: (auditData) => {
+    const newAudit = {
+      id: `aud-${Date.now()}`,
+      status: 'Scheduled',
+      departments: ['HR', 'Production', 'EHS'],
+      checklist: {
+        HR: [
+          { id: 'hr-1', label: 'Employee files', status: 'COMPLIANT', notes: 'Personal records verified.' },
+          { id: 'hr-2', label: 'Attendance', status: 'COMPLIANT', notes: 'Shift records matched.' },
+          { id: 'hr-3', label: 'Payroll', status: 'COMPLIANT', notes: 'Pay slips distributed on schedule.' },
+          { id: 'hr-4', label: 'Overtime records', status: 'PENDING', notes: '' },
+        ],
+        Production: [
+          { id: 'prd-1', label: 'Working hours', status: 'COMPLIANT', notes: 'Shift limits adhered to.' },
+          { id: 'prd-2', label: 'Machine safety', status: 'PENDING', notes: '' },
+          { id: 'prd-3', label: 'PPE', status: 'COMPLIANT', notes: 'Protective gear worn.' },
+        ],
+        EHS: [
+          { id: 'ehs-1', label: 'Fire safety', status: 'COMPLIANT', notes: 'Hose reels pressure tested.' },
+          { id: 'ehs-2', label: 'Emergency exits', status: 'COMPLIANT', notes: 'Gangways unobstructed.' },
+          { id: 'ehs-3', label: 'Chemical management', status: 'PENDING', notes: '' },
+        ],
+      },
+      ...auditData,
+    };
+    mockAudits.unshift(newAudit);
+    return newAudit;
+  },
 };
+
+let mockAudits = [
+  {
+    id: 'aud-001',
+    title: 'Internal Social Audit',
+    date: '10-Oct-26',
+    status: 'Scheduled',
+    type: 'Social & Labor',
+    leadAuditor: 'Pooja Sharma',
+    departments: ['HR', 'Production', 'EHS'],
+    checklist: {
+      HR: [
+        { id: 'hr-1', label: 'Employee files', status: 'COMPLIANT', notes: 'All employee personal files verified with age proofs.' },
+        { id: 'hr-2', label: 'Attendance', status: 'COMPLIANT', notes: 'Biometric punch logs synchronized.' },
+        { id: 'hr-3', label: 'Payroll', status: 'COMPLIANT', notes: 'Bank transfer slips and minimum wage adherence 100%.' },
+        { id: 'hr-4', label: 'Overtime records', status: 'PENDING', notes: '' },
+      ],
+      Production: [
+        { id: 'prd-1', label: 'Working hours', status: 'COMPLIANT', notes: 'Standard 48-hour shift schedule followed.' },
+        { id: 'prd-2', label: 'Machine safety', status: 'PENDING', notes: '' },
+        { id: 'prd-3', label: 'PPE', status: 'COMPLIANT', notes: 'Needle guards, eye protection, and aprons in place.' },
+      ],
+      EHS: [
+        { id: 'ehs-1', label: 'Fire safety', status: 'COMPLIANT', notes: 'Extinguishers inspected and tags up to date.' },
+        { id: 'ehs-2', label: 'Emergency exits', status: 'COMPLIANT', notes: 'All exit corridors clear and push bars functional.' },
+        { id: 'ehs-3', label: 'Chemical management', status: 'PENDING', notes: '' },
+      ],
+    },
+  },
+  {
+    id: 'aud-002',
+    title: 'EHS Audit',
+    date: '15-Oct-26',
+    status: 'Scheduled',
+    type: 'Environmental Health & Safety',
+    leadAuditor: 'Dinesh Rayappan',
+    departments: ['EHS', 'Production'],
+    checklist: {
+      EHS: [
+        { id: 'ehs-1', label: 'Fire safety', status: 'COMPLIANT', notes: 'Extinguisher tags checked.' },
+        { id: 'ehs-2', label: 'Emergency exits', status: 'COMPLIANT', notes: 'Exits unlocked during shift.' },
+        { id: 'ehs-3', label: 'Chemical management', status: 'PENDING', notes: '' },
+      ],
+      Production: [
+        { id: 'prd-2', label: 'Machine safety', status: 'PENDING', notes: '' },
+        { id: 'prd-3', label: 'PPE', status: 'COMPLIANT', notes: 'Safety goggles and gloves verified.' },
+      ],
+      HR: [
+        { id: 'hr-4', label: 'Overtime records', status: 'PENDING', notes: '' },
+      ],
+    },
+  },
+  {
+    id: 'aud-003',
+    title: 'HR Compliance Audit',
+    date: '20-Oct-26',
+    status: 'Draft',
+    type: 'Statutory HR & Payroll',
+    leadAuditor: 'Pooja Sharma',
+    departments: ['HR'],
+    checklist: {
+      HR: [
+        { id: 'hr-1', label: 'Employee files', status: 'COMPLIANT', notes: '' },
+        { id: 'hr-2', label: 'Attendance', status: 'COMPLIANT', notes: '' },
+        { id: 'hr-3', label: 'Payroll', status: 'COMPLIANT', notes: '' },
+        { id: 'hr-4', label: 'Overtime records', status: 'PENDING', notes: '' },
+      ],
+      Production: [
+        { id: 'prd-1', label: 'Working hours', status: 'COMPLIANT', notes: '' },
+      ],
+      EHS: [
+        { id: 'ehs-2', label: 'Emergency exits', status: 'COMPLIANT', notes: '' },
+      ],
+    },
+  },
+  {
+    id: 'aud-004',
+    title: 'Internal Compliance Audit',
+    date: '05-Oct-26',
+    status: 'In Progress',
+    type: 'Integrated Internal Factory Audit',
+    leadAuditor: 'Pooja Sharma',
+    departments: ['HR', 'Production', 'EHS'],
+    checklist: {
+      HR: [
+        { id: 'hr-1', label: 'Employee files', status: 'COMPLIANT', notes: 'Personal records verified.' },
+        { id: 'hr-2', label: 'Attendance', status: 'COMPLIANT', notes: 'Shift records matched.' },
+        { id: 'hr-3', label: 'Payroll', status: 'COMPLIANT', notes: 'Pay slips distributed on schedule.' },
+        { id: 'hr-4', label: 'Overtime records', status: 'PENDING', notes: '' },
+      ],
+      Production: [
+        { id: 'prd-1', label: 'Working hours', status: 'COMPLIANT', notes: 'Lunch break & rotation verified.' },
+        { id: 'prd-2', label: 'Machine safety', status: 'PENDING', notes: '' },
+        { id: 'prd-3', label: 'PPE', status: 'COMPLIANT', notes: 'Protective gear worn on shop floor.' },
+      ],
+      EHS: [
+        { id: 'ehs-1', label: 'Fire safety', status: 'COMPLIANT', notes: 'Hose reels pressure tested.' },
+        { id: 'ehs-2', label: 'Emergency exits', status: 'COMPLIANT', notes: 'Gangway floor markings bright & unobstructed.' },
+        { id: 'ehs-3', label: 'Chemical management', status: 'PENDING', notes: '' },
+      ],
+    },
+  },
+];
 
 let complianceThresholds = {
   highThreshold: 90,     // >= 90% is Green

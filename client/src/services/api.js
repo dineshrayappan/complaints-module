@@ -85,6 +85,9 @@ export const complaintService = {
   getAdminOversight: () => api.get('/complaints/admin/oversight'),
   getDepartmentCompliance: () => api.get('/complaints/admin/department-compliance'),
   updateComplianceThresholds: (thresholds) => api.put('/complaints/admin/compliance-thresholds', thresholds),
+  getAudits: () => api.get('/complaints/admin/audits'),
+  updateAuditChecklist: (id, payload) => api.put(`/complaints/admin/audits/${id}/checklist`, payload),
+  createAudit: (data) => api.post('/complaints/admin/audits', data),
 };
 
 export default api;

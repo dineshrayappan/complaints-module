@@ -1,0 +1,918 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  ShieldCheck,
+  Calendar,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
+  Flame,
+  PlusCircle,
+  ChevronRight,
+  ArrowLeft,
+  Search,
+  Filter,
+  Eye,
+  Check,
+  X,
+  MinusCircle,
+  HelpCircle,
+  Building2,
+  Users,
+  Layers,
+  Sparkles,
+  RefreshCw,
+  FileCheck2,
+} from 'lucide-react';
+import { complaintService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+
+export const AuditManagementDashboard = ({ onOpenNewComplaint, onSelectNCFilter }) => {
+  const { user, isAuditor, isAdmin } = useAuth();
+
+  const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [audits, setAudits] = useState([]);
+  const [stats, setStats] = useState({
+    completedAudits: 24,
+    openAudits: 3,
+    ncsFound: 87,
+    ncClosureRate: 91,
+  });
+
+  // Selected audit for checklist view (defaults to 'Internal Compliance Audit' if clicked)
+  const [selectedAudit, setSelectedAudit] = useState(null);
+
+  // Active status selection modal for checklist item
+  const [activeChecklistItem, setActiveChecklistItem] = useState(null); // { dept, item }
+  const [itemNotes, setItemNotes] = useState('');
+  const [filterDept, setFilterDept] = useState('ALL');
+
+  // New Audit Round Modal State
+  const [isNewAuditModalOpen, setIsNewAuditModalOpen] = useState(false);
+  const [newAuditTitle, setNewAuditTitle] = useState('');
+  const [newAuditDate, setNewAuditDate] = useState('');
+  const [newAuditType, setNewAuditType] = useState('Social & Labor');
+
+  const loadAudits = async (showSpinner = false) => {
+    try {
+      if (showSpinner) setLoading(true);
+      else setIsRefreshing(true);
+
+      const res = await complaintService.getAudits();
+      if (res.data?.success) {
+        setAudits(res.data.audits || []);
+        if (res.data.stats) {
+          setStats(res.data.stats);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch audits from server, using initial dataset:', err);
+    } finally {
+      if (showSpinner) setLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAudits(true);
+  }, []);
+
+  // Update item status in active audit
+  const handleSetItemStatus = async (status) => {
+    if (!activeChecklistItem || !selectedAudit) return;
+
+    const { dept, item } = activeChecklistItem;
+
+    // Optimistic UI update
+    setSelectedAudit((prev) => {
+      if (!prev) return prev;
+      const updatedChecklist = { ...prev.checklist };
+      if (updatedChecklist[dept]) {
+        updatedChecklist[dept] = updatedChecklist[dept].map((i) =>
+          i.id === item.id ? { ...i, status, notes: itemNotes } : i
+        );
+      }
+      return { ...prev, checklist: updatedChecklist };
+    });
+
+    // Also update parent audits array
+    setAudits((prev) =>
+      prev.map((a) => {
+        if (a.id !== selectedAudit.id) return a;
+        const updatedChecklist = { ...a.checklist };
+        if (updatedChecklist[dept]) {
+          updatedChecklist[dept] = updatedChecklist[dept].map((i) =>
+            i.id === item.id ? { ...i, status, notes: itemNotes } : i
+          );
+        }
+        return { ...a, checklist: updatedChecklist };
+      })
+    );
+
+    // Call server API
+    try {
+      await complaintService.updateAuditChecklist(selectedAudit.id, {
+        department: dept,
+        itemId: item.id,
+        status,
+        notes: itemNotes,
+      });
+    } catch (err) {
+      console.warn('Could not persist checklist status to server:', err);
+    }
+
+    setActiveChecklistItem(null);
+    setItemNotes('');
+  };
+
+  // Open modal to update checklist item
+  const handleOpenItemModal = (dept, item) => {
+    setActiveChecklistItem({ dept, item });
+    setItemNotes(item.notes || '');
+  };
+
+  // Handle raise NC directly from Non-Compliant item
+  const handleRaiseNC = (dept, item) => {
+    setActiveChecklistItem(null);
+    if (onOpenNewComplaint) {
+      onOpenNewComplaint({
+        department: dept,
+        description: `Audit Finding [${selectedAudit?.title || 'Internal Audit'}]: ${item.label} non-compliance detected. ${itemNotes || item.notes || ''}`,
+        requirement:
+          dept === 'HR'
+            ? 'Social & Statutory Compliance Standard'
+            : dept === 'Production'
+            ? 'AQL 1.5 Workmanship Standard'
+            : 'Safety & Factory Floor Compliance',
+      });
+    }
+  };
+
+  // Create new audit round
+  const handleCreateAudit = async (e) => {
+    e.preventDefault();
+    if (!newAuditTitle || !newAuditDate) return;
+
+    try {
+      const res = await complaintService.createAudit({
+        title: newAuditTitle,
+        date: newAuditDate,
+        type: newAuditType,
+        leadAuditor: user?.name || 'Auditor',
+      });
+      if (res.data?.success && res.data.audit) {
+        setAudits((prev) => [res.data.audit, ...prev]);
+        setSelectedAudit(res.data.audit);
+      }
+    } catch (err) {
+      console.warn('Could not create audit on server:', err);
+    } finally {
+      setIsNewAuditModalOpen(false);
+      setNewAuditTitle('');
+      setNewAuditDate('');
+    }
+  };
+
+  // Checklist completion statistics
+  const checklistStats = useMemo(() => {
+    if (!selectedAudit || !selectedAudit.checklist) {
+      return { total: 0, compliant: 0, nonCompliant: 0, observation: 0, notApplicable: 0, pending: 0, percent: 0 };
+    }
+    const allItems = Object.values(selectedAudit.checklist).flat();
+    const total = allItems.length;
+    const compliant = allItems.filter((i) => i.status === 'COMPLIANT').length;
+    const nonCompliant = allItems.filter((i) => i.status === 'NON_COMPLIANT').length;
+    const observation = allItems.filter((i) => i.status === 'OBSERVATION').length;
+    const notApplicable = allItems.filter((i) => i.status === 'NOT_APPLICABLE').length;
+    const pending = allItems.filter((i) => !i.status || i.status === 'PENDING').length;
+    const checked = total - pending;
+    const percent = total > 0 ? Math.round((checked / total) * 100) : 0;
+
+    return { total, compliant, nonCompliant, observation, notApplicable, pending, percent, checked };
+  }, [selectedAudit]);
+
+  // Status visual badge helper
+  const getItemStatusBadge = (status) => {
+    switch (status) {
+      case 'COMPLIANT':
+        return {
+          icon: '☑',
+          label: 'Compliant',
+          badgeClass: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20',
+          boxClass: 'bg-emerald-600 text-white border-emerald-600',
+        };
+      case 'NON_COMPLIANT':
+        return {
+          icon: '☒',
+          label: 'Non-Compliant',
+          badgeClass: 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20',
+          boxClass: 'bg-rose-600 text-white border-rose-600',
+        };
+      case 'OBSERVATION':
+        return {
+          icon: '👁️',
+          label: 'Observation',
+          badgeClass: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20',
+          boxClass: 'bg-amber-500 text-white border-amber-500',
+        };
+      case 'NOT_APPLICABLE':
+        return {
+          icon: '⊘',
+          label: 'Not Applicable',
+          badgeClass: 'bg-slate-200/60 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700',
+          boxClass: 'bg-slate-400 text-white border-slate-400',
+        };
+      default:
+        return {
+          icon: '☐',
+          label: 'Pending Audit',
+          badgeClass: 'bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700',
+          boxClass: 'bg-transparent text-transparent border-slate-400 dark:border-slate-500',
+        };
+    }
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-300">
+      {/* ============================================================ */}
+      {/* 1. TOP HEADER BANNER: AUDIT MANAGEMENT                       */}
+      {/* ============================================================ */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-purple-950 to-slate-900 border border-purple-500/20 p-5 sm:p-7 shadow-xl shadow-purple-950/20 text-white">
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 rounded-full bg-purple-500/10 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide uppercase bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Auditor Operations Center
+              </span>
+              <span className="text-xs text-slate-400 font-mono hidden sm:inline">
+                Apparel Unit #4 • Continuous Inspection Rounds
+              </span>
+            </div>
+
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight font-sans uppercase">
+              AUDIT MANAGEMENT
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl">
+              Conduct scheduled audit rounds, execute department checklists, log non-conformances,
+              and track verification closures.
+            </p>
+          </div>
+
+          {/* Quick Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setIsNewAuditModalOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md shadow-purple-600/30 transition-all cursor-pointer"
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>+ Schedule Audit</span>
+            </button>
+
+            {isAuditor && (
+              <button
+                type="button"
+                onClick={() => onOpenNewComplaint && onOpenNewComplaint()}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/30 transition-all cursor-pointer"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>+ Log NC Defect</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => loadAudits(false)}
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 text-xs font-semibold cursor-pointer"
+              title="Refresh audits"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ============================================================ */}
+      {/* 2. TOP METRICS: COMPLETED, OPEN, NCS FOUND, NC CLOSURE       */}
+      {/* ============================================================ */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Completed Audits: 24 */}
+        <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+            <span>Completed Audits</span>
+            <span className="p-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+            </span>
+          </div>
+          <div className="my-2">
+            <span className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white font-sans">
+              {stats.completedAudits}
+            </span>
+            <span className="text-xs text-slate-400 ml-1.5">Inspections</span>
+          </div>
+          <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+            100% Verified Documentation
+          </div>
+        </div>
+
+        {/* Open Audits: 3 */}
+        <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+            <span>Open Audits</span>
+            <span className="p-1 rounded-lg bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400">
+              <Clock className="w-3.5 h-3.5" />
+            </span>
+          </div>
+          <div className="my-2">
+            <span className="text-3xl sm:text-4xl font-extrabold text-purple-600 dark:text-purple-400 font-sans">
+              {stats.openAudits}
+            </span>
+            <span className="text-xs text-slate-400 ml-1.5">Active Rounds</span>
+          </div>
+          <div className="text-[11px] text-purple-600 dark:text-purple-400 font-medium">
+            Floor Inspections in Progress
+          </div>
+        </div>
+
+        {/* NCs Found: 87 */}
+        <div
+          onClick={() => onSelectNCFilter && onSelectNCFilter('all')}
+          className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-xs flex flex-col justify-between cursor-pointer group hover:border-amber-400 transition-colors"
+        >
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+            <span>NCs Found</span>
+            <span className="p-1 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
+              <AlertTriangle className="w-3.5 h-3.5" />
+            </span>
+          </div>
+          <div className="my-2 flex items-baseline justify-between">
+            <span className="text-3xl sm:text-4xl font-extrabold text-amber-600 dark:text-amber-400 font-sans">
+              {stats.ncsFound}
+            </span>
+            <span className="text-xs text-indigo-600 dark:text-cyan-400 group-hover:translate-x-0.5 transition-transform flex items-center">
+              Register →
+            </span>
+          </div>
+          <div className="text-[11px] text-slate-500 dark:text-slate-400">
+            Across 7 Factory Departments
+          </div>
+        </div>
+
+        {/* NC Closure: 91% */}
+        <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+            <span>NC Closure</span>
+            <span className="p-1 rounded-lg bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400">
+              <FileCheck2 className="w-3.5 h-3.5" />
+            </span>
+          </div>
+          <div className="my-2">
+            <span className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white font-sans">
+              {stats.ncClosureRate}%
+            </span>
+            <span className="text-xs text-emerald-600 dark:text-emerald-400 ml-1.5 font-bold">
+              +3.4%
+            </span>
+          </div>
+          <div className="text-[11px] text-slate-500 dark:text-slate-400">
+            Closed-Loop CAP Effectiveness
+          </div>
+        </div>
+      </div>
+
+      {/* ============================================================ */}
+      {/* 3. CONDITIONAL VIEW: UPCOMING AUDITS LIST OR AUDIT CHECKLIST */}
+      {/* ============================================================ */}
+
+      {!selectedAudit ? (
+        /* UPCOMING AUDITS TABLE / CARD VIEW */
+        <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 shadow-xs">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                <span>Upcoming Audits</span>
+                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                  {audits.length} Rounds
+                </span>
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Click on any audit to open the department checklists and conduct the inspection.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsNewAuditModalOpen(true)}
+              className="text-xs font-bold text-indigo-600 dark:text-cyan-400 hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              <span>+ Add Schedule</span>
+            </button>
+          </div>
+
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {audits.map((audit) => {
+              const isScheduled = audit.status === 'Scheduled';
+              const isInProgress = audit.status === 'In Progress';
+              const isDraft = audit.status === 'Draft';
+
+              return (
+                <div
+                  key={audit.id}
+                  onClick={() => setSelectedAudit(audit)}
+                  className="py-3.5 px-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer group"
+                >
+                  <div className="flex items-start sm:items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-xs shrink-0 group-hover:scale-105 transition-transform">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-cyan-400 transition-colors">
+                          {audit.title}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono">({audit.type})</span>
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5">
+                        <span className="flex items-center gap-1 font-mono">
+                          <Calendar className="w-3 h-3 text-slate-400" />
+                          {audit.date}
+                        </span>
+                        <span>•</span>
+                        <span>Auditor: {audit.leadAuditor}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                    <span
+                      className={`text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-lg border font-mono ${
+                        isScheduled
+                          ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800'
+                          : isInProgress
+                          ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800 animate-pulse'
+                          : isDraft
+                          ? 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
+                          : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
+                      }`}
+                    >
+                      {audit.status}
+                    </span>
+
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 text-xs font-bold text-indigo-600 dark:text-cyan-400 group-hover:translate-x-1 transition-transform"
+                    >
+                      <span>Open Checklist</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        /* ============================================================ */
+        /* 4. AUDIT CHECKLIST EXECUTION SCREEN                          */
+        /* "AUDIT: Internal Compliance Audit"                           */
+        /* ============================================================ */
+        <div className="space-y-5">
+          {/* Top Bar for Selected Audit */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setSelectedAudit(null)}
+                className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer transition-colors"
+                title="Back to all upcoming audits"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 font-mono">
+                  ACTIVE AUDIT INSPECTION
+                </div>
+                <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">
+                  AUDIT: {selectedAudit.title}
+                </h2>
+              </div>
+            </div>
+
+            {/* Audit Progress & Actions */}
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <div className="text-xs font-bold text-slate-900 dark:text-white">
+                  {checklistStats.checked} / {checklistStats.total} Audited ({checklistStats.percent}%)
+                </div>
+                <div className="w-32 bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden mt-1">
+                  <div
+                    className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                    style={{ width: `${checklistStats.percent}%` }}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  alert(`Audit [${selectedAudit.title}] session saved successfully.`);
+                  setSelectedAudit(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/30 transition-all cursor-pointer"
+              >
+                Complete Audit
+              </button>
+            </div>
+          </div>
+
+          {/* Checklist Summary Stats Pill */}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-500/20">
+              🟢 {checklistStats.compliant} Compliant
+            </span>
+            <span className="px-2.5 py-1 rounded-lg bg-rose-500/10 text-rose-700 dark:text-rose-400 font-bold border border-rose-500/20">
+              🔴 {checklistStats.nonCompliant} Non-Compliant
+            </span>
+            <span className="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400 font-bold border border-amber-500/20">
+              🟡 {checklistStats.observation} Observations
+            </span>
+            <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold border border-slate-200 dark:border-slate-700">
+              ⚪ {checklistStats.notApplicable} N/A
+            </span>
+            <span className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 font-bold border border-indigo-200 dark:border-indigo-800/60">
+              ☐ {checklistStats.pending} Pending Audit
+            </span>
+          </div>
+
+          {/* ============================================================ */}
+          {/* DEPARTMENT CHECKLIST ACCORDIONS: HR, PRODUCTION, EHS        */}
+          {/* ============================================================ */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            {['HR', 'Production', 'EHS'].map((deptName) => {
+              const items = selectedAudit.checklist?.[deptName] || [];
+              const deptCompliantCount = items.filter((i) => i.status === 'COMPLIANT').length;
+              const deptNonCompliantCount = items.filter((i) => i.status === 'NON_COMPLIANT').length;
+
+              return (
+                <div
+                  key={deptName}
+                  className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 shadow-xs flex flex-col justify-between"
+                >
+                  <div>
+                    {/* Department Header */}
+                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200 dark:border-slate-700">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-extrabold text-slate-900 dark:text-white">
+                          {deptName}
+                        </span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                          {items.length} items
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold">
+                        <span className="text-emerald-600">✓ {deptCompliantCount}</span>
+                        {deptNonCompliantCount > 0 && (
+                          <span className="text-rose-600">✗ {deptNonCompliantCount}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Department Checklist Items */}
+                    <div className="space-y-2.5">
+                      {items.map((item) => {
+                        const statusInfo = getItemStatusBadge(item.status);
+                        const isChecked = item.status === 'COMPLIANT';
+                        const isNonCompliant = item.status === 'NON_COMPLIANT';
+
+                        return (
+                          <div
+                            key={item.id}
+                            className={`p-3 rounded-xl border transition-all text-xs flex flex-col gap-1.5 ${
+                              isNonCompliant
+                                ? 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/60'
+                                : isChecked
+                                ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/60'
+                                : 'bg-slate-50 dark:bg-slate-800/60 border-slate-100 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              {/* Checkbox item label & click target */}
+                              <div
+                                onClick={() => handleOpenItemModal(deptName, item)}
+                                className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0"
+                              >
+                                {/* Checkbox representation (☑ / ☐) */}
+                                <div
+                                  className={`w-5 h-5 rounded-md border flex items-center justify-center font-bold text-xs shrink-0 transition-colors ${statusInfo.boxClass}`}
+                                >
+                                  {item.status === 'COMPLIANT' && <Check className="w-3.5 h-3.5" />}
+                                  {item.status === 'NON_COMPLIANT' && <X className="w-3.5 h-3.5" />}
+                                  {item.status === 'OBSERVATION' && <Eye className="w-3 h-3" />}
+                                  {item.status === 'NOT_APPLICABLE' && <MinusCircle className="w-3 h-3" />}
+                                </div>
+
+                                <span
+                                  className={`font-semibold text-slate-800 dark:text-slate-200 truncate ${
+                                    isChecked ? 'text-emerald-950 dark:text-emerald-200' : ''
+                                  }`}
+                                >
+                                  {item.label}
+                                </span>
+                              </div>
+
+                              {/* Status Tag Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleOpenItemModal(deptName, item)}
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-md cursor-pointer transition-colors ${statusInfo.badgeClass}`}
+                              >
+                                {statusInfo.label}
+                              </button>
+                            </div>
+
+                            {/* Item Notes / Finding text if any */}
+                            {item.notes && (
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 pl-7 italic line-clamp-2">
+                                "{item.notes}"
+                              </p>
+                            )}
+
+                            {/* If Non-Compliant, show quick "+ Raise NC" link directly inside the card */}
+                            {isNonCompliant && (
+                              <div className="pl-7 pt-1 flex items-center justify-between">
+                                <span className="text-[10px] text-rose-600 font-bold">
+                                  Defect Logged
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRaiseNC(deptName, item)}
+                                  className="text-[10px] font-bold text-rose-600 hover:text-rose-700 underline flex items-center gap-1 cursor-pointer"
+                                >
+                                  <span>+ Raise NC Ticket</span>
+                                  <ChevronRight className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 text-center">
+                    Click any checklist item to set Compliant, Non-Compliant, N/A, or Observation
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* 5. INTERACTIVE MODAL WHEN AUDITOR CLICKS ☐ ITEM               */}
+      {/* Allows choosing: Compliant | Non-Compliant | N/A | Observation */}
+      {/* ============================================================ */}
+      {activeChecklistItem && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-5 sm:p-6 text-slate-900 dark:text-slate-100 animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div>
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-purple-600 dark:text-cyan-400">
+                  {activeChecklistItem.dept} Department
+                </span>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">
+                  {activeChecklistItem.item.label}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveChecklistItem(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Checklist Option Buttons (Exact options requested by user) */}
+            <div className="space-y-2.5 my-4">
+              <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                Select Audit Finding Status:
+              </label>
+
+              {/* 1. Compliant */}
+              <button
+                type="button"
+                onClick={() => handleSetItemStatus('COMPLIANT')}
+                className="w-full p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between text-xs font-bold text-emerald-800 dark:text-emerald-300 transition-colors cursor-pointer group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
+                    <Check className="w-4 h-4" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold">Compliant</div>
+                    <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">
+                      Meets standard clauses & procedure requirements
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-emerald-600 group-hover:translate-x-1 transition-transform" />
+              </button>
+
+              {/* 2. Non-Compliant */}
+              <button
+                type="button"
+                onClick={() => handleSetItemStatus('NON_COMPLIANT')}
+                className="w-full p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-950/50 border border-rose-200 dark:border-rose-800 flex items-center justify-between text-xs font-bold text-rose-800 dark:text-rose-300 transition-colors cursor-pointer group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-6 h-6 rounded-lg bg-rose-600 text-white flex items-center justify-center">
+                    <X className="w-4 h-4" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold">Non-Compliant (Defect Found)</div>
+                    <div className="text-[10px] text-rose-600 dark:text-rose-400 font-normal">
+                      Fails audit standard. Corrective Action Required (CAP)
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-rose-600 group-hover:translate-x-1 transition-transform" />
+              </button>
+
+              {/* 3. Not Applicable */}
+              <button
+                type="button"
+                onClick={() => handleSetItemStatus('NOT_APPLICABLE')}
+                className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-6 h-6 rounded-lg bg-slate-400 text-white flex items-center justify-center">
+                    <MinusCircle className="w-4 h-4" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold">Not Applicable (N/A)</div>
+                    <div className="text-[10px] text-slate-500 font-normal">
+                      Item does not apply to this production section
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
+              </button>
+
+              {/* 4. Observation */}
+              <button
+                type="button"
+                onClick={() => handleSetItemStatus('OBSERVATION')}
+                className="w-full p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-950/50 border border-amber-200 dark:border-amber-800 flex items-center justify-between text-xs font-bold text-amber-800 dark:text-amber-300 transition-colors cursor-pointer group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center">
+                    <Eye className="w-4 h-4" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold">Observation</div>
+                    <div className="text-[10px] text-amber-600 dark:text-amber-400 font-normal">
+                      Advisory comment / minor potential risk noted
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-amber-600 group-hover:translate-x-1 transition-transform" />
+              </button>
+            </div>
+
+            {/* Auditor Finding Notes input */}
+            <div className="my-3">
+              <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                Auditor Finding Remarks / Floor Evidence:
+              </label>
+              <textarea
+                rows={2}
+                value={itemNotes}
+                onChange={(e) => setItemNotes(e.target.value)}
+                placeholder="E.g., Overtime records in sewing line 2 exceeded 60h/week during peak shipping week..."
+                className="w-full p-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+              />
+            </div>
+
+            {/* Quick Raise NC Button (If auditor wants to file NC right away) */}
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() =>
+                  handleRaiseNC(activeChecklistItem.dept, activeChecklistItem.item)
+                }
+                className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 cursor-pointer"
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span>Issue NC Defect Immediately →</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveChecklistItem(null)}
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* 6. MODAL TO SCHEDULE NEW AUDIT ROUND                         */}
+      {/* ============================================================ */}
+      {isNewAuditModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 text-slate-900 dark:text-slate-100">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 mb-4">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-purple-600" />
+                <span>Schedule New Audit Round</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsNewAuditModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateAudit} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Audit Title:
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="E.g., Pre-Shipment Technical Audit"
+                  value={newAuditTitle}
+                  onChange={(e) => setNewAuditTitle(e.target.value)}
+                  className="w-full p-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Scheduled Date:
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="E.g., 28-Oct-26"
+                  value={newAuditDate}
+                  onChange={(e) => setNewAuditDate(e.target.value)}
+                  className="w-full p-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Audit Type / Scope:
+                </label>
+                <select
+                  value={newAuditType}
+                  onChange={(e) => setNewAuditType(e.target.value)}
+                  className="w-full p-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+                >
+                  <option value="Social & Labor">Social & Labor Audit (SA8000)</option>
+                  <option value="Environmental Health & Safety">EHS & Fire Safety Audit</option>
+                  <option value="Quality & Workmanship">Quality & Workmanship (ISO 9001)</option>
+                  <option value="Buyer Technical Audit">Buyer Technical Inspection (Nike/Zara)</option>
+                </select>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsNewAuditModalOpen(false)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md shadow-purple-600/30 cursor-pointer"
+                >
+                  Create Audit Round
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AuditManagementDashboard;

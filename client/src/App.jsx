@@ -28,6 +28,7 @@ import SidebarNavigation from './components/SidebarNavigation';
 import FactoryComplianceHome from './components/FactoryComplianceHome';
 import RequirementsComplianceView from './components/RequirementsComplianceView';
 import ReportsView from './components/ReportsView';
+import AuditManagementDashboard from './components/AuditManagementDashboard';
 import { Crown, BarChart3, Users, Building2, Flame, CheckSquare, Search, Filter } from 'lucide-react';
 
 // Safe localStorage caching helper namespaced by user to prevent QuotaExceededError and cross-account data leaks
@@ -98,6 +99,7 @@ export const App = () => {
 
   // Modal States
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+  const [ncPrefillData, setNcPrefillData] = useState(null);
   const [selectedComplaint, setSelectedComplaint] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);
@@ -355,6 +357,12 @@ export const App = () => {
     loadData(false);
   };
 
+  // Open NC modal with optional prefill data (called from AuditManagementDashboard checklist)
+  const handleOpenNewComplaintWithPrefill = (prefill) => {
+    setNcPrefillData(prefill || null);
+    setIsNewModalOpen(true);
+  };
+
   // Quick drill-down from Department Compliance Dashboard directly into filtered Defect Register
   const handleDrilldownDepartment = (deptName) => {
     setSearchTerm(deptName);
@@ -532,6 +540,14 @@ export const App = () => {
                 onClose={() => setCurrentNavSection('dashboard')}
               />
             )
+          ) : currentNavSection === 'audits' ? (
+            <AuditManagementDashboard
+              onOpenNewComplaint={handleOpenNewComplaintWithPrefill}
+              onSelectNCFilter={(filter) => {
+                setActiveTab(filter);
+                setCurrentNavSection('nc');
+              }}
+            />
           ) : (
             /* NC Register / Tasks / Audits / CAP */
             <>
@@ -715,8 +731,9 @@ export const App = () => {
       {/* Modals */}
       <NewComplaintModal
         isOpen={isNewModalOpen}
-        onClose={() => setIsNewModalOpen(false)}
+        onClose={() => { setIsNewModalOpen(false); setNcPrefillData(null); }}
         onSuccess={handleNewComplaintSuccess}
+        prefillData={ncPrefillData}
       />
 
       <ActionTakenModal

@@ -14,6 +14,9 @@ const {
   deleteComplaint,
   getDepartmentComplianceStats,
   updateComplianceThresholds,
+  getAudits,
+  updateAuditChecklist,
+  createAuditRound,
 } = require('../controllers/complaintController');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -57,6 +60,11 @@ router.get('/admin/oversight', verifyToken, requireRole(['ADMIN', 'AUDITOR']), g
 // Department-wise compliance scoreboard & configurable thresholds (must be declared before :id)
 router.get('/admin/department-compliance', verifyToken, getDepartmentComplianceStats);
 router.put('/admin/compliance-thresholds', verifyToken, requireRole(['ADMIN']), updateComplianceThresholds);
+
+// Audit Management routes (must be declared before :id)
+router.get('/admin/audits', verifyToken, getAudits);
+router.put('/admin/audits/:id/checklist', verifyToken, requireRole(['AUDITOR', 'ADMIN']), updateAuditChecklist);
+router.post('/admin/audits', verifyToken, requireRole(['AUDITOR', 'ADMIN']), createAuditRound);
 
 // KPI Stats endpoint (must be declared before :id)
 router.get('/stats/kpi', verifyToken, getKpiStats);
