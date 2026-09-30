@@ -8,6 +8,7 @@ import {
   CheckCheck,
   User,
   Trash2,
+  Layers,
 } from 'lucide-react';
 import CountdownBadge from './CountdownBadge';
 import { useAuth } from '../context/AuthContext';
@@ -82,6 +83,15 @@ export const ComplaintCard = ({
             >
               {complaint.priority}
             </span>
+            {complaint.capRequired && (
+              <span
+                title="Structured Corrective & Preventive Action (CAP) Required"
+                className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/80 dark:text-cyan-300 dark:border-indigo-800 flex items-center gap-1"
+              >
+                <Layers className="w-2.5 h-2.5 text-indigo-600 dark:text-cyan-400" />
+                CAP
+              </span>
+            )}
           </div>
 
           <CountdownBadge
@@ -241,7 +251,7 @@ export const ComplaintCard = ({
               className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm transition-all active:scale-95"
             >
               <Camera className="w-3.5 h-3.5" />
-              <span>Submit Proof</span>
+              <span>{complaint.capRequired ? 'Submit CAP & Proof' : 'Submit Proof'}</span>
             </button>
           )}
 
