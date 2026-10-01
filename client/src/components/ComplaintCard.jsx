@@ -75,7 +75,12 @@ export const ComplaintCard = ({
   const compDept = (complaint.department || '').trim().toLowerCase();
   const userDept = (user?.department || '').trim().toLowerCase();
 
-  const canActionPersonAct = isAuditor || isActionPerson || isAdmin;
+  // Strict assignment check: Only the specifically assigned supervisor (or Auditor/Admin) can act
+  const isAssignedSupervisor = isActionPerson && (
+    (userEmpId && assignedEmpId && userEmpId === assignedEmpId) ||
+    (currentUserId && assignedUserId && currentUserId === assignedUserId)
+  );
+  const canActionPersonAct = isAuditor || isAdmin || isAssignedSupervisor;
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-2xl p-3.5 sm:p-5 transition-all duration-200 shadow-xs hover:shadow-md flex flex-col justify-between group">

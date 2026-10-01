@@ -77,10 +77,11 @@ export const ComplaintTable = ({
             const currentUserId = user?._id?.toString();
             const assignedEmpId = (c.assignedTo?.employeeId || '').toUpperCase();
             const userEmpId = (user?.employeeId || '').toUpperCase();
-            const compDept = (c.department || '').trim().toLowerCase();
-            const userDept = (user?.department || '').trim().toLowerCase();
-
-            const canAct = isAuditor || isActionPerson || isAdmin;
+            const isAssignedSupervisor = isActionPerson && (
+              (userEmpId && assignedEmpId && userEmpId === assignedEmpId) ||
+              (currentUserId && assignedUserId && currentUserId === assignedUserId)
+            );
+            const canAct = isAuditor || isAdmin || isAssignedSupervisor;
 
             return (
               <tr

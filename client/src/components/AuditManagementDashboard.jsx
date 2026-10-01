@@ -33,10 +33,10 @@ export const AuditManagementDashboard = ({ onOpenNewComplaint, onSelectNCFilter 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [audits, setAudits] = useState([]);
   const [stats, setStats] = useState({
-    completedAudits: 24,
-    openAudits: 3,
-    ncsFound: 87,
-    ncClosureRate: 91,
+    completedAudits: 0,
+    openAudits: 0,
+    ncsFound: 0,
+    ncClosureRate: 100,
   });
 
   // Selected audit for checklist view (defaults to 'Internal Compliance Audit' if clicked)

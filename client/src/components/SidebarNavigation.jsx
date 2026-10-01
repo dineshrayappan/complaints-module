@@ -51,14 +51,14 @@ export const SidebarNavigation = ({
       id: 'audits',
       label: 'Audits',
       icon: ShieldCheck,
-      badge: counts.audits || '8',
+      badge: counts.audits !== undefined && counts.audits !== null && counts.audits > 0 ? String(counts.audits) : null,
       badgeColor: 'bg-purple-500 text-white',
     },
     {
       id: 'nc',
       label: 'NC',
       icon: AlertTriangle,
-      badge: counts.openNC || '27',
+      badge: counts.openNC !== undefined && counts.openNC !== null && counts.openNC > 0 ? String(counts.openNC) : null,
       badgeColor: 'bg-amber-500 text-white',
     },
     {
@@ -73,7 +73,7 @@ export const SidebarNavigation = ({
       id: 'departments',
       label: 'Departments',
       icon: Building2,
-      badge: counts.deptCount || '7',
+      badge: counts.deptCount !== undefined && counts.deptCount !== null && counts.deptCount > 0 ? String(counts.deptCount) : null,
       badgeColor: 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200',
     },
     {

@@ -126,7 +126,6 @@ export const App = () => {
       }
 
       const params = {
-        tab: activeTab,
         deadlineCondition: deadlineFilter || undefined,
         category: categoryFilter || undefined,
         priority: priorityFilter || undefined,
@@ -149,10 +148,7 @@ export const App = () => {
             (c) => c._isOptimistic && !incomingIds.has(String(c._id || c.id || c.complaintId))
           );
           const combined = [...optimisticPending, ...incoming];
-          // Persist full complaints cache safely only when on 'all' tab with no filters
-          if (activeTab === 'all' && !deadlineFilter && !categoryFilter && !priorityFilter && !searchTerm) {
-            safePersistCache(combined, user);
-          }
+          safePersistCache(combined, user);
           return combined;
         });
       }
@@ -169,7 +165,7 @@ export const App = () => {
         setTimeout(() => setIsRefreshing(false), 400);
       }
     }
-  }, [user, activeTab, deadlineFilter, categoryFilter, priorityFilter, searchTerm]);
+  }, [user, deadlineFilter, categoryFilter, priorityFilter, searchTerm]);
 
   // Load records on initial component mount or page refresh
   useEffect(() => {
@@ -399,16 +395,68 @@ export const App = () => {
     showToast(`Filtered NC register for ${deptName} department.`);
   };
 
+  // Derived real-time counts from loaded complaints (always 100% accurate, no flickering)
+  const derivedCounts = useMemo(() => {
+    const isSupervisor = user?.role === 'ACTION_PERSON' || user?.role === 'SUPERVISOR';
+    const userEmpId = (user?.employeeId || '').toUpperCase();
+    const userId = String(user?.id || user?._id || '');
+
+    const userComplaints = isSupervisor
+      ? complaints.filter((c) => {
+          const cEmp = (c.assignedTo?.employeeId || '').toUpperCase();
+          const cUser = String(c.assignedTo?.userId || '');
+          return (cEmp && cEmp === userEmpId) || (cUser && cUser === userId);
+        })
+      : complaints;
+
+    const now = Date.now();
+    return {
+      total: userComplaints.length,
+      open: userComplaints.filter((c) => ['Open', 'Assigned', 'In Progress'].includes(c.status)).length,
+      capSubmitted: userComplaints.filter((c) => c.status === 'CAP Submitted').length,
+      underReview: userComplaints.filter((c) => ['Under Review', 'Under Verification'].includes(c.status)).length,
+      rejectedRework: userComplaints.filter((c) => ['Rejected / Rework', 'Rejected / Sent Back'].includes(c.status)).length,
+      verified: userComplaints.filter((c) => c.status === 'Verified').length,
+      closed: userComplaints.filter((c) => c.status === 'Closed').length,
+      draft: userComplaints.filter((c) => c.status === 'Draft').length,
+      overdueCount: userComplaints.filter((c) => c.status !== 'Closed' && c.status !== 'Verified' && new Date(c.deadlineTimestamp).getTime() < now).length,
+      dueSoonCount: userComplaints.filter((c) => {
+        if (c.status === 'Closed' || c.status === 'Verified') return false;
+        const diff = new Date(c.deadlineTimestamp).getTime() - now;
+        return diff >= 0 && diff <= 4 * 3600 * 1000;
+      }).length,
+      openDeadlineCount: userComplaints.filter((c) => {
+        if (c.status === 'Closed' || c.status === 'Verified') return false;
+        const diff = new Date(c.deadlineTimestamp).getTime() - now;
+        return diff > 4 * 3600 * 1000;
+      }).length,
+      closedDeadlineCount: userComplaints.filter((c) => c.status === 'Closed' || c.status === 'Verified').length,
+    };
+  }, [complaints, user]);
+
   // Instant client-side filtering for smooth tab switches and deadline filtering
   const displayedComplaints = useMemo(() => {
+    const isSupervisor = user?.role === 'ACTION_PERSON' || user?.role === 'SUPERVISOR';
+    const userEmpId = (user?.employeeId || '').toUpperCase();
+    const userId = String(user?.id || user?._id || '');
+
     return complaints.filter((c) => {
+      // 0. Strict Personal Assignment Isolation for Supervisor
+      if (isSupervisor) {
+        const cEmp = (c.assignedTo?.employeeId || '').toUpperCase();
+        const cUser = String(c.assignedTo?.userId || '');
+        if ((!cEmp || cEmp !== userEmpId) && (!cUser || cUser !== userId)) {
+          return false;
+        }
+      }
+
       // 1. Tab workflow status filter
       if (activeTab === 'draft' && c.status !== 'Draft') return false;
       if (activeTab === 'open' && !['Open', 'Assigned', 'In Progress'].includes(c.status)) return false;
       if (activeTab === 'cap-submitted' && c.status !== 'CAP Submitted') return false;
       if (activeTab === 'under-review' && !['Under Review', 'Under Verification'].includes(c.status)) return false;
       if (activeTab === 'rejected-rework' && !['Rejected / Rework', 'Rejected / Sent Back'].includes(c.status)) return false;
-      if (activeTab === 'verified' && c.status !== 'Verified') return false;
+      if (activeTab === 'verified' && !['Verified', 'Under Verification'].includes(c.status)) return false;
       if (activeTab === 'closed' && c.status !== 'Closed') return false;
 
       // 2. Separate Deadline Condition filter
@@ -431,7 +479,7 @@ export const App = () => {
 
       return true;
     });
-  }, [complaints, activeTab, deadlineFilter]);
+  }, [complaints, activeTab, deadlineFilter, user]);
 
   // Render dedicated Login Page when not authenticated
   if (!user) {
@@ -454,7 +502,7 @@ export const App = () => {
         onOpenNewComplaint={() => setIsNewModalOpen(true)}
         onRefresh={() => loadData(false, true)}
         isRefreshing={isRefreshing}
-        overdueCount={metrics?.overdueCount ?? 6}
+        overdueCount={derivedCounts.overdueCount ?? 0}
         onSelectOverdue={() => {
           setCurrentNavSection('nc');
           setDeadlineFilter('Overdue');
@@ -477,13 +525,13 @@ export const App = () => {
             }
           }}
           counts={{
-            openNC: metrics?.open || 27,
-            overdueNC: metrics?.overdueCount || 6,
-            audits: '8',
-            tasks: complaints.filter((c) => ['Open', 'Assigned', 'In Progress', 'Rejected / Rework'].includes(c.status)).length || null,
-            myTasks: (taskCounts.overdue + taskCounts.dueToday) || null,
-            cap: metrics?.capSubmitted || null,
-            deptCount: '7',
+            openNC: derivedCounts.open ?? 0,
+            overdueNC: derivedCounts.overdueCount ?? 0,
+            audits: metrics?.totalAudits ?? 0,
+            tasks: complaints.filter((c) => ['Open', 'Assigned', 'In Progress', 'Rejected / Rework'].includes(c.status)).length,
+            myTasks: (taskCounts.overdue + taskCounts.dueToday) || 0,
+            cap: (derivedCounts.capSubmitted || 0) + (derivedCounts.underReview || 0),
+            deptCount: (metrics?.departments || []).length || 0,
           }}
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
@@ -645,7 +693,7 @@ export const App = () => {
                 onPriorityChange={setPriorityFilter}
                 onRefresh={() => loadData(false, true)}
                 loading={isRefreshing}
-                counts={metrics}
+                counts={derivedCounts}
               />
 
               {/* View Mode Bar */}

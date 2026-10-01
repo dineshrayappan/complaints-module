@@ -298,7 +298,7 @@ export const DepartmentComplianceDashboard = ({ onSelectDepartment, onViewRegist
           </div>
           <div>
             <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-baseline gap-1">
-              <span>{data?.overallScore ?? 91}%</span>
+              <span>{data?.overallScore ?? 100}%</span>
               <span className="text-xs font-bold text-slate-400">Score</span>
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
@@ -319,7 +319,7 @@ export const DepartmentComplianceDashboard = ({ onSelectDepartment, onViewRegist
             <div className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight flex items-center gap-1.5">
               <span>{topDepartment?.department || 'EHS'}</span>
               <span className="text-sm font-mono font-extrabold bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-2 py-0.2 rounded border border-emerald-300">
-                {topDepartment?.score ?? 96}%
+                {topDepartment?.score ?? 100}%
               </span>
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
@@ -358,9 +358,9 @@ export const DepartmentComplianceDashboard = ({ onSelectDepartment, onViewRegist
           </div>
           <div>
             <div className="text-xl sm:text-2xl font-black text-rose-600 dark:text-rose-400 tracking-tight flex items-center gap-1.5">
-              <span>{criticalDepartment?.department || 'Stores'}</span>
+              <span>{criticalDepartment?.department || 'All Compliant'}</span>
               <span className="text-sm font-mono font-extrabold bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 px-2 py-0.2 rounded border border-rose-300">
-                {criticalDepartment?.score ?? 78}%
+                {criticalDepartment ? `${criticalDepartment.score}%` : '100%'}
               </span>
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">

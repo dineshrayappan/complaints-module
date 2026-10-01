@@ -103,27 +103,20 @@ module.exports = {
   getComplaints: (params = {}, user = null) => {
     let result = [...mockComplaints];
 
-    // Role-based filtering for Supervisor / Action Person
+    // Role-based filtering for Supervisor / Action Person (Strict Personal Assignment Isolation across ALL tabs)
     if (user && (user.role === 'ACTION_PERSON' || user.role === 'SUPERVISOR')) {
       const uEmp = (user.employeeId || '').toUpperCase();
-      const uId = String(user._id || '');
-      const uDept = (user.department || '').trim().toLowerCase();
+      const uId = String(user._id || user.id || '');
 
-      // If user specifically requested their assigned tab or department, filter;
-      // otherwise, if on 'all' tab, allow supervisor to see all factory defect tasks
-      if (params.tab === 'my-line') {
-        result = result.filter((c) => {
-          const cAssignedId = String(c.assignedTo?.userId || '');
-          const cAssignedEmp = (c.assignedTo?.employeeId || '').toUpperCase();
-          const cDept = (c.department || '').trim().toLowerCase();
+      result = result.filter((c) => {
+        const cAssignedId = String(c.assignedTo?.userId || '');
+        const cAssignedEmp = (c.assignedTo?.employeeId || '').toUpperCase();
 
-          return (
-            (uEmp && cAssignedEmp === uEmp) ||
-            (uId && cAssignedId === uId) ||
-            (uDept && cDept === uDept)
-          );
-        });
-      }
+        return (
+          (uEmp && cAssignedEmp === uEmp) ||
+          (uId && cAssignedId === uId)
+        );
+      });
     }
 
     if (params.tab === 'draft') {

@@ -8,9 +8,22 @@ const { computeDepartmentNCScore } = require('../utils/scoringEngine');
 // allows ('Assigned', 'In Progress', 'Closed'). We map workflow statuses to compatible DB values.
 const toDbStatus = (status) => {
   const s = String(status || '').trim();
-  if (['Closed', 'VERIFIED_EFFECTIVE', 'Verified'].includes(s)) return 'Closed';
-  if (['In Progress', 'CAP Submitted', 'Under Review', 'SUBMITTED', 'ACTION_TAKEN'].includes(s)) return 'In Progress';
-  return 'Assigned'; // satisfies DB constraint for 'Draft', 'Open', 'Assigned', 'Rejected / Rework'
+  const allowedStatuses = [
+    'Draft',
+    'Open',
+    'Assigned',
+    'In Progress',
+    'CAP Submitted',
+    'Under Review',
+    'Rejected / Rework',
+    'Verified',
+    'Closed'
+  ];
+  if (allowedStatuses.includes(s)) return s;
+  if (s === 'VERIFIED_EFFECTIVE') return 'Verified';
+  if (['SUBMITTED', 'ACTION_TAKEN'].includes(s)) return 'CAP Submitted';
+  if (s === 'Rejected / Sent Back') return 'Rejected / Rework';
+  return 'Open';
 };
 
 const setWorkflowStatusInDescription = (desc, status) => {
@@ -660,19 +673,19 @@ const getComplaints = async (req, res) => {
       try {
         let query = supabase.from('complaints').select('*');
 
-        // RBAC filtering for Line In-Charge
-        if ((req.user.role === 'ACTION_PERSON' || req.user.role === 'SUPERVISOR') && tab === 'my-line') {
+        // RBAC filtering for Supervisor / Action Person (Strict Personal Assignment Isolation across ALL tabs)
+        if (req.user && (req.user.role === 'ACTION_PERSON' || req.user.role === 'SUPERVISOR')) {
           const userEmpId = req.user.employeeId;
           const userId = req.user.id || req.user._id;
-          const userDept = req.user.department;
 
           let orFilters = [];
           if (userEmpId) orFilters.push(`assignedTo->>employeeId.eq.${userEmpId}`);
           if (userId) orFilters.push(`assignedTo->>userId.eq.${userId}`);
-          if (userDept) orFilters.push(`department.ilike.${userDept}`);
 
           if (orFilters.length > 0) {
             query = query.or(orFilters.join(','));
+          } else {
+            query = query.eq('id', 'no-match');
           }
         }
 
@@ -791,6 +804,27 @@ const getComplaintById = async (req, res) => {
           .maybeSingle();
 
         if (!error && data) {
+          // Strict RBAC Isolation: If requester is a Supervisor or Action Person, verify this specific NC was assigned to them
+          if (req.user && (req.user.role === 'SUPERVISOR' || req.user.role === 'ACTION_PERSON')) {
+            const userEmpId = (req.user.employeeId || '').toUpperCase();
+            const userId = String(req.user.id || req.user._id || '');
+            let assignedEmpId = '';
+            let assignedUserId = '';
+            if (data.assignedTo) {
+              const assigned = typeof data.assignedTo === 'string' ? JSON.parse(data.assignedTo) : data.assignedTo;
+              assignedEmpId = (assigned.employeeId || '').toUpperCase();
+              assignedUserId = String(assigned.userId || assigned._id || '');
+            }
+            const isAssigned = (userEmpId && assignedEmpId && userEmpId === assignedEmpId) ||
+                               (userId && assignedUserId && userId === assignedUserId);
+            if (!isAssigned) {
+              return res.status(403).json({
+                success: false,
+                message: "Access Denied: You are not authorized to view or access another supervisor's assigned NC record or CAP details.",
+              });
+            }
+          }
+
           mockStore.createComplaint({ ...data, _id: data.id, complaintId: data.complaintId });
           return res.status(200).json({
             success: true,
@@ -810,6 +844,27 @@ const getComplaintById = async (req, res) => {
       });
     }
 
+    // Strict RBAC Isolation for fallback store
+    if (req.user && (req.user.role === 'SUPERVISOR' || req.user.role === 'ACTION_PERSON')) {
+      const userEmpId = (req.user.employeeId || '').toUpperCase();
+      const userId = String(req.user.id || req.user._id || '');
+      let assignedEmpId = '';
+      let assignedUserId = '';
+      if (complaint.assignedTo) {
+        const assigned = typeof complaint.assignedTo === 'string' ? JSON.parse(complaint.assignedTo) : complaint.assignedTo;
+        assignedEmpId = (assigned.employeeId || '').toUpperCase();
+        assignedUserId = String(assigned.userId || assigned._id || '');
+      }
+      const isAssigned = (userEmpId && assignedEmpId && userEmpId === assignedEmpId) ||
+                         (userId && assignedUserId && userId === assignedUserId);
+      if (!isAssigned) {
+        return res.status(403).json({
+          success: false,
+          message: "Access Denied: You are not authorized to view or access another supervisor's assigned NC record or CAP details.",
+        });
+      }
+    }
+
     res.status(200).json({
       success: true,
       complaint: formatComplaintOutput(complaint),
@@ -823,9 +878,6 @@ const getComplaintById = async (req, res) => {
   }
 };
 
-// @desc    Update complaint status to 'In Progress'
-// @route   PATCH /api/complaints/:id/in-progress
-// @access  Private (Action Person or Auditor)
 const markInProgress = async (req, res) => {
   try {
     const paramId = req.params.id;
@@ -870,17 +922,20 @@ const markInProgress = async (req, res) => {
             role: req.user.role,
             employeeId: req.user.employeeId,
           },
-          notes: req.body.notes || 'Line In-Charge commenced defect rectification and machine inspection.',
+          notes: 'Supervisor initiated work and containment on the shop floor.',
           timestamp: now.toISOString(),
         });
 
+        const updatePayload = {
+          status: toDbStatus('In Progress'),
+          description: setWorkflowStatusInDescription(current.description, 'In Progress'),
+          timeline,
+          updatedAt: now.toISOString(),
+        };
+
         const { data: updated, error: updateErr } = await supabase
           .from('complaints')
-          .update({
-            status: 'In Progress',
-            timeline,
-            updatedAt: now.toISOString(),
-          })
+          .update(updatePayload)
           .eq('id', current.id)
           .select()
           .single();
@@ -889,71 +944,55 @@ const markInProgress = async (req, res) => {
           console.error('[ComplaintController:markInProgress] Supabase update error:', updateErr.message);
           return res.status(500).json({
             success: false,
-            message: 'Failed to update complaint in database: ' + updateErr.message,
+            message: 'Failed to update complaint status in database: ' + updateErr.message,
             error: updateErr.message,
           });
         }
 
         if (updated) {
-          mockStore.updateComplaint(current.id, {
-            status: 'In Progress',
-            timeline: updated.timeline,
-            updatedAt: now.toISOString(),
-          });
+          mockStore.updateComplaint(current.id, updatePayload);
           return res.status(200).json({
             success: true,
-            message: `Complaint ${updated.complaintId} marked In Progress.`,
+            message: `Complaint ${updated.complaintId} marked in progress.`,
             complaint: formatComplaintOutput(updated),
           });
         }
       } catch (dbErr) {
         console.error('[ComplaintController:markInProgress] Supabase exception:', dbErr.message);
-        return res.status(500).json({
-          success: false,
-          message: 'Database exception: ' + dbErr.message,
-          error: dbErr.message,
-        });
       }
     }
 
-    const complaint = mockStore.getComplaintById(paramId);
+    // Fallback to mockStore
+    const complaint = mockStore.findComplaintById(paramId);
     if (!complaint) {
-      return res.status(404).json({
-        success: false,
-        message: 'Complaint not found.',
-      });
+      return res.status(404).json({ success: false, message: 'Complaint not found.' });
     }
-
-    if (complaint.status === 'Closed') {
-      return res.status(400).json({
-        success: false,
-        message: 'Cannot modify a closed complaint.',
-      });
-    }
-
-    complaint.status = 'In Progress';
-    complaint.timeline.push({
+    const timeline = parseTimeline(complaint.timeline);
+    timeline.push({
       action: 'IN_PROGRESS',
       performedBy: {
         name: req.user.name,
         role: req.user.role,
         employeeId: req.user.employeeId,
       },
-      notes: req.body.notes || 'Line In-Charge commenced defect rectification and machine inspection.',
-      timestamp: now,
+      notes: 'Supervisor initiated work and containment on the shop floor.',
+      timestamp: now.toISOString(),
     });
-    mockStore.updateComplaint(complaint._id, complaint);
-
+    const updated = mockStore.updateComplaint(complaint.id, {
+      status: 'In Progress',
+      timeline,
+      updatedAt: now.toISOString(),
+    });
     return res.status(200).json({
       success: true,
-      message: `Complaint ${complaint.complaintId} marked In Progress.`,
-      complaint: formatComplaintOutput(complaint),
+      message: `Complaint ${updated.complaintId} marked in progress.`,
+      complaint: formatComplaintOutput(updated),
     });
   } catch (error) {
-    res.status(500).json({
+    console.error('[ComplaintController:markInProgress] Error:', error);
+    return res.status(500).json({
       success: false,
-      message: 'Failed to update complaint status.',
-      error: error.message,
+      message: 'Server error marking complaint in progress.',
     });
   }
 };
@@ -1105,6 +1144,7 @@ const submitAction = async (req, res) => {
           feedbackRemarks: finalFeedbackRemarks,
           actualCompletedAt: now.toISOString(),
           status: toDbStatus('CAP Submitted'),
+          cap: structuredCap,
           description: setWorkflowStatusInDescription(current.description, 'CAP Submitted'),
           timeline,
           updatedAt: now.toISOString(),
@@ -1257,10 +1297,12 @@ const verifyComplaint = async (req, res) => {
         const timeline = parseTimeline(current.timeline);
         let newStatus = current.status;
         let updatePayload = { updatedAt: now.toISOString() };
+        const capUpdate = (current.cap && typeof current.cap === 'object') ? { ...current.cap } : {};
 
         if (decision === 'START_REVIEW') {
           newStatus = 'Under Review';
           updatePayload.status = newStatus;
+          capUpdate.status = 'UNDER_REVIEW';
           timeline.push({
             action: 'UNDER_REVIEW',
             performedBy: {
@@ -1274,6 +1316,11 @@ const verifyComplaint = async (req, res) => {
         } else if (decision === 'VERIFY') {
           newStatus = 'Verified';
           updatePayload.status = newStatus;
+          capUpdate.status = 'VERIFIED_EFFECTIVE';
+          capUpdate.verifiedEffective = true;
+          capUpdate.verifiedAt = now.toISOString();
+          capUpdate.verifiedBy = req.user.name;
+          capUpdate.verificationNotes = notes || 'Audit verified that CAP actions are effective on the shop floor.';
           timeline.push({
             action: 'VERIFIED',
             performedBy: {
@@ -1289,6 +1336,11 @@ const verifyComplaint = async (req, res) => {
           updatePayload.status = newStatus;
           updatePayload.actualCompletedAt = now.toISOString();
           updatePayload.rejectionReason = '';
+          capUpdate.status = 'CLOSED';
+          capUpdate.verifiedEffective = true;
+          capUpdate.verifiedAt = now.toISOString();
+          capUpdate.verifiedBy = req.user.name;
+          capUpdate.verificationNotes = notes || 'Audit verified Before/After photos and approved closure of ticket.';
           timeline.push({
             action: 'CLOSED',
             performedBy: {
@@ -1304,6 +1356,9 @@ const verifyComplaint = async (req, res) => {
           newStatus = 'Rejected / Rework';
           updatePayload.status = newStatus;
           updatePayload.rejectionReason = reason;
+          capUpdate.status = 'REJECTED';
+          capUpdate.verifiedEffective = false;
+          capUpdate.rejectionReason = reason;
           timeline.push({
             action: 'REJECTED',
             performedBy: {
@@ -1317,6 +1372,7 @@ const verifyComplaint = async (req, res) => {
         }
 
         updatePayload.status = toDbStatus(newStatus);
+        updatePayload.cap = capUpdate;
         updatePayload.description = setWorkflowStatusInDescription(current.description, newStatus);
         updatePayload.timeline = timeline;
 
@@ -1337,23 +1393,18 @@ const verifyComplaint = async (req, res) => {
         }
 
         if (updated) {
-          const capUpdate = current.cap ? { ...current.cap } : {};
-          if (decision === 'APPROVE') {
-            capUpdate.status = 'VERIFIED_EFFECTIVE';
-            capUpdate.verifiedEffective = true;
-            capUpdate.verifiedAt = now.toISOString();
-            capUpdate.verifiedBy = req.user.name;
-            capUpdate.verificationNotes = notes || 'Audit verified CAP effectiveness.';
-          } else {
-            capUpdate.status = 'REJECTED';
-            capUpdate.verifiedEffective = false;
-            capUpdate.rejectionReason = rejectionReason || notes;
-          }
-
           mockStore.updateComplaint(current.id, { ...updatePayload, cap: capUpdate });
           return res.status(200).json({
             success: true,
-            message: `Complaint ${updated.complaintId} has been ${decision === 'APPROVE' ? 'Approved & Closed' : 'Rejected & Returned to line'}.`,
+            message: `Complaint ${updated.complaintId} has been ${
+              decision === 'VERIFY'
+                ? 'Verified Effective'
+                : decision === 'APPROVE' || decision === 'CLOSE'
+                ? 'Approved & Closed'
+                : decision === 'START_REVIEW'
+                ? 'placed Under Review'
+                : 'Rejected & Returned to line'
+            }.`,
             complaint: formatComplaintOutput({ ...updated, cap: capUpdate }),
           });
         }
@@ -1367,17 +1418,20 @@ const verifyComplaint = async (req, res) => {
       }
     }
 
-    const complaint = mockStore.getComplaintById(paramId);
+    // Fallback to mockStore
+    const complaint = mockStore.findComplaintById(paramId);
     if (!complaint) {
-      return res.status(404).json({
-        success: false,
-        message: 'Complaint not found.',
-      });
+      return res.status(404).json({ success: false, message: 'Complaint not found.' });
     }
 
+    const timeline = parseTimeline(complaint.timeline);
+    let newStatus = complaint.status;
+    const capUpdate = (complaint.cap && typeof complaint.cap === 'object') ? { ...complaint.cap } : {};
+
     if (decision === 'START_REVIEW') {
-      complaint.status = 'Under Review';
-      complaint.timeline.push({
+      newStatus = 'Under Review';
+      capUpdate.status = 'UNDER_REVIEW';
+      timeline.push({
         action: 'UNDER_REVIEW',
         performedBy: {
           name: req.user.name,
@@ -1385,17 +1439,15 @@ const verifyComplaint = async (req, res) => {
           employeeId: req.user.employeeId,
         },
         notes: notes || 'Auditor initiated review and on-site audit of submitted CAP.',
-        timestamp: now,
+        timestamp: now.toISOString(),
       });
     } else if (decision === 'VERIFY') {
-      complaint.status = 'Verified';
-      if (!complaint.cap) complaint.cap = {};
-      complaint.cap.status = 'VERIFIED_EFFECTIVE';
-      complaint.cap.verifiedEffective = true;
-      complaint.cap.verifiedAt = now.toISOString();
-      complaint.cap.verifiedBy = req.user.name;
-      complaint.cap.verificationNotes = notes || 'Audit verified CAP effectiveness on floor.';
-      complaint.timeline.push({
+      newStatus = 'Verified';
+      capUpdate.status = 'VERIFIED_EFFECTIVE';
+      capUpdate.verifiedEffective = true;
+      capUpdate.verifiedAt = now.toISOString();
+      capUpdate.verifiedBy = req.user.name;
+      timeline.push({
         action: 'VERIFIED',
         performedBy: {
           name: req.user.name,
@@ -1403,61 +1455,68 @@ const verifyComplaint = async (req, res) => {
           employeeId: req.user.employeeId,
         },
         notes: notes || 'Audit verified that CAP actions are effective on the shop floor.',
-        timestamp: now,
+        timestamp: now.toISOString(),
       });
     } else if (decision === 'APPROVE' || decision === 'CLOSE') {
-      complaint.status = 'Closed';
-      complaint.actualCompletedAt = now;
-      complaint.rejectionReason = '';
-      if (!complaint.cap) complaint.cap = {};
-      complaint.cap.status = 'VERIFIED_EFFECTIVE';
-      complaint.cap.verifiedEffective = true;
-      complaint.cap.verifiedAt = now.toISOString();
-      complaint.cap.verifiedBy = req.user.name;
-      complaint.cap.verificationNotes = notes || 'Audit verified CAP effectiveness and approved closure.';
-      complaint.timeline.push({
+      newStatus = 'Closed';
+      capUpdate.status = 'CLOSED';
+      capUpdate.verifiedEffective = true;
+      capUpdate.verifiedAt = now.toISOString();
+      capUpdate.verifiedBy = req.user.name;
+      timeline.push({
         action: 'CLOSED',
         performedBy: {
           name: req.user.name,
           role: req.user.role,
           employeeId: req.user.employeeId,
         },
-        notes: notes || 'Audit verified Before/After photos & CAP effectiveness, approving ticket closure.',
-        timestamp: now,
+        notes: notes || 'Audit verified Before/After photos and approved closure of ticket.',
+        timestamp: now.toISOString(),
       });
     } else {
       const reason = rejectionReason || notes;
-      complaint.status = 'Rejected / Rework';
-      complaint.rejectionReason = reason;
-      if (!complaint.cap) complaint.cap = {};
-      complaint.cap.status = 'REJECTED';
-      complaint.cap.verifiedEffective = false;
-      complaint.cap.rejectionReason = reason;
-      complaint.timeline.push({
+      newStatus = 'Rejected / Rework';
+      capUpdate.status = 'REJECTED';
+      capUpdate.verifiedEffective = false;
+      capUpdate.rejectionReason = reason;
+      timeline.push({
         action: 'REJECTED',
         performedBy: {
           name: req.user.name,
           role: req.user.role,
           employeeId: req.user.employeeId,
         },
-        notes: `Audit rejected CAP resolution and returned to line for rework. Reason: ${reason}`,
-        timestamp: now,
+        notes: `Audit rejected resolution and returned to line for rework. Reason: ${reason}`,
+        timestamp: now.toISOString(),
       });
     }
 
-    mockStore.updateComplaint(complaint._id, complaint);
+    const updated = mockStore.updateComplaint(complaint.id, {
+      status: toDbStatus(newStatus),
+      cap: capUpdate,
+      timeline,
+      actualCompletedAt: decision === 'APPROVE' || decision === 'CLOSE' ? now.toISOString() : undefined,
+      updatedAt: now.toISOString(),
+    });
 
     return res.status(200).json({
       success: true,
-      message: `Complaint ${complaint.complaintId} has been ${decision === 'APPROVE' ? 'Approved & Closed' : 'Rejected & Returned to line'}.`,
-      complaint: formatComplaintOutput(complaint),
+      message: `Complaint ${updated.complaintId} has been ${
+        decision === 'VERIFY'
+          ? 'Verified Effective'
+          : decision === 'APPROVE' || decision === 'CLOSE'
+          ? 'Approved & Closed'
+          : decision === 'START_REVIEW'
+          ? 'placed Under Review'
+          : 'Rejected & Returned to line'
+      }.`,
+      complaint: formatComplaintOutput(updated),
     });
   } catch (error) {
     console.error('[ComplaintController:verifyComplaint] Error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: 'Failed to verify complaint.',
-      error: error.message,
+      message: 'Server error verifying complaint.',
     });
   }
 };
@@ -1595,18 +1654,18 @@ const getKpiStats = async (req, res) => {
       try {
         let query = supabase.from('complaints').select('status, deadlineTimestamp, assignedTo, department');
 
-        if ((req.user.role === 'ACTION_PERSON' || req.user.role === 'SUPERVISOR') && (req.query.scope === 'my-line' || req.query.tab === 'my-line')) {
+        if (req.user && (req.user.role === 'ACTION_PERSON' || req.user.role === 'SUPERVISOR')) {
           const userEmpId = req.user.employeeId;
           const userId = req.user.id || req.user._id;
-          const userDept = req.user.department;
 
           let orFilters = [];
           if (userEmpId) orFilters.push(`assignedTo->>employeeId.eq.${userEmpId}`);
           if (userId) orFilters.push(`assignedTo->>userId.eq.${userId}`);
-          if (userDept) orFilters.push(`department.ilike.${userDept}`);
 
           if (orFilters.length > 0) {
             query = query.or(orFilters.join(','));
+          } else {
+            query = query.eq('id', 'no-match');
           }
         }
 
@@ -1748,9 +1807,7 @@ const getAdminOversightStats = async (req, res) => {
       }
     }
 
-    if (allComplaints.length === 0) {
-      allComplaints = mockStore.getComplaints().map(formatComplaintOutput);
-    }
+    // If zero complaints, keep genuine empty data (do not inject mock data)
     if (allUsers.length === 0) {
       allUsers = mockStore.getUsers();
     }
@@ -1812,8 +1869,7 @@ const getAdminOversightStats = async (req, res) => {
 
         return (
           (sup._id && cAssignedId === sup._id.toString()) ||
-          (supEmp && cAssignedEmp === supEmp) ||
-          (supDept && cDept === supDept)
+          (supEmp && cAssignedEmp === supEmp)
         );
       });
 
@@ -2203,9 +2259,7 @@ const getDepartmentComplianceStats = async (req, res) => {
       }
     }
 
-    if (allComplaints.length === 0) {
-      allComplaints = mockStore.getComplaints().map(formatComplaintOutput);
-    }
+    // Keep real database complaints (do not inject mock records when 0)
 
     const thresholds = mockStore.getComplianceThresholds();
     const now = new Date();
@@ -2315,39 +2369,63 @@ const getDepartmentComplianceStats = async (req, res) => {
     // Sort by score descending (top performing first)
     departmentStats.sort((a, b) => b.score - a.score);
 
-    // Factory Overall Compliance Score (average of departments)
+    // Factory Overall Compliance Score (average of active departments or 100% when clean)
     const validScores = departmentStats.filter((d) => d.totalNC > 0);
     const overallScore = validScores.length > 0
       ? Math.round(validScores.reduce((acc, d) => acc + d.score, 0) / validScores.length)
-      : 91;
+      : 100;
 
     const totalOpenNC = departmentStats.reduce((sum, d) => sum + d.openNC, 0);
     const totalOverdueNC = departmentStats.reduce((sum, d) => sum + d.overdueNC, 0);
     const avgCapPercent = departmentStats.length > 0
       ? Math.round(departmentStats.reduce((sum, d) => sum + d.capPercent, 0) / departmentStats.length)
-      : 90;
+      : 100;
 
-    // Total audits (count of unique audit defect batches/sessions or default 8)
-    const totalAudits = 8;
+    // Total audits from real database
+    let totalAudits = 0;
+    try {
+      if (isSupabaseConfigured && supabase) {
+        const { count } = await supabase.from('audits').select('*', { count: 'exact', head: true });
+        totalAudits = count || 0;
+      }
+    } catch (e) {
+      totalAudits = 0;
+    }
 
-    // 8-Month NC Trend Data (Jan - Aug)
-    const monthlyTrend = [
-      { month: 'Jan', openNC: 32, closedNC: 26, compliance: 84 },
-      { month: 'Feb', openNC: 29, closedNC: 25, compliance: 86 },
-      { month: 'Mar', openNC: 34, closedNC: 27, compliance: 82 },
-      { month: 'Apr', openNC: 26, closedNC: 24, compliance: 88 },
-      { month: 'May', openNC: 21, closedNC: 20, compliance: 90 },
-      { month: 'Jun', openNC: 24, closedNC: 22, compliance: 89 },
-      { month: 'Jul', openNC: 18, closedNC: 17, compliance: 93 },
-      { month: 'Aug', openNC: totalOpenNC > 0 ? totalOpenNC : 14, closedNC: 12, compliance: overallScore || 91 },
-    ];
+    // Dynamic 6-month trend generated strictly from actual database complaints
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthlyTrend = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const mName = monthNames[d.getMonth()];
+      const year = d.getFullYear();
+      const monthIdx = d.getMonth();
+
+      const inMonth = allComplaints.filter((c) => {
+        const cDate = new Date(c.createdAt || c.created_at);
+        return cDate.getFullYear() === year && cDate.getMonth() === monthIdx;
+      });
+
+      const mOpen = inMonth.filter((c) => c.status !== 'Closed').length;
+      const mClosed = inMonth.filter((c) => c.status === 'Closed').length;
+      const mCompliance = inMonth.length > 0
+        ? Math.round((mClosed / inMonth.length) * 100)
+        : 100;
+
+      monthlyTrend.push({
+        month: mName,
+        openNC: mOpen,
+        closedNC: mClosed,
+        compliance: mCompliance,
+      });
+    }
 
     return res.status(200).json({
       success: true,
       thresholds,
       overallScore,
-      totalOpenNC: totalOpenNC > 0 ? totalOpenNC : 27,
-      totalOverdueNC: totalOverdueNC > 0 ? totalOverdueNC : 6,
+      totalOpenNC,
+      totalOverdueNC,
       totalAudits,
       avgCapPercent,
       monthlyTrend,

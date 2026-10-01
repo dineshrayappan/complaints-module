@@ -22,6 +22,7 @@ import {
   Sparkles,
   ArrowRight,
   ShieldAlert,
+  CheckCheck,
 } from 'lucide-react';
 import CountdownBadge from './CountdownBadge';
 import { formatAbsoluteTime } from '../utils/timer';
@@ -119,6 +120,25 @@ export const ComplaintDetailModal = ({
   };
 
   if (!isOpen || !complaint) return null;
+
+  // Safe parse for timeline, cap, and assignedTo whether they are objects, arrays, or JSON strings
+  const timelineList = Array.isArray(complaint.timeline)
+    ? complaint.timeline
+    : typeof complaint.timeline === 'string'
+    ? (() => { try { const p = JSON.parse(complaint.timeline); return Array.isArray(p) ? p : []; } catch(e) { return []; } })()
+    : [];
+
+  const capData = (typeof complaint.cap === 'object' && complaint.cap !== null)
+    ? complaint.cap
+    : typeof complaint.cap === 'string'
+    ? (() => { try { return JSON.parse(complaint.cap) || {}; } catch(e) { return {}; } })()
+    : {};
+
+  const assignedToData = (typeof complaint.assignedTo === 'object' && complaint.assignedTo !== null)
+    ? complaint.assignedTo
+    : typeof complaint.assignedTo === 'string'
+    ? (() => { try { return JSON.parse(complaint.assignedTo) || {}; } catch(e) { return {}; } })()
+    : {};
 
   // Handle direct timeline remark
   const handleAddComment = async (e) => {
@@ -778,7 +798,7 @@ export const ComplaintDetailModal = ({
                   <div className="grid grid-cols-2 gap-2.5">
                     {/* Before Evidence Thumbnail */}
                     <div
-                      onClick={() => setZoomPhoto(complaint.beforePhoto)}
+                      onClick={() => setActiveZoomImage(complaint.beforePhoto)}
                       className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 cursor-pointer group"
                     >
                       <img
@@ -794,7 +814,7 @@ export const ComplaintDetailModal = ({
                     {/* After Evidence Thumbnail */}
                     {complaint.afterPhoto ? (
                       <div
-                        onClick={() => setZoomPhoto(complaint.afterPhoto)}
+                        onClick={() => setActiveZoomImage(complaint.afterPhoto)}
                         className="relative rounded-xl overflow-hidden border border-emerald-300 dark:border-emerald-800 bg-slate-100 dark:bg-slate-950 cursor-pointer group"
                       >
                         <img
@@ -1027,13 +1047,13 @@ export const ComplaintDetailModal = ({
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center justify-between">
               <span>Closed-Loop NC Audit Trail & Remark Log</span>
               <span className="font-mono text-slate-500">
-                {complaint.timeline?.length || 0} Events Recorded
+                {timelineList.length} Events Recorded
               </span>
             </h3>
 
             {/* Timeline Stream */}
             <div className="relative pl-6 space-y-3.5 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-800">
-              {complaint.timeline?.map((item, idx) => (
+              {timelineList.map((item, idx) => (
                 <div key={idx} className="relative group">
                   {/* Dot Node */}
                   <div className="absolute -left-6 top-1.5 w-3 h-3 rounded-full bg-white dark:bg-slate-900 border-2 border-indigo-600 dark:border-blue-500 shadow-xs" />
