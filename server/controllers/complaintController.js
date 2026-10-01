@@ -4,6 +4,23 @@ const { supabase, isSupabaseConfigured } = require('../config/supabase');
 const mockStore = require('../config/mockStore');
 const { computeDepartmentNCScore } = require('../utils/scoringEngine');
 
+// Database constraint adapter: Supabase check constraint complaints_status_check
+// allows ('Assigned', 'In Progress', 'Closed'). We map workflow statuses to compatible DB values.
+const toDbStatus = (status) => {
+  const s = String(status || '').trim();
+  if (['Closed', 'VERIFIED_EFFECTIVE', 'Verified'].includes(s)) return 'Closed';
+  if (['In Progress', 'CAP Submitted', 'Under Review', 'SUBMITTED', 'ACTION_TAKEN'].includes(s)) return 'In Progress';
+  return 'Assigned'; // satisfies DB constraint for 'Draft', 'Open', 'Assigned', 'Rejected / Rework'
+};
+
+const setWorkflowStatusInDescription = (desc, status) => {
+  let text = String(desc || '');
+  if (text.includes('[Workflow Status:')) {
+    return text.replace(/\[Workflow Status:\s*.*?\]/, `[Workflow Status: ${status}]`);
+  }
+  return `[Workflow Status: ${status}] ${text}`;
+};
+
 const sampleSvgTemplates = {
   'sample-before-stitch.svg': {
     title: 'DEFECT PROOF: SKIPPED STITCHES',
@@ -120,8 +137,23 @@ const formatComplaintOutput = (complaint) => {
   }
 
   // 1. Workflow Lifecycle Status: Draft -> Open -> CAP Submitted -> Under Review -> Rejected / Rework -> Verified -> Closed
-  let normalizedStatus = obj.status || 'Open';
-  if (['Assigned', 'In Progress'].includes(normalizedStatus)) {
+  let workflowStatus = obj.status || 'Open';
+  if (obj.description && obj.description.includes('[Workflow Status:')) {
+    const m = obj.description.match(/\[Workflow Status:\s*(.*?)\]/);
+    if (m && m[1]) workflowStatus = m[1].trim();
+  } else if (Array.isArray(obj.timeline) && obj.timeline.length > 0) {
+    const lastAction = obj.timeline[obj.timeline.length - 1]?.action;
+    if (lastAction === 'CLOSED') workflowStatus = 'Closed';
+    else if (lastAction === 'VERIFIED') workflowStatus = 'Verified';
+    else if (lastAction === 'UNDER_REVIEW') workflowStatus = 'Under Review';
+    else if (lastAction === 'CAP_SUBMITTED' || lastAction === 'ACTION_SUBMITTED') workflowStatus = 'CAP Submitted';
+    else if (lastAction === 'REJECTED') workflowStatus = 'Rejected / Rework';
+    else if (lastAction === 'DRAFT') workflowStatus = 'Draft';
+    else if (lastAction === 'CREATED') workflowStatus = 'Open';
+  }
+
+  let normalizedStatus = workflowStatus;
+  if (['Assigned'].includes(normalizedStatus)) {
     normalizedStatus = 'Open';
   } else if (['Under Verification'].includes(normalizedStatus)) {
     normalizedStatus = 'CAP Submitted';
@@ -379,11 +411,14 @@ const createComplaint = async (req, res) => {
     const isCapRequired = String(capRequired) === 'true' || capRequired === true;
     const effectiveVerification = verificationMethod || 'Physical Floor Re-inspection';
     const rawFinding = findingDescription || description || 'Non-Conformance Observed';
+    const rawWorkflowStatus = req.body.isDraft === 'true' || req.body.isDraft === true ? 'Draft' : 'Open';
 
-    // Build enriched description to permanently preserve audit criteria
+    // Build enriched description to permanently preserve audit criteria and workflow status
     let enrichedDescription = rawFinding;
     if (!enrichedDescription.includes('[Audit Requirement:')) {
-      enrichedDescription = `[Audit Requirement: ${effectiveRequirement}] [Risk: ${effectivePriority}] [CAP Required: ${isCapRequired ? 'YES' : 'NO'}] [Verification: ${effectiveVerification}]\n\n${rawFinding}`;
+      enrichedDescription = `[Workflow Status: ${rawWorkflowStatus}] [Audit Requirement: ${effectiveRequirement}] [Risk: ${effectivePriority}] [CAP Required: ${isCapRequired ? 'YES' : 'NO'}] [Verification: ${effectiveVerification}]\n\n${rawFinding}`;
+    } else if (!enrichedDescription.includes('[Workflow Status:')) {
+      enrichedDescription = `[Workflow Status: ${rawWorkflowStatus}] ${enrichedDescription}`;
     }
 
     const initialCap = {
@@ -490,7 +525,7 @@ const createComplaint = async (req, res) => {
 
     const initialTimeline = [
       {
-        action: 'CREATED',
+        action: rawWorkflowStatus === 'Draft' ? 'DRAFT' : 'CREATED',
         performedBy: {
           userId: createdByData.userId,
           name: createdByData.name,
@@ -517,7 +552,7 @@ const createComplaint = async (req, res) => {
           createdBy: createdByData,
           deadlineHours: hours,
           deadlineTimestamp: deadlineTimestamp.toISOString(),
-          status: req.body.isDraft === 'true' || req.body.isDraft === true ? 'Draft' : 'Open',
+          status: toDbStatus(rawWorkflowStatus),
           actionNotes: '',
           feedbackRemarks: '',
           rejectionReason: '',
@@ -527,34 +562,18 @@ const createComplaint = async (req, res) => {
         };
 
         let inserted = null;
-        try {
-          const fullPayload = {
-            ...basePayload,
-            requirement: effectiveRequirement,
-            riskSeverity: effectivePriority,
-            capRequired: isCapRequired,
-            verificationMethod: effectiveVerification,
-          };
-          const { data, error } = await supabase.from('complaints').insert([fullPayload]).select().single();
-          if (!error && data) {
-            inserted = data;
-          } else {
-            const { data: baseData, error: baseErr } = await supabase.from('complaints').insert([basePayload]).select().single();
-            if (baseErr) throw baseErr;
-            inserted = {
-              ...baseData,
-              requirement: effectiveRequirement,
-              riskSeverity: effectivePriority,
-              capRequired: isCapRequired,
-              verificationMethod: effectiveVerification,
-            };
-          }
-        } catch (supabaseErr) {
-          console.warn('[ComplaintController:createComplaint] Supabase column fallback:', supabaseErr.message);
-          const { data: fallbackData, error: fallbackErr } = await supabase.from('complaints').insert([basePayload]).select().single();
-          if (fallbackErr) throw fallbackErr;
-          inserted = fallbackData;
+        const { data: baseData, error: baseErr } = await supabase.from('complaints').insert([basePayload]).select().single();
+        if (baseErr) {
+          console.error('[ComplaintController:createComplaint] Supabase insert error:', baseErr.message);
+          throw baseErr;
         }
+        inserted = {
+          ...baseData,
+          requirement: effectiveRequirement,
+          riskSeverity: effectivePriority,
+          capRequired: isCapRequired,
+          verificationMethod: effectiveVerification,
+        };
 
         initialCap.responsiblePerson = assignedToData;
 
@@ -1085,7 +1104,8 @@ const submitAction = async (req, res) => {
           actionNotes: finalActionNotes,
           feedbackRemarks: finalFeedbackRemarks,
           actualCompletedAt: now.toISOString(),
-          status: 'CAP Submitted',
+          status: toDbStatus('CAP Submitted'),
+          description: setWorkflowStatusInDescription(current.description, 'CAP Submitted'),
           timeline,
           updatedAt: now.toISOString(),
         };
@@ -1296,6 +1316,8 @@ const verifyComplaint = async (req, res) => {
           });
         }
 
+        updatePayload.status = toDbStatus(newStatus);
+        updatePayload.description = setWorkflowStatusInDescription(current.description, newStatus);
         updatePayload.timeline = timeline;
 
         const { data: updated, error: updateErr } = await supabase
@@ -2164,15 +2186,17 @@ const getDepartmentComplianceStats = async (req, res) => {
     let allComplaints = [];
 
     // Fetch complaints from Supabase if configured
-    if (isSupabaseConfigured()) {
+    if (isSupabaseConfigured && supabase) {
       try {
         const { data: dbTickets, error: dbErr } = await supabase
           .from('complaints')
           .select('*')
-          .order('created_at', { ascending: false });
+          .order('createdAt', { ascending: false });
 
         if (!dbErr && Array.isArray(dbTickets)) {
           allComplaints = dbTickets.map(formatComplaintOutput);
+        } else if (dbErr) {
+          console.warn('[ComplaintController:getDepartmentComplianceStats] Supabase error:', dbErr.message);
         }
       } catch (err) {
         console.warn('[ComplaintController:getDepartmentComplianceStats] Supabase notice:', err.message);
