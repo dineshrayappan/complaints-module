@@ -247,7 +247,7 @@ export const Header = ({
                         : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300'
                     }`}
                   >
-                    {isAdmin ? 'Admin' : isAuditor ? 'Auditor' : 'Supervisor'}
+                    {isAdmin ? 'Admin' : isAuditor ? 'Auditor' : 'Department'}
                   </span>
                 </div>
                 <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">
