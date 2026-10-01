@@ -250,7 +250,11 @@ const createUser = async (req, res) => {
           user: formatUser(inserted),
         });
       } catch (dbErr) {
-        console.warn('[UserController:createUser] Supabase insert notice:', dbErr.message);
+        console.error('[UserController:createUser] Supabase insert error:', dbErr.message);
+        return res.status(400).json({
+          success: false,
+          message: `Database error saving user: ${dbErr.message}`,
+        });
       }
     }
 

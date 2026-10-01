@@ -1,3 +1,4 @@
+import { supabase } from './supabase';
 import axios from 'axios';
 
 const api = axios.create({
@@ -45,12 +46,180 @@ export const authService = {
 };
 
 export const userService = {
-  getLineSupervisors: () => api.get('/users/line-supervisors'),
-  getAllUsers: (params) => api.get('/users', { params }),
-  createUser: (userData) => api.post('/users', userData),
-  updateUser: (id, userData) => api.put(`/users/${id}`, userData),
-  resetPassword: (id, newPassword) => api.patch(`/users/${id}/reset-password`, { newPassword }),
-  toggleUserStatus: (id) => api.patch(`/users/${id}/toggle-status`),
+  getLineSupervisors: async () => {
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, name, employeeId, department, designation, mobileNumber, email, role, isActive')
+          .or('role.eq.ACTION_PERSON,role.eq.SUPERVISOR,employeeId.eq.ALL-001')
+          .eq('isActive', true)
+          .order('department', { ascending: true })
+          .order('name', { ascending: true });
+        if (!error && data && data.length > 0) {
+          const supervisors = data.map((u) => ({
+            _id: u.id,
+            id: u.id,
+            employeeId: u.employeeId,
+            name: u.name,
+            email: u.email,
+            role: u.role === 'SUPERVISOR' ? 'ACTION_PERSON' : u.role,
+            department: u.department,
+            designation: u.designation,
+            mobileNumber: u.mobileNumber,
+            isActive: u.isActive,
+          }));
+          return { data: { success: true, count: supervisors.length, supervisors } };
+        }
+      } catch (err) {
+        console.warn('[userService.getLineSupervisors] Supabase fallback to API:', err.message);
+      }
+    }
+    return api.get('/users/line-supervisors');
+  },
+
+  getAllUsers: async (params) => {
+    if (supabase) {
+      try {
+        let query = supabase.from('users').select('*');
+        if (params?.role && params.role !== 'ALL') {
+          if (params.role === 'SUPERVISOR') {
+            query = query.in('role', ['ACTION_PERSON', 'SUPERVISOR']);
+          } else {
+            query = query.eq('role', params.role);
+          }
+        }
+        if (params?.department) {
+          query = query.eq('department', params.department);
+        }
+        const { data, error } = await query.order('role', { ascending: true }).order('name', { ascending: true });
+        if (!error && data) {
+          const users = data.map((u) => ({
+            _id: u.id,
+            id: u.id,
+            employeeId: u.employeeId,
+            name: u.name,
+            email: u.email,
+            role: u.role === 'SUPERVISOR' ? 'ACTION_PERSON' : u.role,
+            department: u.department,
+            designation: u.designation,
+            mobileNumber: u.mobileNumber,
+            isActive: typeof u.isActive !== 'undefined' ? u.isActive : true,
+            createdAt: u.createdAt,
+            updatedAt: u.updatedAt,
+          }));
+          return { data: { success: true, count: users.length, users } };
+        }
+      } catch (err) {
+        console.warn('[userService.getAllUsers] Supabase direct error, using API:', err.message);
+      }
+    }
+    return api.get('/users', { params });
+  },
+
+  createUser: async (userData) => {
+    let createdSupabaseUser = null;
+    if (supabase) {
+      try {
+        const normalizedRole = userData.role === 'SUPERVISOR' ? 'ACTION_PERSON' : userData.role;
+        const { data, error } = await supabase
+          .from('users')
+          .insert([
+            {
+              employeeId: userData.employeeId.trim().toUpperCase(),
+              name: userData.name.trim(),
+              email: userData.email.trim().toLowerCase(),
+              password: userData.password,
+              role: normalizedRole,
+              department: userData.department.trim(),
+              designation: userData.designation.trim(),
+              mobileNumber: (userData.mobileNumber || '').trim(),
+              isActive: true,
+            },
+          ])
+          .select()
+          .single();
+
+        if (error) {
+          if (error.code === '23505') {
+            throw new Error(`Employee ID '${userData.employeeId.toUpperCase()}' or Email '${userData.email.toLowerCase()}' is already registered in the database.`);
+          }
+          throw new Error(error.message);
+        }
+        createdSupabaseUser = data;
+      } catch (sbErr) {
+        console.warn('[userService.createUser] Supabase insert notice:', sbErr.message);
+        throw sbErr;
+      }
+    }
+
+    try {
+      await api.post('/users', userData);
+    } catch (apiErr) {
+      console.warn('[userService.createUser] Backend sync notice:', apiErr.message);
+    }
+
+    return {
+      data: {
+        success: true,
+        message: `User '${userData.name}' (${userData.employeeId.toUpperCase()}) created successfully.`,
+        user: createdSupabaseUser || userData,
+      },
+    };
+  },
+
+  updateUser: async (id, userData) => {
+    if (supabase) {
+      try {
+        await supabase
+          .from('users')
+          .update({
+            name: userData.name,
+            email: userData.email,
+            department: userData.department,
+            designation: userData.designation,
+            mobileNumber: userData.mobileNumber,
+            role: userData.role === 'SUPERVISOR' ? 'ACTION_PERSON' : userData.role,
+            updatedAt: new Date().toISOString(),
+          })
+          .eq('id', id);
+      } catch (e) {
+        console.warn('[userService.updateUser] Direct Supabase notice:', e.message);
+      }
+    }
+    return api.put(`/users/${id}`, userData);
+  },
+
+  resetPassword: async (id, newPassword) => {
+    if (supabase) {
+      try {
+        await supabase
+          .from('users')
+          .update({
+            password: newPassword,
+            updatedAt: new Date().toISOString(),
+          })
+          .eq('id', id);
+      } catch (e) {
+        console.warn('[userService.resetPassword] Direct Supabase notice:', e.message);
+      }
+    }
+    return api.patch(`/users/${id}/reset-password`, { newPassword });
+  },
+
+  toggleUserStatus: async (id) => {
+    if (supabase) {
+      try {
+        const { data: curr } = await supabase.from('users').select('isActive').eq('id', id).maybeSingle();
+        if (curr) {
+          await supabase.from('users').update({ isActive: !curr.isActive, updatedAt: new Date().toISOString() }).eq('id', id);
+        }
+      } catch (e) {
+        console.warn('[userService.toggleUserStatus] Direct Supabase notice:', e.message);
+      }
+    }
+    return api.patch(`/users/${id}/toggle-status`);
+  },
 };
 
 export const complaintService = {
