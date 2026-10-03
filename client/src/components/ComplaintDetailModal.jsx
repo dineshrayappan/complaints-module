@@ -433,7 +433,7 @@ export const ComplaintDetailModal = ({
                 Defect Description & Instructions
               </span>
               <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-sans">
-                {complaint.description}
+                {complaint.findingDescription || complaint.description}
               </p>
               <div className="pt-2 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between border-t border-slate-200 dark:border-slate-900">
                 <span>Logged by: {complaint.createdBy?.name} ({complaint.createdBy?.role})</span>
@@ -649,7 +649,7 @@ export const ComplaintDetailModal = ({
                     {complaint.location} — {complaint.requirement}
                   </div>
                   <p className="text-xs text-slate-600 dark:text-slate-300 font-sans leading-relaxed">
-                    {complaint.description}
+                    {complaint.findingDescription || complaint.description}
                   </p>
                 </div>
               </div>

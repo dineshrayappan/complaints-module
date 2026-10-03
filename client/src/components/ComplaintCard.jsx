@@ -139,7 +139,7 @@ export const ComplaintCard = ({
 
         {/* Description Snippet */}
         <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 line-clamp-2 mb-3 sm:mb-4 leading-relaxed bg-slate-50/80 dark:bg-slate-950/60 p-2 sm:p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/80">
-          {complaint.description}
+          {complaint.findingDescription || complaint.description}
         </p>
 
         {/* Solution Details & Proof (Visible once submitted, reviewed, verified, or closed) */}

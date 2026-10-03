@@ -471,3 +471,11 @@ UNION ALL
 SELECT 'audit_logs', count(*) FROM public.audit_logs
 UNION ALL
 SELECT 'departments', count(*) FROM public.departments;
+
+-- ------------------------------------------------------------------------------
+-- 15. OPTIONAL SCHEMA MIGRATION FOR PRE-EXISTING COMPLAINT TABLES
+-- ------------------------------------------------------------------------------
+ALTER TABLE public.complaints ADD COLUMN IF NOT EXISTS requirement TEXT DEFAULT 'AQL 1.5 Workmanship Standard';
+ALTER TABLE public.complaints ADD COLUMN IF NOT EXISTS "riskSeverity" TEXT DEFAULT 'HIGH';
+ALTER TABLE public.complaints ADD COLUMN IF NOT EXISTS "capRequired" BOOLEAN DEFAULT false;
+ALTER TABLE public.complaints ADD COLUMN IF NOT EXISTS "verificationMethod" TEXT DEFAULT 'Physical Floor Re-inspection';

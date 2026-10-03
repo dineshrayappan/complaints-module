@@ -149,11 +149,33 @@ const AUDIT_REQUIREMENTS = [
     desc: 'Machine safety guards, eye protection, clean floor aisles, and ergonomics.',
   },
   {
+    id: 'None of Other',
+    title: 'None of Other',
+    standard: 'Other / Custom Standard',
+    desc: 'Standard or clause not listed above. Manually specify custom requirement.',
+  },
+  {
     id: 'Custom Audit Requirement',
     title: 'Custom Audit Requirement',
     standard: 'Specific Contract or Buyer SOP',
     desc: 'Custom audit clause specified manually by the internal auditor.',
   },
+];
+
+// Predefined Defect Findings for Describe Finding selection
+const PREDEFINED_FINDINGS = [
+  'Skipped stitches on collar seam',
+  'Lubricant drip stain on cuff',
+  'SPI below Tech Pack spec',
+  'Mismatched plaid grain line',
+  'Seam puckering along hemline',
+  'Needle holes / fabric cut along seam',
+  'Color shading between front and back panels',
+  'Measurement deviation exceeding tolerance',
+  'Broken stitch / loose thread ends',
+  'Raw edges / exposed fraying seam',
+  'Button / snap attachment loose or misaligned',
+  'None of Others',
 ];
 
 // Defect Categories
@@ -288,10 +310,13 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess, prefillData = nu
   // Stage 2: Select Requirement
   const [requirement, setRequirement] = useState('AQL 1.5 Workmanship Standard');
   const [customRequirement, setCustomRequirement] = useState('');
+  const [isManualRequirement, setIsManualRequirement] = useState(false);
 
   // Stage 3: Describe Finding & Category
   const [category, setCategory] = useState('Stitching Fault');
   const [description, setDescription] = useState('');
+  const [selectedFinding, setSelectedFinding] = useState('');
+  const [isManualFinding, setIsManualFinding] = useState(false);
 
   // Stage 4: Risk / Severity
   const [priority, setPriority] = useState('HIGH');
@@ -360,10 +385,21 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess, prefillData = nu
         handleDepartmentChange(prefillData.department);
       }
       if (prefillData.requirement) {
-        setRequirement(prefillData.requirement);
+        const reqVal = prefillData.requirement;
+        setRequirement(reqVal);
+        if (!AUDIT_REQUIREMENTS.some((r) => r.id === reqVal)) {
+          setCustomRequirement(reqVal);
+          setIsManualRequirement(true);
+        }
       }
       if (prefillData.description) {
         setDescription(prefillData.description);
+        if (PREDEFINED_FINDINGS.includes(prefillData.description)) {
+          setSelectedFinding(prefillData.description);
+        } else {
+          setSelectedFinding('None of Others');
+          setIsManualFinding(true);
+        }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -535,8 +571,8 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess, prefillData = nu
       return;
     }
 
-    const effectiveReq = requirement === 'Custom Audit Requirement'
-      ? customRequirement.trim() || 'Custom Quality Requirement'
+    const effectiveReq = (requirement === 'Custom Audit Requirement' || requirement === 'None of Other' || isManualRequirement)
+      ? (customRequirement.trim() || requirement)
       : requirement;
 
     const assignedId = assignedToUserId || selectedSupervisor?._id || selectedSupervisor?.id;
@@ -790,13 +826,46 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess, prefillData = nu
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-2">
+              {/* Requirement Dropdown / Select List */}
+              <div className="pt-1">
+                <label className="block font-bold text-slate-700 dark:text-slate-300 text-xs mb-1.5">
+                  Requirement Standard (Select from dropdown or choose "None of Other" / Manual Entry)
+                </label>
+                <select
+                  value={requirement}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setRequirement(val);
+                    if (val === 'None of Other' || val === 'Custom Audit Requirement') {
+                      setIsManualRequirement(true);
+                    } else {
+                      setIsManualRequirement(false);
+                    }
+                  }}
+                  className="w-full p-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 font-medium"
+                >
+                  {AUDIT_REQUIREMENTS.map((req) => (
+                    <option key={req.id} value={req.id}>
+                      {req.title} {req.standard ? `— ${req.standard}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-1">
                 {AUDIT_REQUIREMENTS.map((req) => {
                   const isSelected = requirement === req.id;
                   return (
                     <div
                       key={req.id}
-                      onClick={() => setRequirement(req.id)}
+                      onClick={() => {
+                        setRequirement(req.id);
+                        if (req.id === 'None of Other' || req.id === 'Custom Audit Requirement') {
+                          setIsManualRequirement(true);
+                        } else {
+                          setIsManualRequirement(false);
+                        }
+                      }}
                       className={`p-3 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
                         isSelected
                           ? 'border-indigo-600 bg-indigo-50/90 dark:bg-indigo-950/70 text-indigo-950 dark:text-indigo-100 ring-2 ring-indigo-500/20 shadow-xs'
@@ -822,18 +891,44 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess, prefillData = nu
                 })}
               </div>
 
-              {requirement === 'Custom Audit Requirement' && (
+              {/* Manual Entry field when None of Other, Custom Audit Requirement, or custom value */}
+              {(requirement === 'None of Other' || requirement === 'Custom Audit Requirement' || isManualRequirement) ? (
                 <div className="pt-2 animate-fadeIn">
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 text-xs mb-1">
-                    Custom Audit Standard / Contract Clause Details
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 text-xs">
+                      {requirement === 'None of Other'
+                        ? 'Specify Custom Requirement Standard / Clause (Manual Entry)'
+                        : 'Custom Audit Standard / Contract Clause Details'}
+                    </label>
+                    <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold">
+                      Manual Input Enabled
+                    </span>
+                  </div>
                   <input
                     type="text"
                     value={customRequirement}
                     onChange={(e) => setCustomRequirement(e.target.value)}
-                    placeholder="e.g. Buyer Specific Tolerance Manual Rev 4.2 - Seam Integrity Sec 3"
+                    placeholder="e.g. Buyer Specific Tolerance Manual Rev 4.2 - Seam Integrity Sec 3 or None of Other"
                     className="w-full p-2.5 text-xs rounded-xl border border-indigo-300 dark:border-indigo-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
                   />
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                    {requirement === 'None of Other'
+                      ? 'Type custom standard above to save in database, or leave blank to save as "None of Other".'
+                      : 'Enter the custom clause/standard to be saved in the database.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRequirement('None of Other');
+                      setIsManualRequirement(true);
+                    }}
+                    className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    + Option not listed? Select "None of Other" to enter custom requirement manually
+                  </button>
                 </div>
               )}
             </section>
@@ -879,23 +974,72 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess, prefillData = nu
                 </div>
               </div>
 
-              {/* Text Description with Quick Tags */}
-              <div className="pt-2">
+              {/* Predefined Finding Dropdown / Select List */}
+              <div className="pt-1">
+                <label className="block font-bold text-slate-700 dark:text-slate-300 text-xs mb-1.5">
+                  Finding Observation (Select Option or Choose "None of Others" for Manual Entry)
+                </label>
+                <select
+                  value={selectedFinding}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSelectedFinding(val);
+                    if (val === 'None of Others') {
+                      setIsManualFinding(true);
+                      if (!description.trim() || PREDEFINED_FINDINGS.includes(description)) {
+                        setDescription('None of Others');
+                      }
+                    } else if (val) {
+                      setIsManualFinding(false);
+                      setDescription(val);
+                    }
+                  }}
+                  className="w-full p-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 font-medium"
+                >
+                  <option value="">-- Select from predefined findings list --</option>
+                  {PREDEFINED_FINDINGS.map((finding) => (
+                    <option key={finding} value={finding}>
+                      {finding}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedFinding === 'None of Others' && (
+                <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-xs">
+                  <div className="font-bold text-indigo-900 dark:text-indigo-200">
+                    Option: None of Others Selected
+                  </div>
+                  <div className="text-[11px] text-indigo-700 dark:text-indigo-300 mt-0.5">
+                    Option not available in the predefined list. You can manually enter or edit your finding observation below.
+                  </div>
+                </div>
+              )}
+
+              {/* Text Description / Manual Entry Area */}
+              <div className="pt-1">
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="font-bold text-slate-700 dark:text-slate-300 text-xs">
-                    Objective Audit Finding Details & Rectification Directives
+                    Objective Audit Finding Details & Rectification Directives {selectedFinding === 'None of Others' ? '(Manual Entry)' : ''}
                   </label>
                   <span className="text-[10px] text-slate-400">Mandatory audit observation</span>
                 </div>
                 <textarea
                   rows="3"
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={(e) => {
+                    setDescription(e.target.value);
+                    if (!PREDEFINED_FINDINGS.includes(e.target.value)) {
+                      if (selectedFinding !== 'None of Others' && selectedFinding !== '') {
+                        setSelectedFinding('None of Others');
+                      }
+                    }
+                  }}
                   placeholder="e.g. Machine #14 observed with 8 skipped stitches per 10cm along the collar joint seam. Thread tension disc is clogged with lint. Immediate re-stitching and looper recalibration required."
                   className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 text-xs leading-relaxed font-sans"
                 />
 
-                {/* Quick Observation Preset Tags */}
+                {/* Quick Observation Preset Tags including None of Others */}
                 <div className="flex items-center gap-1.5 mt-2 flex-wrap text-[11px]">
                   <span className="text-slate-400 text-[10px] font-semibold">Quick insert:</span>
                   {[
@@ -903,19 +1047,50 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess, prefillData = nu
                     'Lubricant drip stain on cuff',
                     'SPI below Tech Pack spec',
                     'Mismatched plaid grain line',
+                    'None of Others',
                   ].map((phrase) => (
                     <button
                       key={phrase}
                       type="button"
-                      onClick={() =>
-                        setDescription((prev) => (prev ? `${prev} ${phrase}.` : `${phrase}.`))
-                      }
-                      className="px-2 py-0.5 rounded-md bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-indigo-100 dark:hover:bg-indigo-950 hover:text-indigo-600 transition-colors text-[10px]"
+                      onClick={() => {
+                        setSelectedFinding(phrase);
+                        if (phrase === 'None of Others') {
+                          setIsManualFinding(true);
+                          if (!description.trim() || PREDEFINED_FINDINGS.includes(description)) {
+                            setDescription('None of Others');
+                          }
+                        } else {
+                          setDescription((prev) => (prev ? `${prev} ${phrase}.` : `${phrase}.`));
+                        }
+                      }}
+                      className={`px-2 py-0.5 rounded-md transition-colors text-[10px] ${
+                        selectedFinding === phrase
+                          ? 'bg-indigo-600 text-white font-bold'
+                          : 'bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-indigo-100 dark:hover:bg-indigo-950 hover:text-indigo-600'
+                      }`}
                     >
                       + {phrase}
                     </button>
                   ))}
                 </div>
+
+                {selectedFinding !== 'None of Others' && (
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedFinding('None of Others');
+                        setIsManualFinding(true);
+                        if (!description.trim() || PREDEFINED_FINDINGS.includes(description)) {
+                          setDescription('None of Others');
+                        }
+                      }}
+                      className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      + Option not listed? Select "None of Others" to enter custom finding manually
+                    </button>
+                  </div>
+                )}
               </div>
             </section>
           )}
@@ -1519,7 +1694,9 @@ export const NewComplaintModal = ({ isOpen, onClose, onSuccess, prefillData = nu
                       Requirement Standard
                     </span>
                     <span className="font-semibold text-slate-800 dark:text-slate-200">
-                      {requirement === 'Custom Audit Requirement' ? customRequirement || requirement : requirement}
+                      {(requirement === 'Custom Audit Requirement' || requirement === 'None of Other' || isManualRequirement)
+                        ? customRequirement || requirement
+                        : requirement}
                     </span>
                   </div>
 

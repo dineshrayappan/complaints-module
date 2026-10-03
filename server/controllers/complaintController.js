@@ -203,13 +203,21 @@ const formatComplaintOutput = (complaint) => {
   }
 
   // Extract audit workflow fields if embedded in description or native
-  if (!obj.requirement && obj.description && obj.description.includes('[Audit Requirement:')) {
+  if ((!obj.requirement || obj.requirement === 'AQL 1.5 Workmanship Standard') && obj.description && obj.description.includes('[Audit Requirement:')) {
     const m = obj.description.match(/\[Audit Requirement:\s*(.*?)\]/);
-    if (m) obj.requirement = m[1];
+    if (m && m[1]) obj.requirement = m[1].trim();
   }
   if (!obj.requirement) {
     obj.requirement = 'AQL 1.5 Workmanship Standard';
   }
+
+  // Extract clean finding description if embedded in description
+  let cleanFinding = obj.findingDescription || obj.description || '';
+  if (cleanFinding && cleanFinding.includes('[Audit Requirement:')) {
+    const parts = cleanFinding.split('\n\n');
+    cleanFinding = parts.length > 1 ? parts.slice(1).join('\n\n').trim() : cleanFinding.replace(/\[.*?\]\s*/g, '').trim();
+  }
+  obj.findingDescription = cleanFinding;
 
   if (typeof obj.capRequired === 'undefined') {
     if (obj.description && obj.description.includes('[CAP Required:')) {
@@ -559,6 +567,10 @@ const createComplaint = async (req, res) => {
           location: location || 'Production Floor',
           priority: effectivePriority,
           description: enrichedDescription,
+          requirement: effectiveRequirement,
+          riskSeverity: effectivePriority,
+          capRequired: isCapRequired,
+          verificationMethod: effectiveVerification,
           beforePhoto: beforePhotoUrl,
           afterPhoto: null,
           assignedTo: assignedToData,
@@ -575,7 +587,39 @@ const createComplaint = async (req, res) => {
         };
 
         let inserted = null;
-        const { data: baseData, error: baseErr } = await supabase.from('complaints').insert([basePayload]).select().single();
+        let baseData = null;
+        let baseErr = null;
+        const res1 = await supabase.from('complaints').insert([basePayload]).select().single();
+        if (res1.error && res1.error.message && res1.error.message.includes('column')) {
+          console.warn('[ComplaintController:createComplaint] Schema missing extended column, retrying with base columns:', res1.error.message);
+          const fallbackPayload = {
+            complaintId,
+            category: category || 'Stitching Fault',
+            department: department || supervisor.department || 'Production',
+            location: location || 'Production Floor',
+            priority: effectivePriority,
+            description: enrichedDescription,
+            beforePhoto: beforePhotoUrl,
+            afterPhoto: null,
+            assignedTo: assignedToData,
+            createdBy: createdByData,
+            deadlineHours: hours,
+            deadlineTimestamp: deadlineTimestamp.toISOString(),
+            status: toDbStatus(rawWorkflowStatus),
+            actionNotes: '',
+            feedbackRemarks: '',
+            rejectionReason: '',
+            timeline: initialTimeline,
+            createdAt: now.toISOString(),
+            updatedAt: now.toISOString(),
+          };
+          const res2 = await supabase.from('complaints').insert([fallbackPayload]).select().single();
+          baseData = res2.data;
+          baseErr = res2.error;
+        } else {
+          baseData = res1.data;
+          baseErr = res1.error;
+        }
         if (baseErr) {
           console.error('[ComplaintController:createComplaint] Supabase insert error:', baseErr.message);
           throw baseErr;
