@@ -76,7 +76,7 @@ export const App = () => {
           if (Array.isArray(parsed) && parsed.length > 0) return parsed;
         }
       }
-    } catch (e) {}
+    } catch (e) { }
     return [];
   });
   const [metrics, setMetrics] = useState(null);
@@ -184,7 +184,7 @@ export const App = () => {
           setTaskCounts(res.data.counts);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => {
       active = false;
     };
@@ -403,10 +403,10 @@ export const App = () => {
 
     const userComplaints = isSupervisor
       ? complaints.filter((c) => {
-          const cEmp = (c.assignedTo?.employeeId || '').toUpperCase();
-          const cUser = String(c.assignedTo?.userId || '');
-          return (cEmp && cEmp === userEmpId) || (cUser && cUser === userId);
-        })
+        const cEmp = (c.assignedTo?.employeeId || '').toUpperCase();
+        const cUser = String(c.assignedTo?.userId || '');
+        return (cEmp && cEmp === userEmpId) || (cUser && cUser === userId);
+      })
       : complaints;
 
     const now = Date.now();
@@ -466,8 +466,8 @@ export const App = () => {
           (c.status === 'Closed'
             ? 'Closed'
             : Date.now() > new Date(c.deadlineTimestamp).getTime()
-            ? 'Overdue'
-            : 'Open');
+              ? 'Overdue'
+              : 'Open');
         if (deadlineFilter === 'Due Soon') {
           const diffMs = new Date(c.deadlineTimestamp).getTime() - Date.now();
           const isDueSoon = diffMs > 0 && diffMs <= 4 * 60 * 60 * 1000 && c.status !== 'Closed';
@@ -558,8 +558,8 @@ export const App = () => {
                   {isAdmin
                     ? 'Executive Oversight'
                     : isAuditor
-                    ? 'All 4 Plant Lines'
-                    : user?.department}
+                      ? 'All 4 Plant Lines'
+                      : user?.department}
                 </strong>
               </span>
               <span>•</span>
@@ -708,22 +708,20 @@ export const App = () => {
                   <button
                     onClick={() => setViewMode('cards')}
                     title="Card Grid View"
-                    className={`p-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                      viewMode === 'cards'
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                    }`}
+                    className={`p-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${viewMode === 'cards'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                      }`}
                   >
                     <LayoutGrid className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setViewMode('table')}
                     title="Dense Table View"
-                    className={`p-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                      viewMode === 'table'
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                    }`}
+                    className={`p-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${viewMode === 'table'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                      }`}
                   >
                     <List className="w-4 h-4" />
                   </button>
@@ -783,21 +781,6 @@ export const App = () => {
           )}
         </main>
       </div>
-
-      {/* Footer */}
-      <footer className="bg-white dark:bg-slate-950 border-t border-slate-200/90 dark:border-slate-900 py-6 text-center text-xs text-slate-500 transition-colors">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Factory className="w-4 h-4 text-slate-400 dark:text-slate-600" />
-            <span className="font-medium text-slate-600 dark:text-slate-400">
-              Textile & Garment QMS • Closed-Loop Defect Rectification Architecture
-            </span>
-          </div>
-          <div className="font-mono text-[11px] text-slate-400 dark:text-slate-600">
-            SLA Standard: 12h–24h • Camera Rear Capture • HTML5 Canvas WebP
-          </div>
-        </div>
-      </footer>
 
       {/* Modals */}
       <NewComplaintModal
