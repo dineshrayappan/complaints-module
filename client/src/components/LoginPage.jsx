@@ -36,12 +36,6 @@ export const LoginPage = () => {
     }
   };
 
-  const fillQuickCredentials = (empId, pass) => {
-    setIdentifier(empId);
-    setPassword(pass);
-    setError(null);
-  };
-
   return (
     <div className="min-h-screen w-full relative flex flex-col justify-between bg-slate-50 font-sans overflow-x-hidden selection:bg-indigo-500 selection:text-white">
       {/* ----------------- UPPER LIGHT SECTION ----------------- */}
@@ -176,38 +170,6 @@ export const LoginPage = () => {
             </div>
           </form>
 
-          {/* Quick Credential Pre-fill for Testing/Audit Roles */}
-          <div className="mt-6 pt-5 border-t border-slate-100">
-            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-center mb-2.5">
-              Role Access Quick Select
-            </div>
-            <div className="grid grid-cols-3 gap-1.5">
-              <button
-                type="button"
-                onClick={() => fillQuickCredentials('AUD-001', 'Auditor@123')}
-                className="px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50/80 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 text-[11px] font-semibold text-slate-600 transition-all text-center cursor-pointer"
-                title="Fill Auditor credentials"
-              >
-                Auditor
-              </button>
-              <button
-                type="button"
-                onClick={() => fillQuickCredentials('SUP-101', 'Supervisor@123')}
-                className="px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50/80 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 text-[11px] font-semibold text-slate-600 transition-all text-center cursor-pointer"
-                title="Fill Supervisor credentials"
-              >
-                Supervisor
-              </button>
-              <button
-                type="button"
-                onClick={() => fillQuickCredentials('ADM-001', 'Admin@123')}
-                className="px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50/80 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 text-[11px] font-semibold text-slate-600 transition-all text-center cursor-pointer"
-                title="Fill Admin credentials"
-              >
-                Admin
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Professional Tagline Below Login Card */}
