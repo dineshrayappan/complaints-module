@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, AlertCircle, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, ShieldCheck, Lock, User, HelpCircle, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import complianceBg from '../assets/compliance_bg.jpg';
 
 export const LoginPage = () => {
   const { login } = useAuth();
@@ -10,7 +9,7 @@ export const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [focusedField, setFocusedField] = useState(null);
+  const [showForgotModal, setShowForgotModal] = useState(false);
 
   const handleSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
@@ -28,242 +27,298 @@ export const LoginPage = () => {
     try {
       const res = await login(identifier.trim(), password);
       if (res && res.success === false) {
-        setError(res.message || 'Login failed. Please verify credentials.');
+        setError(res.message || 'Login failed. Please verify your credentials.');
       }
     } catch (err) {
-      setError(err.message || 'Login failed. Please verify credentials.');
+      setError(err.message || 'Login failed. Please verify your credentials.');
     } finally {
       setLoading(false);
     }
   };
 
+  const fillQuickCredentials = (empId, pass) => {
+    setIdentifier(empId);
+    setPassword(pass);
+    setError(null);
+  };
+
   return (
-    <div style={{
-      minHeight: '100vh',
-      width: '100%',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      position: 'relative',
-      backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.48), rgba(15, 23, 42, 0.68)), url(${complianceBg})`,
-      backgroundPosition: 'center',
-      backgroundSize: 'cover',
-      backgroundRepeat: 'no-repeat',
-      padding: '24px',
-      boxSizing: 'border-box',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-    }}>
-      {/* Floating Pristine Login Card */}
-      <div style={{
-        width: '100%',
-        maxWidth: '430px',
-        backgroundColor: '#ffffff',
-        borderRadius: '20px',
-        boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.1)',
-        padding: '40px 36px',
-        boxSizing: 'border-box',
-        position: 'relative',
-        zIndex: 10
-      }}>
-        {/* Compliance Module Header */}
-        <div style={{ marginBottom: '28px' }}>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            fontSize: '11px',
-            fontWeight: 800,
-            letterSpacing: '1.2px',
-            color: '#047857',
-            backgroundColor: '#ecfdf5',
-            border: '1px solid #a7f3d0',
-            borderRadius: '20px',
-            padding: '4px 10px',
-            textTransform: 'uppercase',
-            marginBottom: '14px'
-          }}>
-            <ShieldCheck size={14} style={{ color: '#059669' }} />
-            COMPLIANCE MODULE
+    <div className="min-h-screen w-full relative flex flex-col justify-between bg-slate-50 font-sans overflow-x-hidden selection:bg-indigo-500 selection:text-white">
+      {/* ----------------- UPPER LIGHT SECTION ----------------- */}
+      <div className="w-full pt-6 sm:pt-8 px-4 sm:px-8 z-10 flex items-center justify-between max-w-7xl mx-auto">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/20">
+            <ShieldCheck className="w-5 h-5 text-white" />
           </div>
-          <h1 style={{
-            fontSize: '26px',
-            fontWeight: 700,
-            color: '#0f172a',
-            margin: '0 0 6px 0',
-            letterSpacing: '-0.4px',
-            lineHeight: 1.2
-          }}>
-            Welcome Back
-          </h1>
-          <p style={{
-            fontSize: '13.5px',
-            color: '#64748b',
-            margin: 0,
-            fontWeight: 400
-          }}>
-            Sign in to access your compliance workspace
-          </p>
+          <div>
+            <div className="font-extrabold text-slate-900 tracking-tight text-base sm:text-lg leading-tight">
+              Complaints Module
+            </div>
+            <div className="text-[10.5px] font-medium text-slate-500 tracking-wide uppercase">
+              Quality Management & Action Tracking
+            </div>
+          </div>
         </div>
 
-        {/* Error Alert */}
-        {error && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            padding: '11px 14px',
-            backgroundColor: '#fef2f2',
-            border: '1px solid #fecaca',
-            borderRadius: '10px',
-            color: '#b91c1c',
-            fontSize: '13px',
-            fontWeight: 500,
-            marginBottom: '20px'
-          }}>
-            <AlertCircle size={16} style={{ flexShrink: 0 }} />
-            <span>{error}</span>
-          </div>
-        )}
+        <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/90 text-slate-600 border border-slate-200/80 shadow-2xs">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span>Enterprise Portal</span>
+        </div>
+      </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit}>
-          {/* Employee ID / Email Field */}
-          <div style={{ marginBottom: '18px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '13px',
-              fontWeight: 600,
-              color: '#334155',
-              marginBottom: '6px'
-            }}>
-              Employee ID or Work Email
-            </label>
-            <input
-              type="text"
-              required
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-              onFocus={() => setFocusedField('identifier')}
-              onBlur={() => setFocusedField(null)}
-              placeholder="e.g. ADM-001 or admin@factory.com"
-              autoComplete="username"
-              style={{
-                width: '100%',
-                height: '44px',
-                padding: '0 14px',
-                borderRadius: '8px',
-                border: focusedField === 'identifier' ? '1.5px solid #0f172a' : '1px solid #cbd5e1',
-                backgroundColor: '#edf4fc',
-                fontSize: '14px',
-                color: '#0f172a',
-                outline: 'none',
-                boxSizing: 'border-box',
-                transition: 'border-color 150ms ease, background-color 150ms ease'
-              }}
-            />
+      {/* ----------------- CENTERED LOGIN CARD ----------------- */}
+      <div className="relative z-10 w-full flex-1 flex flex-col items-center justify-center px-4 py-8 sm:py-12">
+        <div className="w-full max-w-[420px] bg-white rounded-3xl border border-slate-200/90 shadow-[0_20px_60px_-15px_rgba(15,23,42,0.14),0_0_0_1px_rgba(226,232,240,0.8)] p-7 sm:p-9 transition-all">
+          
+          {/* Card Top Pill Badge */}
+          <div className="mb-4">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-100/90">
+              <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+              Complaints Module
+            </span>
           </div>
 
-          {/* Password Field */}
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '13px',
-              fontWeight: 600,
-              color: '#334155',
-              marginBottom: '6px'
-            }}>
-              Password
-            </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onFocus={() => setFocusedField('password')}
-                onBlur={() => setFocusedField(null)}
-                placeholder="••••••••"
-                autoComplete="current-password"
-                style={{
-                  width: '100%',
-                  height: '44px',
-                  padding: '0 42px 0 14px',
-                  borderRadius: '8px',
-                  border: focusedField === 'password' ? '1.5px solid #0f172a' : '1px solid #cbd5e1',
-                  backgroundColor: '#edf4fc',
-                  fontSize: '14px',
-                  color: '#0f172a',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                  letterSpacing: showPassword ? 'normal' : '2px',
-                  transition: 'border-color 150ms ease, background-color 150ms ease'
-                }}
-              />
+          {/* Heading */}
+          <h1 className="text-2xl sm:text-[26px] font-bold text-slate-900 tracking-tight leading-tight">
+            Welcome back!
+          </h1>
+          <p className="text-xs sm:text-[13px] text-slate-500 mt-1 mb-6 leading-relaxed">
+            Please sign in to access your complaints & audit workspace.
+          </p>
+
+          {/* Error Alert */}
+          {error && (
+            <div className="mb-5 flex items-start gap-2.5 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium animate-fadeIn">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <span className="leading-snug">{error}</span>
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Employee ID or Work Email */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Employee ID or Work Email
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <User className="w-4 h-4" />
+                </div>
+                <input
+                  type="text"
+                  required
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  placeholder="e.g. AUD-001 or auditor@factory.com"
+                  autoComplete="username"
+                  className="w-full h-11 pl-10 pr-3.5 text-sm rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-white focus:bg-white text-slate-900 placeholder:text-slate-400 outline-none transition-all focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20"
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Password
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowForgotModal(true)}
+                  className="text-xs text-indigo-600 hover:text-indigo-800 font-medium transition-colors cursor-pointer"
+                >
+                  Forgot Password?
+                </button>
+              </div>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                  className={`w-full h-11 pl-10 pr-11 text-sm rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-white focus:bg-white text-slate-900 placeholder:text-slate-400 outline-none transition-all focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20 ${
+                    !showPassword && password ? 'tracking-widest' : ''
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Sign In Button */}
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full h-11 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 text-white font-semibold text-sm shadow-md shadow-indigo-600/25 hover:shadow-lg hover:shadow-indigo-600/30 active:scale-[0.99] transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Signing in...</span>
+                  </>
+                ) : (
+                  <span>Sign In</span>
+                )}
+              </button>
+            </div>
+          </form>
+
+          {/* Quick Credential Pre-fill for Testing/Audit Roles */}
+          <div className="mt-6 pt-5 border-t border-slate-100">
+            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-center mb-2.5">
+              Role Access Quick Select
+            </div>
+            <div className="grid grid-cols-3 gap-1.5">
               <button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: 'absolute',
-                  right: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: '#64748b',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '4px'
-                }}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                onClick={() => fillQuickCredentials('AUD-001', 'Auditor@123')}
+                className="px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50/80 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 text-[11px] font-semibold text-slate-600 transition-all text-center cursor-pointer"
+                title="Fill Auditor credentials"
               >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                Auditor
+              </button>
+              <button
+                type="button"
+                onClick={() => fillQuickCredentials('SUP-101', 'Supervisor@123')}
+                className="px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50/80 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 text-[11px] font-semibold text-slate-600 transition-all text-center cursor-pointer"
+                title="Fill Supervisor credentials"
+              >
+                Supervisor
+              </button>
+              <button
+                type="button"
+                onClick={() => fillQuickCredentials('ADM-001', 'Admin@123')}
+                className="px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50/80 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 text-[11px] font-semibold text-slate-600 transition-all text-center cursor-pointer"
+                title="Fill Admin credentials"
+              >
+                Admin
               </button>
             </div>
           </div>
+        </div>
 
-          {/* Sign In Button */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '12px 24px',
-                backgroundColor: loading ? '#475569' : '#0b1329',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '14.5px',
-                fontWeight: 600,
-                cursor: loading ? 'not-allowed' : 'pointer',
-                boxShadow: '0 4px 14px rgba(11, 19, 41, 0.2)',
-                transition: 'background-color 150ms ease, transform 100ms ease',
-                outline: 'none'
-              }}
-              onMouseEnter={(e) => {
-                if (!loading) e.currentTarget.style.backgroundColor = '#1e293b';
-              }}
-              onMouseLeave={(e) => {
-                if (!loading) e.currentTarget.style.backgroundColor = '#0b1329';
-              }}
-            >
-              {loading ? 'Authenticating...' : 'Sign In'}
-            </button>
-          </div>
-        </form>
-
-        {/* Footer info note */}
-        <div style={{
-          marginTop: '24px',
-          textAlign: 'center',
-          fontSize: '12px',
-          color: '#94a3b8'
-        }}>
-          Garment Manufacturing Quality & ISO Compliance System
+        {/* Professional Tagline Below Login Card */}
+        <div className="mt-6 text-center z-10 px-4">
+          <p className="text-xs sm:text-sm font-semibold text-white tracking-wide drop-shadow-xs">
+            Complaint Management & Action Tracking
+          </p>
+          <p className="text-[11px] text-white/80 mt-1 drop-shadow-2xs">
+            Enterprise QMS • ISO 9001:2015 & Buyer Compliance Platform
+          </p>
         </div>
       </div>
+
+      {/* ----------------- LOWER CURVED WAVE & GRADIENT SECTION ----------------- */}
+      <div className="absolute inset-x-0 bottom-0 pointer-events-none overflow-hidden h-[42vh] sm:h-[46vh] lg:h-[48vh] z-0">
+        <svg
+          viewBox="0 0 1440 480"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          preserveAspectRatio="none"
+          className="w-full h-full"
+        >
+          <defs>
+            {/* Primary rich blue-to-purple gradient */}
+            <linearGradient id="waveGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#1d4ed8" />
+              <stop offset="35%" stopColor="#2563eb" />
+              <stop offset="65%" stopColor="#4f46e5" />
+              <stop offset="100%" stopColor="#7c3aed" />
+            </linearGradient>
+
+            {/* Secondary layered wave gradient for organic depth */}
+            <linearGradient id="waveGradientBack" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.45" />
+              <stop offset="50%" stopColor="#6366f1" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#9333ea" stopOpacity="0.3" />
+            </linearGradient>
+
+            {/* Subtle dotted geometric pattern inside gradient area */}
+            <pattern id="dotPattern" x="0" y="0" width="26" height="26" patternUnits="userSpaceOnUse">
+              <circle cx="2.5" cy="2.5" r="1.5" fill="#ffffff" fillOpacity="0.16" />
+            </pattern>
+          </defs>
+
+          {/* Background Soft Depth Wave */}
+          <path
+            d="M0,150 C320,70 540,220 860,130 C1140,60 1320,170 1440,110 L1440,480 L0,480 Z"
+            fill="url(#waveGradientBack)"
+          />
+
+          {/* Primary Foreground Wave */}
+          <path
+            d="M0,185 C340,105 560,235 900,150 C1180,80 1340,180 1440,140 L1440,480 L0,480 Z"
+            fill="url(#waveGradient)"
+          />
+
+          {/* Dotted Pattern Overlay clipped directly to the main wave */}
+          <path
+            d="M0,185 C340,105 560,235 900,150 C1180,80 1340,180 1440,140 L1440,480 L0,480 Z"
+            fill="url(#dotPattern)"
+          />
+
+          {/* Abstract Subtle Radial Contours for Modern SaaS Depth */}
+          <circle cx="160" cy="380" r="150" stroke="#ffffff" strokeOpacity="0.08" strokeWidth="1.5" />
+          <circle cx="160" cy="380" r="230" stroke="#ffffff" strokeOpacity="0.04" strokeWidth="1.5" />
+          <circle cx="1280" cy="340" r="170" stroke="#ffffff" strokeOpacity="0.07" strokeWidth="1.5" />
+          <circle cx="1280" cy="340" r="260" stroke="#ffffff" strokeOpacity="0.03" strokeWidth="1.5" />
+        </svg>
+      </div>
+
+      {/* ----------------- FORGOT PASSWORD MODAL ----------------- */}
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-2xl border border-slate-200 animate-fadeIn">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <HelpCircle className="w-5 h-5 text-indigo-600" />
+                <h3 className="font-bold text-slate-900 text-sm">
+                  Password Reset Instructions
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowForgotModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="py-4 space-y-3 text-xs text-slate-600 leading-relaxed">
+              <p>
+                In compliance with factory data security & ISO audit standards, individual user registration and self-service password resets are restricted.
+              </p>
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                <div className="font-semibold text-slate-800">Need credentials reset?</div>
+                <div>Please contact your <span className="font-bold text-indigo-600">Central Quality Administrator</span> or IT Helpdesk.</div>
+                <div className="text-[11px] text-slate-500 font-mono">Email: admin@factory.com • Phone Ext: 402</div>
+              </div>
+            </div>
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowForgotModal(false)}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold cursor-pointer transition-colors"
+              >
+                Understood
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
